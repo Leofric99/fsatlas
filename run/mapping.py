@@ -71,7 +71,9 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
             extract_airport(row, 'dep')
             extract_airport(row, 'arr')
             
-    sorted_airports = sorted(airports.values(), key=lambda x: x['rank'], reverse=True) 
+    # Sort ascending: rank 0 (red/small) first so they render at the bottom,
+    # rank 2 (green/large) last so they appear on top and are clickable.
+    sorted_airports = sorted(airports.values(), key=lambda x: x['rank'])
     airports_json = json.dumps(sorted_airports, default=str)
     
     # Colors

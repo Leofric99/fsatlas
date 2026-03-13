@@ -83,14 +83,14 @@ class MainWindow(QMainWindow):
         self.map_type = 'Hybrid'
         self.filters = {} # Stores current filter widgets
         self.map_view = None
-        self.has_filtered = False
+        self.current_filtered_df = self.df  # Start with full dataset
 
         # UI Setup
         self.setup_ui()
         self.apply_theme()
         
-        # Initial map (empty)
-        self.update_map()
+        # Initial map (full dataset)
+        self.render_map(self.df)
         
         # Determine filter columns
         if self.df.empty:
@@ -177,12 +177,7 @@ class MainWindow(QMainWindow):
         # Use default profile unless specified otherwise
         self.map_view.setPage(page)
         
-        # Initial "Select filters" message page
-        self.map_view.setHtml("""
-            <div style="display:flex;justify-content:center;align-items:center;height:100%;font-family:sans-serif;color:#666;">
-                <h1>Please select or enter a filter to view flights.</h1>
-            </div>
-        """)
+        # Map will be populated after setup_ui() returns
         # Add map view with stretch factor 1 to take all remaining space
         main_layout.addWidget(self.map_view, 1)
 
@@ -338,8 +333,7 @@ class MainWindow(QMainWindow):
             self.current_theme = 'light'
             self.theme_btn.setText("Switch to Dark Mode")
         self.apply_theme()
-        if self.has_filtered:
-            self.update_map()
+        self.render_map(self.current_filtered_df)
 
     def apply_theme(self):
         if self.current_theme == 'dark':
@@ -349,22 +343,7 @@ class MainWindow(QMainWindow):
 
     def change_map_type(self, text):
         self.map_type = text
-        if self.has_filtered:
-            # Re-apply current filters to re-render map with new tiles
-            # We don't have them stored separate? Let's assume user hits Apply?
-            # Or better, store last used filters.
-            # For simplicity, if they haven't filtered, we do nothing.
-            # If they have, we call update_map but with what filters?
-            # Re-read from UI?
-            current = self.get_current_filters()
-            if current:
-                self.update_map(current)
-            else:
-                 # If no filters set, but self.has_filtered is true? Edge case.
-                 # Just re-render base empty map if they want? Or whole DB?
-                 pass 
-                 # Let's force re-read
-                 self.update_map(self.get_current_filters())
+        self.render_map(self.current_filtered_df)
 
     def get_current_filters(self):
         active_filters = {}
@@ -424,7 +403,6 @@ class MainWindow(QMainWindow):
 
     def process_map_update(self, current_filters):
         try:
-            self.has_filtered = True
             self.update_map(current_filters)
         finally:
             self.progress_bar.setVisible(False)
@@ -446,12 +424,9 @@ class MainWindow(QMainWindow):
                 _, val_widget = info['widgets']
                 val_widget.clear()
         
-        self.has_filtered = False
-        self.map_view.setHtml("""
-            <div style="display:flex;justify-content:center;align-items:center;height:100%;font-family:sans-serif;color:#666;">
-                <h1>Filters reset. Select filters to view flights.</h1>
-            </div>
-        """)
+        # Reset to full dataset
+        self.current_filtered_df = self.df
+        self.render_map(self.df)
 
     def on_js_console(self, message):
         if not message: return
@@ -494,22 +469,21 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 print(f"Error handling route request: {e}", flush=True)
 
+    def render_map(self, filtered_df):
+        """Render the map from the given dataframe."""
+        self.current_filtered_df = filtered_df
+        try:
+            html = mapping.create_map_html(filtered_df, self.map_type, self.current_theme, self.airport_counts)
+            self.map_view.setHtml(html)
+        except Exception as e:
+            print(f"Error generating map: {e}", flush=True)
+
     def update_map(self, filters=None):
+        """Apply filters (if any) and re-render."""
         filtered_df = self.df
-        
-        if not self.has_filtered and filters is None:
-             return
-        
-        # If passed filters, use them explicitly, otherwise use UI state
-        if filters is None:
-            # We don't have get_current_filters call here because usually apply_filters passes them
-            # But let's assume if None, we use full DF? Or re-read?
-            # The logic in change_map_type calls update_map(filters)
-            pass
 
         if filters:
             try:
-                print("Calling apply_filters...", flush=True)
                 filtered_df = filtering.apply_filters(self.df, filters)
                 print(f"Filtered result: {len(filtered_df)} rows", flush=True)
             except Exception as e:
@@ -518,24 +492,11 @@ class MainWindow(QMainWindow):
 
         if filtered_df.empty and filters:
             QMessageBox.information(self, "No Results", "No flights matched your filter criteria.")
-        
-        # Store for lazy loading
-        self.current_filtered_df = filtered_df
 
-        # NO TRUNCATION - Lazy Loading handles performance
-        
-        try:
-            print("Generating map HTML...", flush=True)
-            html = mapping.create_map_html(filtered_df, self.map_type, self.current_theme, self.airport_counts)
-            print("Setting HTML to view...", flush=True)
-            self.map_view.setHtml(html)
-            print("Map updated.", flush=True)
-        except Exception as e:
-            print(f"Error generating map: {e}", flush=True)
+        self.render_map(filtered_df)
 
     def process_map_update(self, current_filters):
         try:
-            self.has_filtered = True
             self.update_map(current_filters)
         finally:
             self.progress_bar.setVisible(False)

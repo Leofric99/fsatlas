@@ -91,9 +91,9 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
         #map {{ width: 100%; height: 100%; }}
         .info-panel {{
             position: absolute;
-            top: 10px; right: 10px;
+            bottom: 20px; left: 10px;
             width: 300px;
-            max-height: 80%;
+            max-height: 50%;
             display: flex; flex-direction: column;
             background: {panel_bg};
             padding: 15px;
@@ -174,8 +174,8 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
         }}).addTo(map);
 
         // Layers
-        const airportLayer = L.layerGroup().addTo(map);
         const routeLayer = L.layerGroup().addTo(map);
+        const airportLayer = L.layerGroup().addTo(map);
 
         // State
         let selectedSource = null;

@@ -11,7 +11,13 @@ A desktop application for visualising live flight data on an interactive world m
 *The program when it is just opened:*
 
 ![First-run GUI Page](screenshots/just_opened.png)
-![All flights to or from Heathrow](screenshots/just_opened.png)
+
+*All flights to or from Heathrow:*
+
+![All flights to or from Heathrow](screenshots/all_from_heathrow.png)
+
+*Detailed Flight Info:*
+
 ![Detailed flight information for a flight](screenshots/detailed_info.png)
 
 ---
@@ -69,7 +75,7 @@ cd fsdispatch
 pip install -r requirements.txt
 ```
 
-> **Tip:** It is recommended to use a virtual environment:
+> It is recommended to use a virtual environment:
 > ```bash
 > python3 -m venv .venv
 > source .venv/bin/activate      # macOS / Linux

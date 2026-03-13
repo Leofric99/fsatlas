@@ -374,6 +374,7 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
                     const type_icao = r.type_icao || '-';
                     const dep_icao = r.dep_icao || '-';
                     const arr_icao = r.arr_icao || '-';
+                    const airline = r.airline || '-';
                     const dep = r.dep;
                     const arr = r.arr;
                     
@@ -392,6 +393,7 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
                         <!-- Details (Initially Hidden) -->
                         <div id="${{uniqueId}}" style="display:none; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:11px;">
+                                <div class="detail-kv" style="grid-column: span 2"><span class="label">Airline</span><span>${{airline}}</span></div>
                                 <div class="detail-kv"><span class="label">Callsign</span><span>${{callsign}}</span></div>
                                 <div class="detail-kv"><span class="label">Registration</span><span>${{reg}}</span></div>
                                 <div class="detail-kv"><span class="label">Aircraft</span><span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${{type}}</span></div>

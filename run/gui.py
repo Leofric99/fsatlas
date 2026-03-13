@@ -79,8 +79,8 @@ class MainWindow(QMainWindow):
         else:
             self.airport_counts = pd.Series()
             
-        self.current_theme = 'dark'
-        self.map_type = 'Hybrid'
+        self.current_theme = 'light'
+        self.map_type = 'standard'
         self.filters = {} # Stores current filter widgets
         self.map_view = None
         self.current_filtered_df = self.df  # Start with full dataset
@@ -457,7 +457,8 @@ class MainWindow(QMainWindow):
                         "type_icao": str(row.get('type_icao', '')),
                         "reg": str(row.get('reg', '')),
                         "dep_icao": str(row.get('dep_airport_icao', '')),
-                        "arr_icao": str(row.get('arr_airport_icao', ''))
+                        "arr_icao": str(row.get('arr_airport_icao', '')),
+                        "airline": str(row.get('owner', ''))
                     })
                 
                 import json

@@ -6,7 +6,7 @@ COLUMN_DISPLAY_NAMES = {
     'owner': 'Airline',
     'reg': 'Registration',
     'type': 'Aircraft Type',
-    'type_icao': 'Aircraft Type (ICAO)',
+    'type_icao': 'Aircraft ICAO',
     'flight_number': 'Flight Number',
     'calsign': 'Callsign',
     'dep_airport': 'Departure Airport',
@@ -30,7 +30,7 @@ COLUMN_DISPLAY_NAMES = {
 # Use the internal names, not display names
 FILTER_COLUMNS = [
     'owner', 
-    'type', 
+    'type_icao', 
     'dep_airport_country', 
     'arr_airport_country', 
     'distance',

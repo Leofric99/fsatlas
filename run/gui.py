@@ -79,8 +79,8 @@ class MainWindow(QMainWindow):
         else:
             self.airport_counts = pd.Series()
             
-        self.current_theme = 'light'
-        self.map_type = 'standard'
+        self.current_theme = 'dark'
+        self.map_type = 'Hybrid'
         self.filters = {} # Stores current filter widgets
         self.map_view = None
         self.current_filtered_df = self.df  # Start with full dataset
@@ -99,20 +99,53 @@ class MainWindow(QMainWindow):
     def setup_ui(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
+        
+        # Use Grid Layout to allow overlay
+        main_layout = QGridLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # --- Top Bar (Filters) ---
-        filter_container = QFrame()
-        filter_container.setObjectName("filter_container")
-        filter_layout = QVBoxLayout(filter_container)
-        filter_layout.setContentsMargins(10, 10, 10, 10)
+        # --- Map Area (Background) ---
+        self.map_view = QWebEngineView()
         
-        # Filter Header
+        # Enable console logging using custom Page
+        page = ConsolePage(self.map_view, callback=self.on_js_console)
+        self.map_view.setPage(page)
+        
+        # Add map view to grid (0,0) so it covers everything
+        main_layout.addWidget(self.map_view, 0, 0)
+
+        # --- Show Filters Button (Generally Hidden) ---
+        self.show_filters_btn = QPushButton("Filters ▼")
+        self.show_filters_btn.clicked.connect(self.toggle_filters_visibility)
+        self.show_filters_btn.setVisible(True)
+        self.show_filters_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        # Add to top-right
+        main_layout.addWidget(self.show_filters_btn, 0, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+
+        # --- Filters Overlay (Foreground) ---
+        self.filter_container = QFrame()
+        self.filter_container.setObjectName("filter_container")
+        self.filter_container.hide() # Start hidden by default
+        self.filter_container.setStyleSheet("""
+            QFrame#filter_container {
+                background-color: rgba(255, 255, 255, 0.85); 
+                border-bottom-left-radius: 10px;
+                border-bottom-right-radius: 10px;
+                border-bottom: 1px solid #ccc;
+                border-left: 1px solid #ccc;
+                border-right: 1px solid #ccc;
+            }
+        """)
+
+        filter_layout = QVBoxLayout(self.filter_container)
+        filter_layout.setContentsMargins(15, 10, 15, 5)
+        
+        # 1. Filter Header (Always visible)
         header_layout = QHBoxLayout()
         title = QLabel("Flight Filters")
-        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         header_layout.addWidget(title)
         
         header_layout.addStretch()
@@ -131,19 +164,26 @@ class MainWindow(QMainWindow):
 
         filter_layout.addLayout(header_layout)
 
+        # 2. Collapsible Content Wrapper
+        self.filter_content = QWidget()
+        content_layout = QVBoxLayout(self.filter_content)
+        content_layout.setContentsMargins(0, 5, 0, 0)
+        content_layout.setSpacing(5)
+
         # Dynamic Filters Area
-        # Use a simple container with grid layout instead of scroll area for compactness
-        filters_widget = QWidget()
-        self.filters_grid = QGridLayout(filters_widget)
+        self.filters_widget = QWidget()
+        self.filters_grid = QGridLayout(self.filters_widget)
         self.filters_grid.setContentsMargins(0, 0, 0, 0)
-        self.filters_grid.setSpacing(5) # Tight spacing
+        self.filters_grid.setSpacing(5)
         
         self.create_filters()
-        
-        filter_layout.addWidget(filters_widget)
+        content_layout.addWidget(self.filters_widget)
         
         # Filter Buttons
-        btn_layout = QHBoxLayout()
+        btn_widget = QWidget()
+        btn_layout = QHBoxLayout(btn_widget)
+        btn_layout.setContentsMargins(0, 5, 0, 0)
+        
         self.apply_btn = QPushButton("Apply Filters & Show Map")
         self.apply_btn.clicked.connect(self.on_apply_filters)
         self.apply_btn.setMinimumWidth(200)
@@ -155,7 +195,7 @@ class MainWindow(QMainWindow):
         btn_layout.addWidget(reset_btn)
         btn_layout.addWidget(self.apply_btn)
         
-        # Progress Bar (right side of filters)
+        # Progress Bar
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0) # Indeterminate mode
         self.progress_bar.setVisible(False)
@@ -164,22 +204,58 @@ class MainWindow(QMainWindow):
         
         btn_layout.addWidget(self.progress_bar)
         
-        filter_layout.addLayout(btn_layout)
+        content_layout.addWidget(btn_widget)
         
-        # Add filter container with 0 stretch so it only takes needed space
-        main_layout.addWidget(filter_container, 0)
+        filter_layout.addWidget(self.filter_content)
 
-        # --- Map Area ---
-        self.map_view = QWebEngineView()
+        # 3. Toggle Button (Bottom Corner)
+        toggle_layout = QHBoxLayout()
+        toggle_layout.addStretch() # Push to right
         
-        # Enable console logging using custom Page
-        page = ConsolePage(self.map_view, callback=self.on_js_console)
-        # Use default profile unless specified otherwise
-        self.map_view.setPage(page)
+        self.toggle_btn = QPushButton("▲") 
+        self.toggle_btn.setFixedSize(24, 20)
+        self.toggle_btn.setToolTip("Collapse filters")
+        self.toggle_btn.clicked.connect(self.toggle_filters_visibility)
+        self.toggle_btn.setStyleSheet("""
+            QPushButton {
+                border: none; 
+                background: transparent; 
+                font-weight: bold;
+                color: #555;
+            }
+            QPushButton:hover {
+                color: #000;
+                background-color: rgba(0,0,0,0.05);
+                border-radius: 3px;
+            }
+        """)
+        toggle_layout.addWidget(self.toggle_btn)
         
-        # Map will be populated after setup_ui() returns
-        # Add map view with stretch factor 1 to take all remaining space
-        main_layout.addWidget(self.map_view, 1)
+        filter_layout.addLayout(toggle_layout)
+        
+        # Add filter overlay to main grid (0,0) aligned Top
+        # We wrap it in a container widget if we want margin from top/screen edges, 
+        # or just add margins to main_layout if needed.
+        # Here we align top so it sticks to the top.
+        main_layout.addWidget(self.filter_container, 0, 0, Qt.AlignmentFlag.AlignTop)
+
+        # Force initial style now that filter_container exists
+        self.apply_theme()
+
+    def toggle_filters_visibility(self):
+        """
+        Toggles between [Full Panel Visible] and [Only 'Filters' Button Visible].
+        """
+        is_expanded = self.filter_container.isVisible()
+        
+        if is_expanded:
+            # Collapse: Hide panel, Show button
+            self.filter_container.hide()
+            self.show_filters_btn.show()
+        else:
+            # Expand: Show panel, Hide button
+            self.filter_container.show()
+            self.show_filters_btn.hide()
 
     def create_filters(self):
         # Clear existing
@@ -206,7 +282,8 @@ class MainWindow(QMainWindow):
                 continue
                 
             group = QFrame()
-            group.setStyleSheet("margin: 2px; border: 1px solid #ccc; border-radius: 4px; padding: 2px;")
+            # Set background: transparent so the main container's opacity shows through
+            group.setStyleSheet("margin: 2px; border: 1px solid #ccc; border-radius: 4px; padding: 2px; background-color: transparent;")
             
             # --- Important layout fix ---
             # We use a grid within the group frame itself to pack label and widget nicely
@@ -333,13 +410,96 @@ class MainWindow(QMainWindow):
             self.current_theme = 'light'
             self.theme_btn.setText("Switch to Dark Mode")
         self.apply_theme()
+        # Only re-render map if data hasn't changed, just style update
+        # But change_map_type does render_map, so we just call that or update map HTML
         self.render_map(self.current_filtered_df)
 
     def apply_theme(self):
+        style = config.DARK_STYLE if self.current_theme == 'dark' else config.LIGHT_STYLE
+        self.setStyleSheet(style)
+        
+        if not hasattr(self, 'filter_container'):
+            return
+
         if self.current_theme == 'dark':
-            self.setStyleSheet(config.DARK_STYLE)
+            bg_color = "rgba(30, 30, 30, 0.85)"
+            border_color = "#555"
+            text_color = "#ddd"
+            input_bg = "rgba(40, 40, 40, 0.9)"
+            input_text = "white"
+            input_border = "#666"
+            toggle_color = "#aaa"
         else:
-            self.setStyleSheet(config.LIGHT_STYLE)
+            bg_color = "rgba(255, 255, 255, 0.85)"
+            border_color = "#ccc"
+            text_color = "#333"
+            input_bg = "rgba(255, 255, 255, 0.9)"
+            input_text = "black"
+            input_border = "#ccc"
+            toggle_color = "#555"
+
+        sheet = f"""
+            QFrame#filter_container {{
+                background-color: {bg_color}; 
+                border-bottom-left-radius: 10px;
+                border-bottom-right-radius: 10px;
+                border-bottom: 1px solid {border_color};
+                border-left: 1px solid {border_color};
+                border-right: 1px solid {border_color};
+            }}
+            /* Make layouts and containers transparent */
+            QFrame#filter_container QWidget {{
+                background-color: transparent;
+            }}
+            QFrame#filter_container QLabel {{
+                color: {text_color};
+                background-color: transparent;
+            }}
+            /* Inputs need background */
+            QFrame#filter_container QComboBox, 
+            QFrame#filter_container QLineEdit, 
+            QFrame#filter_container QDoubleSpinBox,
+            QFrame#filter_container QSpinBox {{
+                background-color: {input_bg};
+                color: {input_text};
+                border: 1px solid {input_border};
+                border-radius: 3px;
+            }}
+            /* PushButtons (except toggle which is transparent) need background */
+            QFrame#filter_container QPushButton {{
+               background-color: {input_bg};
+               border: 1px solid {input_border};
+               border-radius: 4px;
+               padding: 4px 8px;
+               color: {input_text};
+            }}
+            QFrame#filter_container QPushButton:hover {{
+               background-color: {border_color}; 
+            }}
+        """
+        self.filter_container.setStyleSheet(sheet)
+        
+        # Style the "Show Filters" button
+        if hasattr(self, 'show_filters_btn'):
+            self.show_filters_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {bg_color};
+                    border: 1px solid {border_color};
+                    border-top: none; 
+                    border-bottom-left-radius: 8px;
+                    border-bottom-right-radius: 8px;
+                    padding: 6px 12px;
+                    color: {text_color};
+                    font-weight: bold;
+                    margin-right: 60px;
+                }}
+                QPushButton:hover {{
+                    background-color: {input_bg};
+                }}
+            """)
+        
+        if hasattr(self, 'toggle_btn'):
+             self.toggle_btn.setStyleSheet(f"border: none; background: transparent; color: {toggle_color}; font-weight: bold;")
 
     def change_map_type(self, text):
         self.map_type = text

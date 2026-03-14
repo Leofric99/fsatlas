@@ -101,6 +101,10 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
             box-shadow: 0 0 10px rgba(0,0,0,0.3);
             z-index: 1000;
             display: none; /* Hidden by default */
+            resize: both;
+            overflow: auto;
+            min-width: 200px;
+            min-height: 100px;
         }}
         .panel-header {{ font-weight: bold; font-size: 16px; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px; }}
         .panel-content {{ overflow-y: auto; flex: 1; font-size: 13px; }}
@@ -154,6 +158,7 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
         // --- DATA ---
         const airportsData = {airports_json};
         const airports = {{}}; // Lookup map
+        const airportMarkers = {{}}; // Marker lookup
         
         // --- CONFIG ---
         // Green = Big/High, Yellow = Med, Red = Small/Low
@@ -165,8 +170,16 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
         // --- MAP INIT ---
         const map = L.map('map', {{
             preferCanvas: true,
-            worldCopyJump: true
+            worldCopyJump: true,
+            minZoom: 2
         }}).setView([20, 0], 2);
+
+        // Custom Panes for Z-Index ordering
+        map.createPane('routesPane');
+        map.getPane('routesPane').style.zIndex = 390;
+        
+        map.createPane('airportsPane');
+        map.getPane('airportsPane').style.zIndex = 400;
 
         L.tileLayer('{tile_url}', {{
             attribution: '{attr}',
@@ -176,11 +189,40 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
         // Layers
         const routeLayer = L.layerGroup().addTo(map);
         const airportLayer = L.layerGroup().addTo(map);
+        const ghostLayer = L.layerGroup().addTo(map);
 
         // State
         let selectedSource = null;
         let selectedDest = null;
         let currentRoutes = []; // Store routes for client-side filtering
+        let deselectMarker = null;
+        let ghostMarkers = []; // Track ghost markers to clear easily
+
+        // Helper for ghost markers
+        function addGhost(ap, offsetLon) {{
+             let color = COLOR_LOW;
+             if (ap.rank === 1) color = COLOR_MED;
+             if (ap.rank === 2) color = COLOR_HIGH;
+            
+             const marker = L.circleMarker([ap.lat, ap.lon + offsetLon], {{
+                radius: 4 + (ap.rank * 1.5),
+                fillColor: color,
+                color: "#000000",
+                weight: 0.5,
+                stroke: true,
+                fillOpacity: 0.8,
+                pane: 'airportsPane'
+            }});
+            
+            marker.bindTooltip(ap.iata + " - " + ap.city, {{ direction: 'top', offset: [0, -5] }});
+            marker.on('click', (e) => {{
+                L.DomEvent.stopPropagation(e);
+                handleAirportClick(ap.iata);
+            }});
+            
+            ghostLayer.addLayer(marker);
+            ghostMarkers.push(marker);
+        }}
 
         // --- RENDER AIRPORTS ---
         airportsData.forEach(ap => {{
@@ -193,10 +235,11 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
             const marker = L.circleMarker([ap.lat, ap.lon], {{
                 radius: 4 + (ap.rank * 1.5),
                 fillColor: color,
-                color: "#000",
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 0.8
+                color: "#000000",
+                weight: 0.5,
+                stroke: true,
+                fillOpacity: 0.8,
+                pane: 'airportsPane'
             }});
             
             marker.bindTooltip(ap.iata + " - " + ap.city, {{ direction: 'top', offset: [0, -5] }});
@@ -206,6 +249,7 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
                 handleAirportClick(ap.iata);
             }});
             
+            airportMarkers[ap.iata] = marker;
             airportLayer.addLayer(marker);
         }});
         
@@ -242,6 +286,8 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
                     deslectDestOnly();
                 }} else {{
                     selectedDest = code;
+                    // SHOW panel here
+                    document.getElementById('info').style.display = 'flex';
                     renderMapState(); // Filter view to this pair
                 }}
             }} else {{
@@ -256,11 +302,29 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
             currentRoutes = []; // Clear previous data
             routeLayer.clearLayers();
             
-            // UI - Loading
-            const p = document.getElementById('info');
-            p.style.display = 'flex';
-            document.getElementById('title-loc').innerText = code + " - " + (airports[code].city || '');
-            document.getElementById('panel-content').innerHTML = '<div class="loader">Loading connections...</div>';
+            // Add Deselect Marker
+            if (deselectMarker) map.removeLayer(deselectMarker);
+            const ap = airports[code];
+            if (ap) {{
+                 deselectMarker = L.marker([ap.lat, ap.lon], {{
+                    icon: L.divIcon({{
+                        className: 'deselect-icon',
+                        html: '<div style="background:rgba(30,30,30,0.85); color:white; border-radius:4px; width:16px; height:16px; text-align:center; line-height:14px; font-weight:bold; font-size:12px; border: 1px solid #555; cursor: pointer;">×</div>',
+                        iconSize: [16, 16],
+                        iconAnchor: [-10, 10] // Top-right offset
+                    }})
+                }}).addTo(map);
+                
+                deselectMarker.on('click', (e) => {{
+                     L.DomEvent.stopPropagation(e);
+                     deselect();
+                }});
+            }}
+            
+            // Do NOT remove this, as it handles the logic for hiding IF we were already showing something
+            // But per request: "Don't show... until I click on a second airport"
+            // So we hide it initially.
+            document.getElementById('info').style.display = 'none';
             
             // Request Routes from Python
             console.log("REQUEST_ROUTES|" + code);
@@ -272,10 +336,25 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
             currentRoutes = [];
             routeLayer.clearLayers();
             document.getElementById('info').style.display = 'none';
+
+            if (deselectMarker) {{
+                map.removeLayer(deselectMarker);
+                deselectMarker = null;
+            }}
+            
+            // Clear ghosts
+            ghostLayer.clearLayers();
+            ghostMarkers = [];
+            
+            // Show all airports
+            Object.values(airportMarkers).forEach(marker => {{
+                if (!airportLayer.hasLayer(marker)) airportLayer.addLayer(marker);
+            }});
         }}
 
         function deslectDestOnly() {{
             selectedDest = null;
+            document.getElementById('info').style.display = 'none';
             renderMapState();
         }}
         
@@ -287,53 +366,149 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
             // Only render if we still have a source selected (user might have clicked away)
             if (selectedSource) {{
                 renderMapState();
+                
+                // Clear old ghosts
+                ghostLayer.clearLayers();
+                ghostMarkers = [];
+
+                // Filter Airports: Hide those not connected
+                const connectedIatas = new Set();
+                connectedIatas.add(selectedSource);
+                routes.forEach(r => {{
+                    connectedIatas.add(r.dep);
+                    connectedIatas.add(r.arr);
+                }});
+
+                Object.keys(airportMarkers).forEach(iata => {{
+                    const marker = airportMarkers[iata];
+                    if (connectedIatas.has(iata)) {{
+                        if (!airportLayer.hasLayer(marker)) airportLayer.addLayer(marker);
+                        
+                        // Add ghosts for wrapped worlds
+                        const ap = airports[iata];
+                        if (ap) {{
+                             addGhost(ap, 360);
+                             addGhost(ap, -360);
+                        }}
+                    }} else {{
+                        if (airportLayer.hasLayer(marker)) airportLayer.removeLayer(marker);
+                    }}
+                }});
             }}
         }}
 
         // --- VISUALIZATION ---
+        
+        // Helper to draw geodesic line
+        function drawGeodesic(src, dest, options, layer) {{
+             let start = {{ lat: src.lat, lon: src.lon }};
+             let end = {{ lat: dest.lat, lon: dest.lon }};
+             
+             // Simple Dateline Wrap Logic
+             // If going the "long way" (diff > 180), shift one point by 360
+             let dLon = end.lon - start.lon;
+             let shift = 0;
+             if (dLon > 180) {{
+                 end.lon -= 360;
+                 shift = -360;
+             }} else if (dLon < -180) {{
+                 end.lon += 360;
+                 shift = 360;
+             }}
+             
+             // Draw Primary Line
+             const poly1 = _computeAndDrawPoly(start, end, options, layer);
+             
+             // If wrapped, Draw "Shadow" Line shifted by 360 (or -360) so it appears on the other side
+             if (shift !== 0) {{
+                 const start2 = {{ lat: start.lat, lon: start.lon - shift }}; // Inverse shift
+                 const end2 = {{ lat: end.lat, lon: end.lon - shift }};
+                 _computeAndDrawPoly(start2, end2, options, layer);
+             }}
+             return poly1;
+        }}
+
+        function _computeAndDrawPoly(start, end, options, layer) {{
+             // Compute intermediate points for Great Circle
+             const numPoints = 50;
+             const points = [];
+             
+             const lat1 = start.lat * Math.PI / 180;
+             const lon1 = start.lon * Math.PI / 180;
+             const lat2 = end.lat * Math.PI / 180;
+             const lon2 = end.lon * Math.PI / 180;
+             
+             const d = 2 * Math.asin(Math.sqrt(
+                Math.pow(Math.sin((lat1 - lat2) / 2), 2) +
+                Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin((lon1 - lon2) / 2), 2)
+            ));
+
+             for (let i = 0; i <= numPoints; i++) {{
+                const f = i / numPoints;
+                const A = Math.sin((1 - f) * d) / Math.sin(d);
+                const B = Math.sin(f * d) / Math.sin(d);
+                
+                const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
+                const y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
+                const z = A * Math.sin(lat1) + B * Math.sin(lat2);
+                
+                const phi = Math.atan2(z, Math.sqrt(x*x + y*y));
+                const lam = Math.atan2(y, x);
+                
+                let pLat = phi * 180 / Math.PI;
+                let pLon = lam * 180 / Math.PI;
+                points.push([pLat, pLon]);
+             }}
+             
+             // Unwrap for Leaflet Polyline continuity
+             const finalPoints = [];
+             if (points.length > 0) {{
+                 finalPoints.push(points[0]);
+                 for (let i = 1; i < points.length; i++) {{
+                     let prev = finalPoints[i-1];
+                     let curr = points[i];
+                     let diff = curr[1] - prev[1];
+                     
+                     // If huge jump, adjust current to match previous direction
+                     while (diff > 180) {{ curr[1] -= 360; diff -= 360; }}
+                     while (diff < -180) {{ curr[1] += 360; diff += 360; }}
+                     
+                     finalPoints.push(curr);
+                 }}
+             }}
+
+             const poly = L.polyline(finalPoints, options).addTo(layer);
+             return poly;
+        }}
+
         function renderMapState() {{
             routeLayer.clearLayers();
             
             if (!currentRoutes || currentRoutes.length === 0) {{
-                 document.getElementById('panel-content').innerHTML = "No routes found.";
+                 // Don't show panel content if empty, but panel logic handles visibility
                  return;
             }}
 
             // CASE A: Source Selected, No Destiny (Show All Connections)
             if (selectedSource && !selectedDest) {{
-                document.getElementById('title-loc').innerText = selectedSource + " Connections";
-                
-                let html = '<div><strong>Total Flights: ' + currentRoutes.length + '</strong></div><br>';
+                // HIDE PANEL (Requested) - Logic already in selectSource/deselectDestOnly
+                // But just in case, ensure map renders lines
                 
                 currentRoutes.forEach(r => {{
                     const otherCode = (r.dep === selectedSource) ? r.arr : r.dep;
                     const otherAp = airports[otherCode];
                     
                     if (otherAp) {{
-                        const latlngs = [
-                            [airports[r.dep].lat, airports[r.dep].lon],
-                            [airports[r.arr].lat, airports[r.arr].lon]
-                        ];
-                        
-                        const polyline = L.polyline(latlngs, {{
+                        const srcAp = airports[selectedSource];
+                        drawGeodesic(srcAp, otherAp, {{
                             color: LINE_COLOR,
                             weight: 1.5,
-                            opacity: 0.6
-                        }}).addTo(routeLayer);
-                        
-                        polyline.bindPopup(r.flight + " (" + r.dep + "->" + r.arr + ")");
+                            opacity: 0.6,
+                            pane: 'routesPane'
+                        }}, routeLayer).bindPopup(r.flight + " (" + r.dep + "->" + r.arr + ")");
                     }}
                 }});
-                
-                // List Preview
-                let limit = 100;
-                if (currentRoutes.length > limit) html += '<div><em>Showing first ' + limit + ' flights...</em></div>';
-                
-                for(let i=0; i<Math.min(currentRoutes.length, limit); i++) {{
-                    let r = currentRoutes[i];
-                    html += `<div class="flight-row"><strong>${{r.flight}}</strong>: ${{r.dep}} &rarr; ${{r.arr}} <span style="opacity:0.6">(${{r.type}})</span></div>`;
-                }}
-                document.getElementById('panel-content').innerHTML = html;
+                // Panel is hidden, so no need to update HTML content
             }}
             
             // CASE B: Source AND Dest Selected (Show Pair Details)
@@ -345,22 +520,16 @@ def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_co
                 // Filter routes
                 const pairRoutes = currentRoutes.filter(r => r.dep === selectedDest || r.arr === selectedDest);
                 
-                // Draw ONE bold line (Visual Hack: Use White outline for visibility)
+                // Draw ONE bold line
                 const srcAp = airports[selectedSource];
                 if (srcAp && destAp) {{
-                    // Outline
-                    L.polyline([[srcAp.lat, srcAp.lon], [destAp.lat, destAp.lon]], {{
-                        color: '#ffffff', 
-                        weight: 4,
-                        opacity: 1
-                    }}).addTo(routeLayer);
-                    
                     // Main Line
-                    L.polyline([[srcAp.lat, srcAp.lon], [destAp.lat, destAp.lon]], {{
+                    drawGeodesic(srcAp, destAp, {{
                          color: LINE_COLOR,
                          weight: 2,
-                         opacity: 1
-                    }}).addTo(routeLayer);
+                         opacity: 1,
+                         pane: 'routesPane'
+                    }}, routeLayer);
                 }}
                 
                 // Detailed List with Collapsible Cards

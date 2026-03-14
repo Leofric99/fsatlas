@@ -66,7 +66,7 @@ class CheckableComboBox(QComboBox):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Global flight dispatch")
+        self.setWindowTitle("FSDispatch")
         self.resize(1200, 800)
 
         # State

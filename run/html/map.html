@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; background-color: << bg_color >>; color: << text_color >>; font-family: sans-serif; overflow: hidden; }
+        #map { width: 100%; height: 100%; }
+        .info-panel {
+            position: absolute;
+            bottom: 20px; left: 10px;
+            width: 300px;
+            max-height: 50%;
+            display: flex; flex-direction: column;
+            background: << panel_bg >>;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            resize: both;
+            overflow: auto;
+            min-width: 200px;
+            min-height: 100px;
+        }
+        .panel-header { font-weight: bold; font-size: 16px; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .panel-content { overflow-y: auto; flex: 1; font-size: 13px; }
+        .flight-row { padding: 4px 0; border-bottom: 1px solid rgba(128,128,128,0.2); }
+        .flight-row:hover { background: rgba(128,128,128,0.1); }
+        .loader { text-align: center; padding: 20px; font-style: italic; opacity: 0.7; }
+        .close-btn { float: right; cursor: pointer; opacity: 0.7; }
+        .close-btn:hover { opacity: 1; }
+
+        /* Flight Card Styles */
+        .flight-card {
+            background: rgba(255,255,255,0.05);
+            border-left: 3px solid << line_color >>;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .dark-mode .flight-card { background: rgba(255,255,255,0.05); }
+        .flight-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
+        .flight-sub { font-size: 11px; opacity: 0.7; margin-bottom: 5px; }
+        .flight-details {
+            display: none;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+        .detail-kv { display: flex; flex-direction: column; margin-bottom: 4px; }
+        .label { opacity: 0.5; font-size: 10px; text-transform: uppercase; }
+        .expand-btn {
+            text-align: center; font-size: 10px; opacity: 0.5; cursor: pointer; margin-top: 5px;
+            background: rgba(0,0,0,0.2); padding: 2px; border-radius: 3px;
+        }
+        .expand-btn:hover { opacity: 1; background: rgba(0,0,0,0.4); }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="info" class="info-panel">
+        <div class="panel-header">Flights <span class="close-btn" onclick="deselect()">×</span></div>
+        <div id="title-loc" style="margin-bottom:10px; opacity:0.8;"></div>
+        <div id="panel-content" class="panel-content">Select an airport...</div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        const airportsData = << airports_json >>;
+        const airports = {}; // Lookup map
+        const airportMarkers = {}; // Marker lookup
+
+        // --- CONFIG ---
+        // Green = Big/High, Yellow = Med, Red = Small/Low
+        const COLOR_LOW = '#e74c3c';   // Red
+        const COLOR_MED = '#f1c40f';   // Yellow
+        const COLOR_HIGH = '#2ecc71';  // Green
+        const LINE_COLOR = '<< line_color >>';
+
+        // --- MAP INIT ---
+        const map = L.map('map', {
+            preferCanvas: true,
+            minZoom: 2
+        }).setView([20, 0], 2);
+
+        // Custom Panes for Z-Index ordering
+        map.createPane('routesPane');
+        map.getPane('routesPane').style.zIndex = 390;
+
+        map.createPane('airportsPane');
+        map.getPane('airportsPane').style.zIndex = 400;
+
+        L.tileLayer('<< tile_url >>', {
+            attribution: '<< attr >>',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Layers
+        const routeLayer = L.layerGroup().addTo(map);
+        const airportLayer = L.layerGroup().addTo(map);
+
+        // Render everything at three longitude offsets so airports and routes remain
+        // visible on all visible world copies, no matter how far the user pans.
+        const WORLD_OFFSETS = [-360, 0, 360];
+
+        // State
+        let selectedSource = null;
+        let selectedDest = null;
+        let currentRoutes = [];
+        let deselectMarker = null;
+        let deselectDestMarker = null;
+        let _isDragging = false;
+        let _dragTimer = null;
+
+        // Return the WORLD_OFFSETS entry that places canonicalLon closest to the map centre.
+        // Used so × markers appear on the same world copy the user is currently viewing.
+        function nearestOffset(canonicalLon) {
+            const centerLon = map.getCenter().lng;
+            return WORLD_OFFSETS.reduce((best, offset) =>
+                Math.abs((canonicalLon + offset) - centerLon) <
+                Math.abs((canonicalLon + best)   - centerLon) ? offset : best
+            , 0);
+        }
+
+        // --- Show/Hide helpers (airportMarkers[iata] is an array of 3 markers) ---
+        function showAirport(iata) {
+            (airportMarkers[iata] || []).forEach(m => {
+                if (!airportLayer.hasLayer(m)) airportLayer.addLayer(m);
+            });
+        }
+        function hideAirport(iata) {
+            (airportMarkers[iata] || []).forEach(m => {
+                if (airportLayer.hasLayer(m)) airportLayer.removeLayer(m);
+            });
+        }
+
+        // --- RENDER AIRPORTS (3 world copies each) ---
+        airportsData.forEach(ap => {
+            airports[ap.iata] = ap;
+
+            let color = COLOR_LOW;
+            if (ap.rank === 1) color = COLOR_MED;
+            if (ap.rank === 2) color = COLOR_HIGH;
+
+            airportMarkers[ap.iata] = WORLD_OFFSETS.map(offset => {
+                const marker = L.circleMarker([ap.lat, ap.lon + offset], {
+                    radius: 4 + (ap.rank * 1.5),
+                    fillColor: color,
+                    color: "#000000",
+                    weight: 0.5,
+                    stroke: true,
+                    fillOpacity: 0.8,
+                    pane: 'airportsPane'
+                });
+                marker.bindTooltip(ap.iata + " - " + ap.city, { direction: 'top', offset: [0, -5] });
+                marker.on('click', (e) => {
+                    L.DomEvent.stopPropagation(e);
+                    handleAirportClick(ap.iata);
+                });
+                airportLayer.addLayer(marker);
+                return marker;
+            });
+        });
+
+        map.on('drag', () => {
+            _isDragging = true;
+            if (_dragTimer) { clearTimeout(_dragTimer); _dragTimer = null; }
+        });
+        map.on('dragend', () => {
+            _dragTimer = setTimeout(() => { _isDragging = false; }, 200);
+        });
+
+        // Re-render routes on every pan/zoom so they stay centred on the current world copy.
+        map.on('moveend', () => {
+            if (selectedSource) renderMapState();
+        });
+
+        map.on('click', () => {
+            if (_isDragging) return;
+            deselect();
+        });
+
+        // --- INTERACTION ---
+        function handleAirportClick(code) {
+            // Scenario 1: Nothing selected yet -> Select Source
+            if (selectedSource === null) {
+                selectSource(code);
+                return;
+            }
+
+            // Scenario 2: Clicking the Source airport
+            if (selectedSource === code) {
+                if (selectedDest !== null) {
+                    // If we were looking at a specific route, go back to showing all connections
+                    deslectDestOnly();
+                } else {
+                    // Otherwise deselect all
+                    deselect();
+                }
+                return;
+            }
+
+            // Scenario 3: Clicking a different airport
+            // Check if it is connected to the current source
+            const isConnected = currentRoutes.some(r => r.dep === code || r.arr === code);
+
+            if (isConnected) {
+                if (selectedDest === code) {
+                    deslectDestOnly();
+                } else {
+                    selectedDest = code;
+                    document.getElementById('info').style.display = 'flex';
+
+                    // Add deselect marker on destination airport
+                    if (deselectDestMarker) map.removeLayer(deselectDestMarker);
+                    const destAp = airports[code];
+                    if (destAp) {
+                        deselectDestMarker = L.marker([destAp.lat, destAp.lon + nearestOffset(destAp.lon)], {
+                            icon: L.divIcon({
+                                className: 'deselect-icon',
+                                html: '<div style="background:rgba(30,30,30,0.85); color:white; border-radius:4px; width:16px; height:16px; text-align:center; line-height:14px; font-weight:bold; font-size:12px; border: 1px solid #555; cursor: pointer;">×</div>',
+                                iconSize: [16, 16],
+                                iconAnchor: [-10, 10]
+                            })
+                        }).addTo(map);
+                        deselectDestMarker.on('click', (e) => {
+                            L.DomEvent.stopPropagation(e);
+                            deslectDestOnly();
+                        });
+                    }
+
+                    renderMapState(); // Filter view to this pair
+                }
+            } else {
+                // Not connected (or data not loaded), switch source
+                selectSource(code);
+            }
+        }
+
+        function selectSource(code) {
+            selectedSource = code;
+            selectedDest = null;
+            currentRoutes = []; // Clear previous data
+            routeLayer.clearLayers();
+
+            // Remove old dest marker if any
+            if (deselectDestMarker) {
+                map.removeLayer(deselectDestMarker);
+                deselectDestMarker = null;
+            }
+
+            // Add Deselect Marker on source
+            if (deselectMarker) map.removeLayer(deselectMarker);
+            const ap = airports[code];
+            if (ap) {
+                deselectMarker = L.marker([ap.lat, ap.lon + nearestOffset(ap.lon)], {
+                    icon: L.divIcon({
+                        className: 'deselect-icon',
+                        html: '<div style="background:rgba(30,30,30,0.85); color:white; border-radius:4px; width:16px; height:16px; text-align:center; line-height:14px; font-weight:bold; font-size:12px; border: 1px solid #555; cursor: pointer;">×</div>',
+                        iconSize: [16, 16],
+                        iconAnchor: [-10, 10] // Top-right offset
+                    })
+                }).addTo(map);
+
+                deselectMarker.on('click', (e) => {
+                    L.DomEvent.stopPropagation(e);
+                    if (selectedDest !== null) {
+                        // Pan to whichever world copy of the dest airport is currently nearest,
+                        // so the promoted-source view stays in context.
+                        const destAp = airports[selectedDest];
+                        if (destAp) {
+                            const nearLon = destAp.lon + nearestOffset(destAp.lon);
+                            map.panTo([destAp.lat, nearLon], { animate: true, duration: 0.5 });
+                        }
+                        selectSource(selectedDest);
+                    } else {
+                        deselect();
+                    }
+                });
+            }
+
+            document.getElementById('info').style.display = 'none';
+
+            // Request Routes from Python
+            console.log("REQUEST_ROUTES|" + code);
+        }
+
+        function deselect() {
+            selectedSource = null;
+            selectedDest = null;
+            currentRoutes = [];
+            routeLayer.clearLayers();
+            document.getElementById('info').style.display = 'none';
+
+            if (deselectMarker) {
+                map.removeLayer(deselectMarker);
+                deselectMarker = null;
+            }
+            if (deselectDestMarker) {
+                map.removeLayer(deselectDestMarker);
+                deselectDestMarker = null;
+            }
+
+            // Restore all airports
+            Object.keys(airports).forEach(iata => showAirport(iata));
+        }
+
+        function deslectDestOnly() {
+            selectedDest = null;
+            document.getElementById('info').style.display = 'none';
+            if (deselectDestMarker) {
+                map.removeLayer(deselectDestMarker);
+                deselectDestMarker = null;
+            }
+            renderMapState();
+        }
+
+        // --- DATA RECEIVER ---
+        function loadRoutes(routes) {
+            if (!routes) routes = [];
+            currentRoutes = routes; // Store globally
+
+            // Only render if we still have a source selected (user might have clicked away)
+            if (selectedSource) {
+                renderMapState();
+
+                // Show only connected airports, hide the rest
+                const connectedIatas = new Set();
+                connectedIatas.add(selectedSource);
+                routes.forEach(r => {
+                    connectedIatas.add(r.dep);
+                    connectedIatas.add(r.arr);
+                });
+
+                Object.keys(airports).forEach(iata => {
+                    if (connectedIatas.has(iata)) {
+                        showAirport(iata);
+                    } else {
+                        hideAirport(iata);
+                    }
+                });
+            }
+        }
+
+        // --- VISUALIZATION ---
+
+        // Compute great-circle points in canonical longitude space (near src.lon).
+        // Returns an array of [lat, lon] with continuity already unwrapped.
+        function computeGeodesicPoints(srcLat, srcLon, destLat, destLon) {
+            // Ensure we take the short path across the antimeridian
+            let dLon = destLon - srcLon;
+            if (dLon > 180)       destLon -= 360;
+            else if (dLon < -180) destLon += 360;
+
+            const lat1 = srcLat  * Math.PI / 180;
+            const lon1 = srcLon  * Math.PI / 180;
+            const lat2 = destLat * Math.PI / 180;
+            const lon2 = destLon * Math.PI / 180;
+
+            const d = 2 * Math.asin(Math.sqrt(
+                Math.pow(Math.sin((lat1 - lat2) / 2), 2) +
+                Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin((lon1 - lon2) / 2), 2)
+            ));
+
+            const numPoints = 50;
+            const raw = [];
+            for (let i = 0; i <= numPoints; i++) {
+                const f = i / numPoints;
+                const A = Math.sin((1 - f) * d) / Math.sin(d);
+                const B = Math.sin(f * d) / Math.sin(d);
+                const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
+                const y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
+                const z = A * Math.sin(lat1) + B * Math.sin(lat2);
+                raw.push([
+                    Math.atan2(z, Math.sqrt(x*x + y*y)) * 180 / Math.PI,
+                    Math.atan2(y, x) * 180 / Math.PI
+                ]);
+            }
+
+            // Unwrap longitude for Leaflet polyline continuity
+            const pts = [raw[0].slice()];
+            for (let i = 1; i < raw.length; i++) {
+                const prev = pts[i - 1];
+                const curr = raw[i].slice();
+                let diff = curr[1] - prev[1];
+                while (diff > 180)  { curr[1] -= 360; diff -= 360; }
+                while (diff < -180) { curr[1] += 360; diff += 360; }
+                pts.push(curr);
+            }
+            return pts;
+        }
+
+        // Draw a geodesic route shifted to the world copy nearest the current map centre.
+        // The geodesic is always computed in canonical space; the offset is then added
+        // to every point's longitude, placing the whole arc on the correct world copy.
+        function drawRouteAtCenter(src, dest, options, layer) {
+            const offset = nearestOffset(src.lon);
+            const pts = computeGeodesicPoints(src.lat, src.lon, dest.lat, dest.lon);
+            // Shift every point onto the correct world copy
+            const shifted = pts.map(p => [p[0], p[1] + offset]);
+            L.polyline(shifted, options).addTo(layer);
+        }
+
+        function renderMapState() {
+            routeLayer.clearLayers();
+
+            if (!currentRoutes || currentRoutes.length === 0) {
+                return;
+            }
+
+            // CASE A: Source Selected, No Dest (Show All Connections)
+            if (selectedSource && !selectedDest) {
+                currentRoutes.forEach(r => {
+                    const otherCode = (r.dep === selectedSource) ? r.arr : r.dep;
+                    const otherAp = airports[otherCode];
+
+                    if (otherAp) {
+                        const srcAp = airports[selectedSource];
+                        drawRouteAtCenter(srcAp, otherAp, {
+                            color: LINE_COLOR,
+                            weight: 1.5,
+                            opacity: 0.6,
+                            pane: 'routesPane'
+                        }, routeLayer);
+                    }
+                });
+            }
+
+            // CASE B: Source AND Dest Selected (Show Pair Details)
+            else if (selectedSource && selectedDest) {
+                const destAp = airports[selectedDest];
+                const destCity = destAp ? destAp.city : '';
+                document.getElementById('title-loc').innerText = selectedSource + " ⇄ " + selectedDest + " (" + destCity + ")";
+
+                // Filter routes
+                const pairRoutes = currentRoutes.filter(r => r.dep === selectedDest || r.arr === selectedDest);
+
+                // Draw ONE bold line
+                const srcAp = airports[selectedSource];
+                if (srcAp && destAp) {
+                    drawRouteAtCenter(srcAp, destAp, {
+                        color: LINE_COLOR,
+                        weight: 2,
+                        opacity: 1,
+                        pane: 'routesPane'
+                    }, routeLayer);
+                }
+
+                // Detailed List with Collapsible Cards
+                let html = '<div><strong>' + pairRoutes.length + ' Flights</strong></div><br>';
+
+                pairRoutes.forEach((r, idx) => {
+                    const callsign = r.callsign || '-';
+                    const reg = r.reg || '-';
+                    const type = r.type || '-';
+                    const type_icao = r.type_icao || '-';
+                    const dep_icao = r.dep_icao || '-';
+                    const arr_icao = r.arr_icao || '-';
+                    const airline = r.airline || '-';
+                    const date = r.date || '-';
+                    const dep = r.dep;
+                    const arr = r.arr;
+
+                    const uniqueId = 'flight-detail-' + idx;
+
+                    html += `
+                    <div class="flight-card">
+                        <div class="flight-header">
+                            <span>${r.flight}</span>
+                            <span style="opacity:0.7">${type_icao}</span>
+                        </div>
+                        <div class="flight-sub">
+                            ${dep} (${dep_icao}) &rarr; ${arr} (${arr_icao})
+                        </div>
+
+                        <div id="${uniqueId}" style="display:none; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:11px;">
+                                <div class="detail-kv" style="grid-column: span 2"><span class="label">Airline</span><span>${airline}</span></div>
+                                <div class="detail-kv"><span class="label">Callsign</span><span>${callsign}</span></div>
+                                <div class="detail-kv"><span class="label">Registration</span><span>${reg}</span></div>
+                                <div class="detail-kv"><span class="label">Aircraft</span><span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${type}</span></div>
+                                <div class="detail-kv"><span class="label">Type Code</span><span>${type_icao}</span></div>
+                                <div class="detail-kv"><span class="label">From</span><span>${dep} / ${dep_icao}</span></div>
+                                <div class="detail-kv"><span class="label">To</span><span>${arr} / ${arr_icao}</span></div>
+                                <div class="detail-kv" style="grid-column: span 2"><span class="label">Date Recorded</span><span>${date}</span></div>
+                            </div>
+                        </div>
+
+                        <div class="expand-btn" onclick="let el = document.getElementById('${uniqueId}'); el.style.display = (el.style.display === 'none' ? 'block' : 'none'); this.innerText = (el.style.display === 'block' ? '▲ Less Info' : '▼ More Info');">
+                            ▼ More Info
+                        </div>
+                    </div>`;
+                });
+
+                html += '<br><div style="text-align:center; font-size:11px; opacity:0.6; cursor:pointer;" onclick="deslectDestOnly()">Return to All Connections</div>';
+
+                document.getElementById('panel-content').innerHTML = html;
+            }
+        }
+
+    </script>
+</body>
+</html>

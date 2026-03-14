@@ -618,7 +618,8 @@ class MainWindow(QMainWindow):
                         "reg": str(row.get('reg', '')),
                         "dep_icao": str(row.get('dep_airport_icao', '')),
                         "arr_icao": str(row.get('arr_airport_icao', '')),
-                        "airline": str(row.get('owner', ''))
+                        "airline": str(row.get('owner', '')),
+                        "date": str(row.get('timestamp_read', ''))[:10]
                     })
                 
                 import json

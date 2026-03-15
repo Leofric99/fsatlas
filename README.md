@@ -1,6 +1,6 @@
-# FSAtlas — Real-world Flight Finder for Flight Simulation Inspiration
+# FSAtlas
 
-A desktop application for visualising live flight data on an interactive world map inspired by flightconnections. Built with Python, PyQt6, and Leaflet.js.
+Real-world is a desktop application for visualising live flight data on an interactive world map inspired by flightconnections. Built with Python, PyQt6, and Leaflet.js.
 
 ---
 

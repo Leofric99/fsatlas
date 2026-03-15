@@ -2,8 +2,6 @@
 
 A desktop application for visualising live flight data on an interactive world map. Built with Python, PyQt6, and Leaflet.js.
 
-> **Disclaimer:** This project was developed with the assistance of [GitHub Copilot](https://github.com/features/copilot). I am not a front-end developer, so there may well be bugs, rough edges, or unconventional code patterns. Contributions and bug reports are welcome!
-
 ---
 
 ## Screenshots

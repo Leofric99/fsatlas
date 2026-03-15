@@ -1,6 +1,6 @@
 # FSAtlas
 
-A Real-world is a desktop application for visualising live flight data on an interactive world map inspired by flightconnections. Built with Python, PyQt6, and Leaflet.js.
+A desktop application for visualising live flight data on an interactive world map inspired by flightconnections. Built with Python, PyQt6, and Leaflet.js.
 
 ---
 

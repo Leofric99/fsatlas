@@ -323,6 +323,7 @@ class MainWindow(QMainWindow):
         # Map Type
         self.map_type_combo = QComboBox()
         self.map_type_combo.addItems(config.TILES.keys())
+        self.map_type_combo.setCurrentText(self.map_type) # Sync default selection
         self.map_type_combo.currentTextChanged.connect(self.change_map_type)
         header_layout.addWidget(QLabel("Map Type:"))
         header_layout.addWidget(self.map_type_combo)

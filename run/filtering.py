@@ -11,63 +11,92 @@ def get_unique_values(df, column):
 
 def apply_filters(df, filters):
     """
-    Applies a dictionary of filters to the DataFrame.
-    filters: dict where keys are column names and values are filter conditions.
-    
-    Structure of a filter value:
+    Applies a list of filter dictionaries to the DataFrame.
+    filters: list of dicts.
+    Each dict should look like:
     {
-        'type': 'text' | 'number' | 'select',
-        'operator': 'equals' | 'contains' | 'starts_with' | 'ends_with' | '>', '<', '>=', '<=',
-        'value': ...
+        'column': 'col_name',
+        'operator': '...',  # contains, starts_with, ends_with, equals, >, <, >=, <=
+        'value': ...,      # standard value or list for 'select' (treated as OR/IN locally)
+        'logic': 'AND' | 'OR' # how to combine with previous results (default AND)
     }
     """
-    if df.empty:
+    if df.empty or not filters:
         return df
 
-    filtered_df = df.copy()
+    # If filters is a dict (legacy support - though we're updating GUI), convert to list
+    if isinstance(filters, dict):
+        new_filters = []
+        for col, condition in filters.items():
+            filter_item = condition.copy()
+            filter_item['column'] = col
+            filter_item['logic'] = 'AND'
+            new_filters.append(filter_item)
+        filters = new_filters
 
-    for col, condition in filters.items():
-        if col not in filtered_df.columns:
+    current_mask = None
+
+    for f in filters:
+        col = f.get('column')
+        op = f.get('operator')
+        val = f.get('value')
+        logic = f.get('logic', 'AND').upper()
+        ftype = f.get('type', 'text') # default to text if missing
+
+        if col not in df.columns:
             continue
             
-        value = condition.get('value')
-        op = condition.get('operator')
-        ftype = condition.get('type')
-
-        if value is None or value == "":
+        if val is None or val == "":
             continue
 
+        this_mask = None
+        
+        # Calculate mask for this filter
         if ftype == 'text':
+            col_str = df[col].astype(str)
             if op == 'contains':
-                filtered_df = filtered_df[filtered_df[col].astype(str).str.contains(value, case=False, na=False)]
+                this_mask = col_str.str.contains(val, case=False, na=False)
             elif op == 'starts_with':
-                filtered_df = filtered_df[filtered_df[col].astype(str).str.startswith(value, na=False)]
+                this_mask = col_str.str.startswith(val, na=False)
             elif op == 'ends_with':
-                filtered_df = filtered_df[filtered_df[col].astype(str).str.endswith(value, na=False)]
+                this_mask = col_str.str.endswith(val, na=False)
             elif op == 'equals':
-                filtered_df = filtered_df[filtered_df[col].astype(str) == str(value)]
+                this_mask = col_str == str(val)
         
         elif ftype == 'number':
             try:
-                num_val = float(value)
+                num_val = float(val)
                 if op == 'equals':
-                    filtered_df = filtered_df[filtered_df[col] == num_val]
+                    this_mask = df[col] == num_val
                 elif op == '>':
-                    filtered_df = filtered_df[filtered_df[col] > num_val]
+                    this_mask = df[col] > num_val
                 elif op == '<':
-                    filtered_df = filtered_df[filtered_df[col] < num_val]
+                    this_mask = df[col] < num_val
                 elif op == '>=':
-                    filtered_df = filtered_df[filtered_df[col] >= num_val]
+                    this_mask = df[col] >= num_val
                 elif op == '<=':
-                    filtered_df = filtered_df[filtered_df[col] <= num_val]
+                    this_mask = df[col] <= num_val
             except ValueError:
-                pass # Ignore invalid number inputs
+                pass # Invalid number
         
         elif ftype == 'select': 
-            # Multi-select or single select
-            if isinstance(value, list) and value:
-                filtered_df = filtered_df[filtered_df[col].isin(value)]
-            elif not isinstance(value, list):
-                filtered_df = filtered_df[filtered_df[col] == value]
+            # Multi-select (already implies OR between selections)
+            if isinstance(val, list) and val:
+                this_mask = df[col].isin(val)
+            elif not isinstance(val, list):
+                this_mask = df[col] == val
 
-    return filtered_df
+        # Combine with main mask
+        if this_mask is not None:
+            if current_mask is None:
+                current_mask = this_mask
+            else:
+                if logic == 'OR':
+                    current_mask = current_mask | this_mask
+                else: # AND
+                    current_mask = current_mask & this_mask
+
+    if current_mask is None:
+        return df
+        
+    return df[current_mask]

@@ -6,7 +6,7 @@ A desktop application for visualising live flight data on an interactive world m
 
 ## What Is It?
 
-FSAtlas reads the included CSV file containing flight data (e.g. captured from live flight tracking services) and displays every flight's departure and arrival airport as a coloured dot on an interactive world map.
+FSAtlas reads the included CSV file containing flight data (captured from live flight tracking services) and displays every flight's departure and arrival airport as a coloured dot on an interactive world map.
 
 **Key features:**
 

@@ -3,7 +3,8 @@ import pandas as pd
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QGridLayout, QLabel, QComboBox, QLineEdit, 
                              QCheckBox, QPushButton, QScrollArea, QFrame,
-                             QMessageBox, QSpinBox, QDoubleSpinBox, QStyle, QProgressBar)
+                             QMessageBox, QSpinBox, QDoubleSpinBox, QStyle, QProgressBar,
+                             QSizePolicy)
 from PyQt6.QtCore import Qt, QUrl, QTimer
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEnginePage
@@ -63,6 +64,164 @@ class CheckableComboBox(QComboBox):
                 checked_items.append(item.text())
         return checked_items
 
+# Fix: Import QSizePolicy
+from PyQt6.QtWidgets import QSizePolicy
+
+class FilterRow(QWidget):
+    def __init__(self, parent=None, df=None, remove_callback=None, show_logic=True):
+        super().__init__(parent)
+        self.df = df
+        self.remove_callback = remove_callback
+        
+        # Ensure minimum height to prevent squashing
+        self.setMinimumHeight(40)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+
+        # Logic (AND/OR)
+        self.logic_combo = QComboBox()
+        self.logic_combo.addItems(["AND", "OR"])
+        self.logic_combo.setMinimumWidth(80) 
+        self.logic_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        if not show_logic:
+            self.logic_combo.hide() 
+            # Add spacer or just empty
+        layout.addWidget(self.logic_combo)
+
+        # Column Selector
+        self.col_combo = QComboBox()
+        self.col_combo.addItem("Select Column...", None)
+        
+        # Sort columns by display name
+        cols_to_add = []
+        for col in df.columns:
+            display = config.COLUMN_DISPLAY_NAMES.get(col, col)
+            cols_to_add.append((display, col))
+        
+        cols_to_add.sort(key=lambda x: x[0])
+        
+        for display, col in cols_to_add:
+            self.col_combo.addItem(display, col)
+        
+        self.col_combo.currentIndexChanged.connect(self.update_operators)
+        layout.addWidget(self.col_combo)
+
+        # Operator Selector
+        self.op_combo = QComboBox()
+        self.op_combo.setFixedWidth(110)
+        layout.addWidget(self.op_combo)
+
+        # Value Widget Container
+        self.value_container = QWidget()
+        self.value_layout = QHBoxLayout(self.value_container)
+        self.value_layout.setContentsMargins(0,0,0,0)
+        self.value_widget = None 
+        layout.addWidget(self.value_container)
+        
+        # Remove Button
+        self.remove_btn = QPushButton("✕") 
+        self.remove_btn.setFixedSize(24, 24)
+        self.remove_btn.setStyleSheet("""
+            QPushButton { color: #d9534f; font-weight: bold; border: none; background: transparent; }
+            QPushButton:hover { background-color: rgba(217, 83, 79, 0.1); border-radius: 12px; }
+        """)
+        self.remove_btn.clicked.connect(self.on_remove)
+        layout.addWidget(self.remove_btn)
+        
+        # Initial State
+        self.value_container.hide()
+        self.op_combo.hide()
+
+    def on_remove(self):
+        if self.remove_callback:
+            self.remove_callback(self)
+            
+    def update_operators(self):
+        col = self.col_combo.currentData()
+        
+        # Clear value widget
+        if self.value_widget:
+            self.value_widget.deleteLater()
+            self.value_widget = None
+        
+        self.op_combo.clear()
+        
+        if not col:
+            self.op_combo.hide()
+            self.value_container.hide()
+            return
+            
+        self.op_combo.show()
+        self.value_container.show()
+
+        is_numeric = pd.api.types.is_numeric_dtype(self.df[col])
+        unique_vals = filtering.get_unique_values(self.df, col)
+        
+        if is_numeric:
+             self.op_combo.addItem("Equals (=)", "equals")
+             self.op_combo.addItem("Greater (>)", ">")
+             self.op_combo.addItem("Less (<)", "<")
+             self.op_combo.addItem("Greater/Eq (>=)", ">=")
+             self.op_combo.addItem("Less/Eq (<=)", "<=")
+             
+             self.value_widget = QDoubleSpinBox()
+             self.value_widget.setRange(-999999999, 999999999)
+             self.value_widget.setDecimals(2)
+             self.value_widget.setStyleSheet("padding: 2px;")
+             
+        else:
+             self.op_combo.addItem("Contains", "contains")
+             self.op_combo.addItem("Equals", "equals")
+             self.op_combo.addItem("Starts With", "starts_with")
+             self.op_combo.addItem("Ends With", "ends_with")
+             
+             if len(unique_vals) < 50: # Use combo for small sets
+                 self.value_widget = QComboBox()
+                 self.value_widget.setEditable(True)
+                 self.value_widget.addItems([str(x) for x in unique_vals])
+                 self.value_widget.setCurrentIndex(-1)
+                 self.value_widget.setPlaceholderText("Select or type...")
+             else:
+                 self.value_widget = QLineEdit()
+                 self.value_widget.setPlaceholderText("Value...")
+        
+        if self.value_widget:
+             self.value_layout.addWidget(self.value_widget)
+
+    def get_filter_data(self):
+        col = self.col_combo.currentData()
+        if not col:
+            return None
+            
+        op = self.op_combo.currentData()
+        logic = self.logic_combo.currentText()
+        
+        val = None
+        ftype = 'text'
+        
+        if isinstance(self.value_widget, QDoubleSpinBox):
+            val = self.value_widget.value()
+            ftype = 'number'
+        elif isinstance(self.value_widget, QComboBox):
+            val = self.value_widget.currentText()
+            # If combo text is empty
+            if not val: return None
+        elif isinstance(self.value_widget, QLineEdit):
+            val = self.value_widget.text()
+        
+        if val == "" or val is None:
+            return None
+
+        return {
+            'column': col,
+            'operator': op,
+            'value': val,
+            'logic': logic,
+            'type': ftype
+        }
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -81,7 +240,7 @@ class MainWindow(QMainWindow):
             
         self.current_theme = 'dark'
         self.map_type = 'Hybrid'
-        self.filters = {} # Stores current filter widgets
+        self.filter_rows = [] # List of FilterRow widgets
         self.map_view = None
         self.current_filtered_df = self.df  # Start with full dataset
 
@@ -107,37 +266,48 @@ class MainWindow(QMainWindow):
 
         # --- Map Area (Background) ---
         self.map_view = QWebEngineView()
-        
+        self.map_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
         # Enable console logging using custom Page
         page = ConsolePage(self.map_view, callback=self.on_js_console)
         self.map_view.setPage(page)
         
         # Add map view to grid (0,0) so it covers everything
         main_layout.addWidget(self.map_view, 0, 0)
+        
+        # --- Top Right Overlay Container ---
+        # Parented to central_widget but NOT added to layout -> Manual positioning
+        self.top_right_container = QWidget(central_widget)
+        self.top_right_container.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        
+        tr_layout = QVBoxLayout(self.top_right_container)
+        tr_layout.setContentsMargins(0, 0, 0, 0)
+        tr_layout.setSpacing(0)
+        tr_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        # --- Show Filters Button (Generally Hidden) ---
+        # Button Wrapper (to align button right)
+        btn_wrapper = QWidget()
+        btn_wrapper.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        btn_wrapper_layout = QHBoxLayout(btn_wrapper)
+        btn_wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        btn_wrapper_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        
         self.show_filters_btn = QPushButton("Filters ▼")
         self.show_filters_btn.clicked.connect(self.toggle_filters_visibility)
         self.show_filters_btn.setVisible(True)
         self.show_filters_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         
-        # Add to top-right
-        main_layout.addWidget(self.show_filters_btn, 0, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+        btn_wrapper_layout.addWidget(self.show_filters_btn)
+        tr_layout.addWidget(btn_wrapper)
 
         # --- Filters Overlay (Foreground) ---
         self.filter_container = QFrame()
         self.filter_container.setObjectName("filter_container")
         self.filter_container.hide() # Start hidden by default
-        self.filter_container.setStyleSheet("""
-            QFrame#filter_container {
-                background-color: rgba(255, 255, 255, 0.85); 
-                border-bottom-left-radius: 10px;
-                border-bottom-right-radius: 10px;
-                border-bottom: 1px solid #ccc;
-                border-left: 1px solid #ccc;
-                border-right: 1px solid #ccc;
-            }
-        """)
+        self.filter_container.setFixedWidth(700) # Increased width
+        
+        # Add to container
+        tr_layout.addWidget(self.filter_container)
 
         filter_layout = QVBoxLayout(self.filter_container)
         filter_layout.setContentsMargins(15, 10, 15, 5)
@@ -149,11 +319,6 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(title)
         
         header_layout.addStretch()
-        
-        # Theme Toggle
-        self.theme_btn = QPushButton("Switch to Dark Mode")
-        self.theme_btn.clicked.connect(self.toggle_theme)
-        header_layout.addWidget(self.theme_btn)
 
         # Map Type
         self.map_type_combo = QComboBox()
@@ -172,12 +337,33 @@ class MainWindow(QMainWindow):
 
         # Dynamic Filters Area
         self.filters_widget = QWidget()
-        self.filters_grid = QGridLayout(self.filters_widget)
-        self.filters_grid.setContentsMargins(0, 0, 0, 0)
-        self.filters_grid.setSpacing(5)
+        self.filters_layout = QVBoxLayout(self.filters_widget)
+        self.filters_layout.setContentsMargins(0, 0, 0, 0)
+        self.filters_layout.setSpacing(8) # Increased spacing
+        self.filters_layout.addStretch() # Push filters up
+
+        self.add_filter_btn = QPushButton("+ Add Filter")
+        self.add_filter_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.add_filter_btn.setStyleSheet("""
+            QPushButton {
+                border: 1px dashed #aaa;
+                border-radius: 4px;
+                background-color: transparent;
+                padding: 4px;
+                color: #555;
+            }
+            QPushButton:hover {
+                background-color: rgba(0,0,0,0.05);
+                color: #000;
+                border-color: #888;
+            }
+        """)
+        self.add_filter_btn.clicked.connect(self.add_filter_row)
         
         self.create_filters()
+        
         content_layout.addWidget(self.filters_widget)
+        content_layout.addWidget(self.add_filter_btn)
         
         # Filter Buttons
         btn_widget = QWidget()
@@ -230,17 +416,30 @@ class MainWindow(QMainWindow):
             }
         """)
         toggle_layout.addWidget(self.toggle_btn)
-        
         filter_layout.addLayout(toggle_layout)
         
-        # Add filter overlay to main grid (0,0) aligned Top
-        # We wrap it in a container widget if we want margin from top/screen edges, 
-        # or just add margins to main_layout if needed.
-        # Here we align top so it sticks to the top.
-        main_layout.addWidget(self.filter_container, 0, 0, Qt.AlignmentFlag.AlignTop)
-
         # Force initial style now that filter_container exists
         self.apply_theme()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Position the overlay container
+        if hasattr(self, 'top_right_container'):
+            # Calculate position: Top-Right with margins
+            margin_top = 10
+            margin_right = 20
+            
+            # The container needs to size itself to fit its children
+            self.top_right_container.adjustSize()
+            
+            w = self.top_right_container.width()
+            h = self.top_right_container.height()
+            
+            x = self.width() - w - margin_right
+            y = margin_top
+            
+            self.top_right_container.move(x, y)
+            self.top_right_container.raise_()
 
     def toggle_filters_visibility(self):
         """
@@ -251,201 +450,91 @@ class MainWindow(QMainWindow):
         if is_expanded:
             # Collapse: Hide panel, Show button
             self.filter_container.hide()
-            self.show_filters_btn.show()
+            self.show_filters_btn.show() # In wrapper
         else:
             # Expand: Show panel, Hide button
             self.filter_container.show()
-            self.show_filters_btn.hide()
+            self.show_filters_btn.hide() # In wrapper
+        
+        # Trigger re-layout of the overlay container
+        if hasattr(self, 'top_right_container'):
+            self.top_right_container.adjustSize()
+            # Trigger resize event to re-position
+            self.resizeEvent(None) # Safe to pass None
 
     def create_filters(self):
         # Clear existing
-        try:
-            # Clear layout
-            while self.filters_grid.count():
-                child = self.filters_grid.takeAt(0)
-                if child.widget():
-                    child.widget().deleteLater()
-        except:
-            pass
-        self.filters = {}
+        while self.filters_layout.count():
+             child = self.filters_layout.takeAt(0)
+             if child.widget():
+                 child.widget().deleteLater()
         
-        columns = config.FILTER_COLUMNS
-        if not columns and not self.df.empty:
-            columns = self.df.columns[:5] 
-            
-        row = 0
-        col_count = 0
-        COL_LIMIT = 3 # 3 columns max
+        # Add stretch at the end to push items up
+        self.filters_layout.addStretch()
+             
+        self.filter_rows = []
+        # Add one initial row
+        self.add_filter_row()
 
-        for col in columns:
-            if col not in self.df.columns:
-                continue
-                
-            group = QFrame()
-            # Set background: transparent so the main container's opacity shows through
-            group.setStyleSheet("margin: 2px; border: 1px solid #ccc; border-radius: 4px; padding: 2px; background-color: transparent;")
-            
-            # --- Important layout fix ---
-            # We use a grid within the group frame itself to pack label and widget nicely
-            g_layout = QGridLayout(group) 
-            g_layout.setContentsMargins(5, 5, 5, 5)
-            g_layout.setSpacing(5)
-            
-            display_name = config.COLUMN_DISPLAY_NAMES.get(col, col)
-            label = QLabel(display_name)
-            label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter) # Right align label
-            label.setStyleSheet("font-size: 11px; font-weight: bold; padding-right: 5px;")
-            g_layout.addWidget(label, 0, 0) # Label at col 0
-            
-            # Decide widget type based on data
-            widget = None
-            filter_info = {'col': col}
-
-            is_numeric = pd.api.types.is_numeric_dtype(self.df[col])
-            unique_vals = filtering.get_unique_values(self.df, col)
-            
-            # --- WIDGET CREATION ---
-            if len(unique_vals) < 15 and not is_numeric: # Small set of options
-                widget = CheckableComboBox()
-                widget.setFixedHeight(24)
-                widget.setStyleSheet("font-size: 11px;")
-                widget.addItem("(Select All)")
-                widget.addItem("(Clear)")
-                for i in [0, 1]:
-                   widget.model().item(i).setCheckState(Qt.CheckState.Unchecked) 
-                
-                for val in unique_vals:
-                    widget.addItem(str(val))
-                    item = widget.model().item(widget.count()-1, 0)
-                    item.setCheckState(Qt.CheckState.Unchecked)
-                filter_info['type'] = 'select'
-                
-            elif is_numeric:
-                container = QWidget()
-                h = QHBoxLayout(container)
-                h.setContentsMargins(0,0,0,0)
-                h.setSpacing(2)
-                
-                op_combo = QComboBox()
-                # Map display text to internal operator
-                op_combo.addItem(">", ">")
-                op_combo.addItem("<", "<")
-                op_combo.addItem("=", "equals")
-                op_combo.addItem(">=", ">=")
-                op_combo.addItem("<=", "<=")
-                
-                op_combo.setFixedWidth(60) # Increased from 50
-                op_combo.setFixedHeight(24)
-                op_combo.setStyleSheet("font-size: 11px;")
-                
-                val_input = QDoubleSpinBox()
-                val_input.setRange(-999999, 999999)
-                val_input.setValue(val_input.minimum())
-                val_input.setSpecialValueText(" ") 
-                val_input.setFixedHeight(24)
-                val_input.setStyleSheet("font-size: 11px;")
-                
-                h.addWidget(op_combo)
-                h.addWidget(val_input)
-                widget = container
-                
-                filter_info['type'] = 'number'
-                filter_info['widgets'] = (op_combo, val_input)
-                
-            else: # Text search
-                container = QWidget()
-                h = QHBoxLayout(container) # Horizontal now for space
-                h.setContentsMargins(0,0,0,0)
-                h.setSpacing(2)
-                
-                op_combo = QComboBox()
-                # Map display text to internal operator
-                op_combo.addItem("Contains", "contains")
-                op_combo.addItem("Equals", "equals")
-                op_combo.addItem("Starts with", "starts_with")
-                op_combo.addItem("Ends with", "ends_with")
-                
-                # Allow it to size naturally, or set a reasonable min width
-                op_combo.setMinimumWidth(100)  # Increased from 80
-                op_combo.setFixedHeight(24) 
-                op_combo.setStyleSheet("font-size: 11px;")
-                
-                txt_input = QLineEdit()
-                txt_input.setPlaceholderText("Search...")
-                txt_input.setFixedHeight(24)
-                txt_input.setStyleSheet("font-size: 11px;")
-                
-                h.addWidget(op_combo)
-                h.addWidget(txt_input)
-                widget = container
-                
-                filter_info['type'] = 'text'
-                filter_info['widgets'] = (op_combo, txt_input)
-            
-            if widget:
-                try:
-                    if isinstance(widget, CheckableComboBox):
-                        widget.lineEdit().setPlaceholderText("Select...")
-                except:
-                    pass
-
-                g_layout.addWidget(widget, 0, 1) # Widget at col 1
-                g_layout.setColumnStretch(1, 1) # Widget takes remaining space
-                
-                filter_info['widget'] = widget
-                self.filters[col] = filter_info
-                
-                self.filters_grid.addWidget(group, row, col_count)
-                
-                col_count += 1
-                if col_count >= COL_LIMIT:
-                    col_count = 0
-                    row += 1
-
-    def toggle_theme(self):
-        if self.current_theme == 'light':
-            self.current_theme = 'dark'
-            self.theme_btn.setText("Switch to Light Mode")
+    def add_filter_row(self):
+        # Determine if logic combo should be shown
+        show_logic = len(self.filter_rows) > 0
+        
+        row = FilterRow(self.filters_widget, self.df, remove_callback=self.remove_filter_row, show_logic=show_logic)
+        row.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.filter_rows.append(row)
+        
+        # Insert before the stretch item (last item)
+        count = self.filters_layout.count()
+        if count > 0:
+            self.filters_layout.insertWidget(count - 1, row)
         else:
-            self.current_theme = 'light'
-            self.theme_btn.setText("Switch to Dark Mode")
-        self.apply_theme()
-        # Only re-render map if data hasn't changed, just style update
-        # But change_map_type does render_map, so we just call that or update map HTML
-        self.render_map(self.current_filtered_df)
+            self.filters_layout.addWidget(row)
+        
+        # Trigger resize of the overlay container to fit new content
+        if hasattr(self, 'top_right_container'):
+            self.top_right_container.adjustSize()
+            self.filter_container.adjustSize()
+            QTimer.singleShot(10, lambda: [self.top_right_container.adjustSize(), self.resizeEvent(None)])
+            
+    def remove_filter_row(self, row_widget):
+        if row_widget in self.filter_rows:
+            self.filter_rows.remove(row_widget)
+            self.filters_layout.removeWidget(row_widget)
+            row_widget.deleteLater()
+            
+            # Update logic combos visibility
+            for i, r in enumerate(self.filter_rows):
+                if i == 0:
+                    r.logic_combo.hide()
+                else:
+                    r.logic_combo.show()
+            
+            # Trigger resize of the overlay container
+            if hasattr(self, 'top_right_container'):
+                QTimer.singleShot(10, lambda: [self.top_right_container.adjustSize(), self.resizeEvent(None)])
 
     def apply_theme(self):
-        style = config.DARK_STYLE if self.current_theme == 'dark' else config.LIGHT_STYLE
+        style = config.DARK_STYLE # Force Dark Mode
         self.setStyleSheet(style)
         
         if not hasattr(self, 'filter_container'):
             return
 
-        if self.current_theme == 'dark':
-            bg_color = "rgba(30, 30, 30, 0.85)"
-            border_color = "#555"
-            text_color = "#ddd"
-            input_bg = "rgba(40, 40, 40, 0.9)"
-            input_text = "white"
-            input_border = "#666"
-            toggle_color = "#aaa"
-        else:
-            bg_color = "rgba(255, 255, 255, 0.85)"
-            border_color = "#ccc"
-            text_color = "#333"
-            input_bg = "rgba(255, 255, 255, 0.9)"
-            input_text = "black"
-            input_border = "#ccc"
-            toggle_color = "#555"
+        # Always Dark Mode colors
+        bg_color = "rgba(30, 30, 30, 0.95)"
+        border_color = "#555"
+        text_color = "#ddd"
+        input_bg = "rgba(40, 40, 40, 0.9)"
+        input_text = "white"
+        input_border = "#666"
+        toggle_color = "#aaa"
 
         sheet = f"""
             QFrame#filter_container {{
                 background-color: {bg_color}; 
-                border-bottom-left-radius: 10px;
-                border-bottom-right-radius: 10px;
-                border-bottom: 1px solid {border_color};
-                border-left: 1px solid {border_color};
-                border-right: 1px solid {border_color};
+                border-radius: 10px;
+                border: 1px solid {border_color};
             }}
             /* Make layouts and containers transparent */
             QFrame#filter_container QWidget {{
@@ -485,13 +574,10 @@ class MainWindow(QMainWindow):
                 QPushButton {{
                     background-color: {bg_color};
                     border: 1px solid {border_color};
-                    border-top: none; 
-                    border-bottom-left-radius: 8px;
-                    border-bottom-right-radius: 8px;
-                    padding: 6px 12px;
+                    border-radius: 8px;
+                    padding: 8px 16px;
                     color: {text_color};
                     font-weight: bold;
-                    margin-right: 60px;
                 }}
                 QPushButton:hover {{
                     background-color: {input_bg};
@@ -506,50 +592,17 @@ class MainWindow(QMainWindow):
         self.render_map(self.current_filtered_df)
 
     def get_current_filters(self):
-        active_filters = {}
-        for col, info in self.filters.items():
-            ftype = info['type']
-            
-            if ftype == 'select':
-                widget = info['widget']
-                checked = widget.get_checked_items()
-                if checked:
-                    active_filters[col] = {
-                        'type': 'select',
-                        'value': checked,
-                        'operator': 'in'
-                    }
-                    print(f"Filter found: {col} = {checked}", flush=True)
-
-            elif ftype == 'number':
-                op_widget, val_widget = info['widgets']
-                if val_widget.text() != " ":
-                    active_filters[col] = {
-                        'type': 'number',
-                        'operator': op_widget.currentData() if op_widget.currentData() else op_widget.currentText(),
-                        'value': val_widget.value()
-                    }
-                    print(f"Filter found: {col} = {val_widget.value()}", flush=True)
-
-            elif ftype == 'text':
-                op_widget, val_widget = info['widgets']
-                text = val_widget.text().strip()
-                if text:
-                    active_filters[col] = {
-                        'type': 'text',
-                        'operator': op_widget.currentData() if op_widget.currentData() else op_widget.currentText(),
-                        'value': text
-                    }
-                    print(f"Filter found: {col} = {text}", flush=True)
-        
+        active_filters = []
+        for row in self.filter_rows:
+            data = row.get_filter_data()
+            if data:
+                active_filters.append(data)
         return active_filters
     
     def on_apply_filters(self):
         current_filters = self.get_current_filters()
-        if not current_filters:
-            QMessageBox.warning(self, "No Filters", "Please select or enter at least one filter option.")
-            return
-
+        # We allow empty filters (clears filter)
+        
         print(f"Applying filters: {current_filters}", flush=True)
         
         # Show progress
@@ -570,19 +623,8 @@ class MainWindow(QMainWindow):
             self.apply_btn.setText("Apply Filters & Show Map")
 
     def reset_filters(self):
-        # Reset widgets
-        for col, info in self.filters.items():
-            ftype = info['type']
-            if ftype == 'select':
-                widget = info['widget']
-                for i in range(widget.count()):
-                    widget.model().item(i, 0).setCheckState(Qt.CheckState.Unchecked)
-            elif ftype == 'number':
-                _, val_widget = info['widgets']
-                val_widget.setValue(val_widget.minimum()) # Triggers special text
-            elif ftype == 'text':
-                _, val_widget = info['widgets']
-                val_widget.clear()
+        # Clear rows
+        self.create_filters() # Re-creates initial row
         
         # Reset to full dataset
         self.current_filtered_df = self.df

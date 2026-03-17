@@ -8,19 +8,19 @@ A desktop application for visualising real-world flight data inspired by flightc
 
 *Program on first launch* — The application window with an empty map and filter controls at the top.
 
-![First-run GUI](screenshots/just_opened.png)
+![First-run GUI](screenshots/1_app_just_opened.png)
 
-*Browsing flights* — Click an airport to load all connected flights. Here, all departures and arrivals at Heathrow are displayed.
+*Browsing flights* — Click an airport to load all connected flights. Here, all departures and arrivals at Shannon are displayed.
 
-![All flights to or from Heathrow](screenshots/all_from_heathrow.png)
+![All flights to or from Shannon](screenshots/2_all_flights_from_shannon.png)
 
 *Detailed flight information* — Each flight is shown as a card with full details including airline, aircraft type, callsign, and airport codes.
 
-![Detailed flight information](screenshots/detailed_info.png)
+![Detailed flight information](screenshots/3_shannon_to_chicago.png)
 
 *Filtering in action* — Use the filter bar to narrow results by airline, aircraft type, country, distance, and flight time.
 
-![Filtering flights](screenshots/filtering.png)
+![Filtering flights](screenshots/4_gatwick_with_filters.png)
 
 ---
 

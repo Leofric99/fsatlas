@@ -225,7 +225,7 @@ class FilterRow(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("FSDispatch")
+        self.setWindowTitle("Flightsim Atlas")
         self.resize(1200, 800)
 
         # State

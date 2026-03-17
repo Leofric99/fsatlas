@@ -8,19 +8,19 @@ A desktop application for visualising real-world flight data inspired by flightc
 
 *Program on first launch* — The application window with an empty map and filter controls at the top.
 
-![First-run GUI](screenshots/just_opened.png)
+![First-run GUI](https://github.com/Leofric99/fsdispatch/blob/main/screenshots/just_opened.png?raw=true)
 
 *Browsing flights* — Click an airport to load all connected flights. Here, all departures and arrivals at Heathrow are displayed.
 
-![All flights to or from Heathrow](screenshots/all_from_heathrow.png)
+![All flights to or from Heathrow](https://github.com/Leofric99/fsdispatch/blob/main/screenshots/all_from_heathrow.png?raw=true)
 
 *Detailed flight information* — Each flight is shown as a card with full details including airline, aircraft type, callsign, and airport codes.
 
-![Detailed flight information](screenshots/detailed_info.png)
+![Detailed flight information](https://github.com/Leofric99/fsdispatch/blob/main/screenshots/detailed_info.png?raw=true)
 
 *Filtering in action* — Use the filter bar to narrow results by airline, aircraft type, country, distance, and flight time.
 
-![Filtering flights](screenshots/filtering.png)
+![Filtering flights](https://github.com/Leofric99/fsdispatch/blob/main/screenshots/filtering.png?raw=true)
 
 ---
 

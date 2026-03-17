@@ -40,7 +40,13 @@ Flightsim Atlas visualises flight data on an interactive world map. It reads a C
 
 ---
 
-## Installation & Running
+## Installation & Running - Windows
+
+1. Download the ZIP file from the releases tab.
+2. Extract the folder within to a siutable location.
+3. Run FSAtlas.exe from within the extracted folder.
+
+## Installation & Running - CLI Based
 
 ### 1. Clone the repository
 

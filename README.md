@@ -4,19 +4,11 @@ A lightweight, browser-based tool for visualising real-world flight data on an i
 
 ---
 
-## Screenshots
+## Demo
 
-*Main view (dark mode)* — the default view on launch: the full map with colour-coded airports, the filter bar, and the airport legend.
-
-![Main view, dark mode](screenshots/1_main_view_dark.png)
-
-*Light mode, filtered* — an "Airline contains British Airways" filter applied, with the whole UI re-themed instantly via the light/dark toggle.
-
-![Light mode, filtered flights](screenshots/2_main_view_light.png)
-
-*Collapsible panels* — the same filtered view with both the filter list and the airport legend tucked away into slim pull-tabs, keeping the map uncluttered.
-
-![Filter list and legend collapsed](screenshots/3_collapsed_panels.png)
+<video controls src="videos/FSAtlas%20Demo.mp4">
+	<a href="videos/FSAtlas%20Demo.mp4">Watch the FSAtlas demo</a>
+</video>
 
 ---
 

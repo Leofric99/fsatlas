@@ -147,6 +147,11 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# FSAtlas local settings (theme preference etc.) - the file itself is tracked with a
+# default value, but local writes are excluded from git via `git update-index --skip-worktree`.
+# This entry is just documentation; skip-worktree is what actually keeps changes untracked.
+run/settings.json
+
 # Environments
 .env
 .envrc

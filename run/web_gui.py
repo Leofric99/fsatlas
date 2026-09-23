@@ -5,6 +5,7 @@ default entry point at ``python -m run``.
 """
 
 import json
+import os
 import secrets
 import webbrowser
 from http import HTTPStatus
@@ -14,6 +15,28 @@ from urllib.parse import parse_qs, urlparse
 import pandas as pd
 
 from run import config, data_loader, filtering, mapping
+
+# Persisted UI settings (currently just the light/dark preference) - tracked in git with a
+# default value, but local writes are excluded via `git update-index --skip-worktree` so a
+# user's runtime preference never shows up as an uncommitted change.
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
+DEFAULT_SETTINGS = {"theme": "dark"}
+
+
+def load_settings():
+    try:
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            settings = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return dict(DEFAULT_SETTINGS)
+    if settings.get("theme") not in ("dark", "light"):
+        settings["theme"] = DEFAULT_SETTINGS["theme"]
+    return settings
+
+
+def save_settings(settings):
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(settings, f)
 
 
 def column_example(series):
@@ -65,21 +88,13 @@ class AtlasState:
         return view_id, len(filtered_df)
 
 
-def index_html(columns):
+def index_html(columns, theme='dark'):
     columns_json = json.dumps(columns)
     map_types_json = json.dumps(list(config.TILES.keys()))
+    theme_attr = ' data-theme="light"' if theme == 'light' else ''
     return f"""<!doctype html>
-<html lang="en">
+<html lang="en"{theme_attr}>
 <head>
-  <script>
-    (function() {{
-      try {{
-        if (localStorage.getItem('atlas-theme') === 'light') {{
-          document.documentElement.dataset.theme = 'light';
-        }}
-      }} catch (e) {{}}
-    }})();
-  </script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Flightsim Atlas</title>
@@ -249,11 +264,16 @@ def index_html(columns):
       return url + (url.includes('?') ? '&' : '?') + 'theme=' + theme;
     }}
 
-    function applyTheme(nextTheme) {{
+    function applyTheme(nextTheme, persist) {{
       theme = nextTheme;
       document.documentElement.dataset.theme = theme;
       themeToggle.innerHTML = theme === 'dark' ? MOON_ICON : SUN_ICON;
-      try {{ localStorage.setItem('atlas-theme', theme); }} catch (e) {{}}
+      if (persist) {{
+        fetch('/api/settings', {{
+          method: 'POST', headers: {{'Content-Type': 'application/json'}},
+          body: JSON.stringify({{theme}})
+        }}).catch(() => {{}});
+      }}
       if (autoMapType && mapType.value !== THEME_MAP_TYPES[theme]) {{
         mapType.value = THEME_MAP_TYPES[theme];
         applyFilters();
@@ -262,8 +282,8 @@ def index_html(columns):
       }}
     }}
 
-    themeToggle.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark'));
-    applyTheme(theme);
+    themeToggle.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark', true));
+    applyTheme(theme, false);
 
     // --- Filter list collapse tab (protrudes from the toolbar, stays visible when hidden) ---
     const filtersTab = document.getElementById('filters-tab');
@@ -383,7 +403,7 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
                  "example": column_example(self.state.df[column])}
                 for column in self.state.df.columns
             ]
-            self.send_html(index_html(columns))
+            self.send_html(index_html(columns, load_settings().get("theme", "dark")))
             return
 
         if parsed.path.startswith("/map/"):
@@ -413,7 +433,23 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
         self.send_html("Not found", HTTPStatus.NOT_FOUND)
 
     def do_POST(self):
-        if self.path != "/api/maps":
+        parsed = urlparse(self.path)
+
+        if parsed.path == "/api/settings":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                payload = json.loads(self.rfile.read(length))
+                theme = payload.get("theme")
+                if theme not in ("dark", "light"):
+                    raise ValueError
+            except (ValueError, json.JSONDecodeError):
+                self.send_json({"error": "Invalid settings payload"}, HTTPStatus.BAD_REQUEST)
+                return
+            save_settings({"theme": theme})
+            self.send_json({"ok": True})
+            return
+
+        if parsed.path != "/api/maps":
             self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
             return
         try:

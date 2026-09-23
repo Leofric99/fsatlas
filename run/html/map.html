@@ -494,8 +494,6 @@
 
             // Only render if we still have a source selected (user might have clicked away)
             if (selectedSource) {
-                renderMapState();
-
                 // Show only connected airports, hide the rest
                 const connectedIatas = new Set();
                 connectedIatas.add(selectedSource);
@@ -512,6 +510,16 @@
                         hideAirport(iata);
                     }
                 });
+
+                // Every route is a self-loop (source flies only to/from itself) - there's no
+                // second node to click, so show the flight details right away.
+                if (routes.length > 0 && connectedIatas.size === 1) {
+                    selectedDest = selectedSource;
+                    selectedDestOffset = selectedSourceOffset;
+                    document.getElementById('info').style.display = 'flex';
+                }
+
+                renderMapState();
             }
         }
 
@@ -607,14 +615,17 @@
             else if (selectedSource && selectedDest) {
                 const destAp = airports[selectedDest];
                 const destCity = destAp ? destAp.city : '';
-                document.getElementById('title-loc').innerText = selectedSource + " ⇄ " + selectedDest + " (" + destCity + ")";
+                const isSelfLoop = selectedDest === selectedSource;
+                document.getElementById('title-loc').innerText = isSelfLoop
+                    ? selectedSource + " (" + destCity + ") \u2014 Self Flights"
+                    : selectedSource + " \u21c4 " + selectedDest + " (" + destCity + ")";
 
                 // Filter routes
                 const pairRoutes = currentRoutes.filter(r => r.dep === selectedDest || r.arr === selectedDest);
 
-                // Draw ONE bold line
+                // Draw ONE bold line (skip self-loops - there's nowhere for the line to go)
                 const srcAp = airports[selectedSource];
-                if (srcAp && destAp) {
+                if (srcAp && destAp && !isSelfLoop) {
                     drawRouteAtCenter(srcAp, destAp, {
                         color: LINE_COLOR,
                         weight: 2,

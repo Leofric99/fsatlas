@@ -65,4 +65,14 @@ python3 -m run
 
 This starts a local web server and opens FSAtlas in your default browser. If it doesn't open automatically, the terminal will print the URL to open manually (e.g. `http://127.0.0.1:PORT`).
 
+### 4. Import more flights (optional)
+
+Merge additional flight records from a JSON file into `run/database/flights.csv`. The JSON must be a list of objects using the same field names as the CSV columns (e.g. `owner`, `reg`, `dep_airport_iata`, `timestamp_read`, etc). Duplicates (matched on registration, flight number, departure/arrival airport, and timestamp) are skipped automatically.
+
+```bash
+python3 -m run.import_flights path/to/new_flights.json
+```
+
+Add `--dry-run` to preview how many flights would be added/skipped without modifying the CSV.
+
 > **Disclaimer:** This project was developed with the assistance of [GitHub Copilot](https://github.com/features/copilot). I am not a front-end developer, so there may well be bugs, rough edges, or unconventional code patterns. Contributions and bug reports are welcome!

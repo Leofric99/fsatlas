@@ -57,6 +57,13 @@ def add_region_columns(df):
             for country, un_region in zip(countries, un_regions)
         }
         df[region_col] = df[country_col].map(lookup)
+
+        # Keep the region column right next to its country column in the filter list
+        # instead of letting it fall to the end (where newly-added columns land).
+        cols = list(df.columns)
+        cols.remove(region_col)
+        cols.insert(cols.index(country_col) + 1, region_col)
+        df = df[cols].copy()
     return df
 
 def load_data():

@@ -7,7 +7,7 @@ A lightweight, browser-based tool for visualising real-world flight data on an i
 ## Demo
 
 <p align="center">
-  <video src="https://github.com/Leofric99/fsatlas/releases/tag/Demo" width="100%" controls></video>
+  <video src="https://github.com/Leofric99/fsatlas/releases/download/Demo/FSAtlas.Demo.mp4" width="100%" controls></video>
 </p>
 
 ---

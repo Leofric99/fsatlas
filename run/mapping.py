@@ -76,7 +76,7 @@ def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_c
     
     # Colors - glassy dark/light palettes for the redesigned map chrome
     if theme_mode == 'dark':
-        bg_color = '#0b0d10'
+        bg_color = '#232227'
         text_color = '#f5f6f7'
         panel_bg = 'rgba(22, 25, 29, 0.72)'
         panel_border = 'rgba(255, 255, 255, 0.09)'
@@ -87,7 +87,7 @@ def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_c
         line_color = '#3fd0ff'
         marker_border = '#171b20'
     else:
-        bg_color = '#eef1f5'
+        bg_color = '#D0CFD4'
         text_color = '#14181d'
         panel_bg = 'rgba(255, 255, 255, 0.78)'
         panel_border = 'rgba(15, 23, 42, 0.08)'

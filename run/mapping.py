@@ -96,7 +96,7 @@ def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_c
         card_border = 'rgba(15, 23, 42, 0.08)'
         shadow_color = 'rgba(15, 23, 42, 0.16)'
         line_color = '#0a84ff'
-        marker_border = '#888888'
+        marker_border = '#171b20'
 
     env = Environment(
         loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'html')),

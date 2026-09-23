@@ -8,23 +8,23 @@ COLUMN_DISPLAY_NAMES = {
     'flight_number': 'Flight Number',
     'calsign': 'Callsign',
     'dep_airport': 'Departure Airport',
-    'dep_airport_iata': 'Dep. IATA',
-    'dep_airport_icao': 'Dep. ICAO',
+    'dep_airport_iata': 'Departure IATA',
+    'dep_airport_icao': 'Departure ICAO',
     'dep_airport_city': 'Departure City',
     'dep_airport_country': 'Departure Country',
     'dep_airport_region': 'Departure Region',
-    'dep_airport_lat': 'Dep. Airport Latitude',
-    'dep_airport_lon': 'Dep. Airport Longitude',
-    'dep_airport_elevation': 'Dep. Elevation (ft)',
+    'dep_airport_lat': 'Departure Airport Latitude',
+    'dep_airport_lon': 'Departure Airport Longitude',
+    'dep_airport_elevation': 'Departure Elevation (ft)',
     'arr_airport': 'Arrival Airport',
-    'arr_airport_iata': 'Arr. IATA',
-    'arr_airport_icao': 'Arr. ICAO',
+    'arr_airport_iata': 'Arrival IATA',
+    'arr_airport_icao': 'Arrival ICAO',
     'arr_airport_city': 'Arrival City',
     'arr_airport_country': 'Arrival Country',
     'arr_airport_region': 'Arrival Region',
-    'arr_airport_lat': 'Arr. Airport Latitude',
-    'arr_airport_lon': 'Arr. Airport Longitude',
-    'arr_airport_elevation': 'Arr. Elevation (ft)',
+    'arr_airport_lat': 'Arrival Airport Latitude',
+    'arr_airport_lon': 'Arrival Airport Longitude',
+    'arr_airport_elevation': 'Arrival Elevation (ft)',
     'distance': 'Distance (km)',
     'rough_flight_time': 'Flight Time (hours)',
     'timestamp_read': 'Timestamp'
@@ -56,6 +56,11 @@ TILES = {
     # Esri Dark Gray Canvas — free, keyless dark basemap similar to Volanta's default style
     'Dark Mode': (
         'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS'
+    ),
+    # Esri Light Gray Canvas — free, keyless light counterpart, auto-selected in light mode
+    'Light Mode': (
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
         'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS'
     ),
     'Standard': 'OpenStreetMap',

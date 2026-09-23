@@ -32,7 +32,7 @@ FSAtlas reads a CSV of flight records (built from live tracking data) and render
 - **Flexible column filtering** — build AND/OR filter chains over any column (airline, aircraft type, country, region, distance, flight time, timestamps, and more), with a live example value shown as you pick a column
 - **Departure/Arrival Region** — countries are automatically grouped into regions (Africa, Asia, Europe, Oceania, North/Central/South America, Middle East) purely in memory, with no changes to the source data
 - **Light/dark mode** — a single toggle re-themes the whole app, including the map, legend, and zoom controls, and remembers your preference
-- **Multiple map styles** — Dark Mode (Esri, default), Standard (OpenStreetMap), Satellite (Esri), and Hybrid (Google), switched instantly without needing to re-apply filters
+- **Multiple map styles** — Dark Mode / Light Mode (Esri, auto-selected with the theme toggle), Standard (OpenStreetMap), Satellite (Esri), and Hybrid (Google), switched instantly without needing to re-apply filters
 - **Collapsible UI** — both the filter list and the airport legend hide away into small pull-tabs so they never get in the way of the map
 - **Performance-minded** — airports render on canvas, routes are computed on demand per selection, and filtered map views are cached server-side per session
 

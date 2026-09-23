@@ -233,13 +233,15 @@ def index_html(columns):
     const mapTypes = {map_types_json};
     const filters = document.getElementById('filters');
     const mapType = document.getElementById('map-type');
-    mapTypes.forEach(name => mapType.add(new Option(name, name, name === 'Dark Mode', name === 'Dark Mode')));
+    const THEME_MAP_TYPES = {{ dark: 'Dark Mode', light: 'Light Mode' }};
+    let theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    let autoMapType = true; // Tracks the theme-matched default until the user manually picks a style
+    mapTypes.forEach(name => mapType.add(new Option(name, name, name === THEME_MAP_TYPES[theme], name === THEME_MAP_TYPES[theme])));
 
     // --- Theme toggle (persists choice, re-themes the map iframe) ---
     const SUN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2.5v3M12 18.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>';
     const MOON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg>';
     const themeToggle = document.getElementById('theme-toggle');
-    let theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
     let baseMapUrl = '';
 
     function withTheme(url) {{
@@ -252,7 +254,12 @@ def index_html(columns):
       document.documentElement.dataset.theme = theme;
       themeToggle.innerHTML = theme === 'dark' ? MOON_ICON : SUN_ICON;
       try {{ localStorage.setItem('atlas-theme', theme); }} catch (e) {{}}
-      if (baseMapUrl) document.getElementById('map').src = withTheme(baseMapUrl);
+      if (autoMapType && mapType.value !== THEME_MAP_TYPES[theme]) {{
+        mapType.value = THEME_MAP_TYPES[theme];
+        applyFilters();
+      }} else if (baseMapUrl) {{
+        document.getElementById('map').src = withTheme(baseMapUrl);
+      }}
     }}
 
     themeToggle.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark'));
@@ -332,7 +339,10 @@ def index_html(columns):
       addRow();
       applyFilters();
     }});
-    mapType.addEventListener('change', applyFilters);
+    mapType.addEventListener('change', () => {{
+      autoMapType = false;
+      applyFilters();
+    }});
     addRow();
     applyFilters();
   </script>

@@ -237,51 +237,56 @@
         const routeLayer = L.layerGroup().addTo(map);
         const airportLayer = L.layerGroup().addTo(map);
 
-        // Render everything at three longitude offsets so airports and routes remain
-        // visible on all visible world copies, no matter how far the user pans.
-        const WORLD_OFFSETS = [-360, 0, 360];
+        // Render everything at whichever 360°-wide "world copies" the viewport currently covers.
+        // Offsets are created lazily as the user pans, so the map scrolls horizontally without
+        // limit while every airport stays populated (matches flightconnections.com's behaviour).
+        const renderedOffsets = new Set();
 
         // State
         let selectedSource = null;
+        let selectedSourceOffset = 0; // world-copy offset of the source marker actually clicked
         let selectedDest = null;
+        let selectedDestOffset = 0; // world-copy offset of the destination marker actually clicked
         let currentRoutes = [];
         let deselectMarker = null;
         let deselectDestMarker = null;
         let _isDragging = false;
         let _dragTimer = null;
+        let visibleFilter = null; // Set of visible IATA codes, or null to show all
 
-        // Return the WORLD_OFFSETS entry that places canonicalLon closest to the map centre.
-        // Used so × markers appear on the same world copy the user is currently viewing.
+        // Nearest multiple of 360 that places canonicalLon closest to the map centre.
+        // Formula-based (not a fixed lookup) so it keeps working no matter how many
+        // times the user has panned around the globe.
         function nearestOffset(canonicalLon) {
             const centerLon = map.getCenter().lng;
-            return WORLD_OFFSETS.reduce((best, offset) =>
-                Math.abs((canonicalLon + offset) - centerLon) <
-                Math.abs((canonicalLon + best)   - centerLon) ? offset : best
-            , 0);
+            return Math.round((centerLon - canonicalLon) / 360) * 360;
         }
 
-        // --- Show/Hide helpers (airportMarkers[iata] is an array of 3 markers) ---
+        // --- Show/Hide helpers (airportMarkers[iata] is an offset -> marker map) ---
         function showAirport(iata) {
-            (airportMarkers[iata] || []).forEach(m => {
+            Object.values(airportMarkers[iata] || {}).forEach(m => {
                 if (!airportLayer.hasLayer(m)) airportLayer.addLayer(m);
             });
         }
         function hideAirport(iata) {
-            (airportMarkers[iata] || []).forEach(m => {
+            Object.values(airportMarkers[iata] || {}).forEach(m => {
                 if (airportLayer.hasLayer(m)) airportLayer.removeLayer(m);
             });
         }
 
-        // --- RENDER AIRPORTS (3 world copies each) ---
-        airportsData.forEach(ap => {
-            airports[ap.iata] = ap;
+        // --- RENDER AIRPORTS (lazily, per world-copy offset) ---
+        airportsData.forEach(ap => { airports[ap.iata] = ap; });
 
-            let color = COLOR_LOW;
-            if (ap.rank === 1) color = COLOR_MED;
-            if (ap.rank === 2) color = COLOR_HIGH;
-            if (ap.rank === 3) color = COLOR_TOP;
+        function createAirportsForOffset(offset) {
+            if (renderedOffsets.has(offset)) return;
+            renderedOffsets.add(offset);
 
-            airportMarkers[ap.iata] = WORLD_OFFSETS.map(offset => {
+            airportsData.forEach(ap => {
+                let color = COLOR_LOW;
+                if (ap.rank === 1) color = COLOR_MED;
+                if (ap.rank === 2) color = COLOR_HIGH;
+                if (ap.rank === 3) color = COLOR_TOP;
+
                 const marker = L.circleMarker([ap.lat, ap.lon + offset], {
                     radius: 3 + (ap.rank * 1.15),
                     fillColor: color,
@@ -294,12 +299,29 @@
                 marker.bindTooltip(ap.iata + " - " + ap.city, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' });
                 marker.on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
-                    handleAirportClick(ap.iata);
+                    handleAirportClick(ap.iata, offset);
                 });
-                airportLayer.addLayer(marker);
-                return marker;
+
+                if (!airportMarkers[ap.iata]) airportMarkers[ap.iata] = {};
+                airportMarkers[ap.iata][offset] = marker;
+
+                if (!visibleFilter || visibleFilter.has(ap.iata)) airportLayer.addLayer(marker);
             });
-        });
+        }
+
+        // Make sure every world copy overlapping the current viewport (plus a one-world buffer
+        // on each side) has its airport markers created, so panning never runs out of data.
+        function ensureWorldCoverage() {
+            const bounds = map.getBounds();
+            const minOffset = Math.floor(bounds.getWest() / 360) * 360 - 360;
+            const maxOffset = Math.ceil(bounds.getEast() / 360) * 360 + 360;
+            for (let offset = minOffset; offset <= maxOffset; offset += 360) {
+                createAirportsForOffset(offset);
+            }
+        }
+
+        ensureWorldCoverage();
+        map.on('move', ensureWorldCoverage);
 
         map.on('drag', () => {
             _isDragging = true;
@@ -320,10 +342,10 @@
         });
 
         // --- INTERACTION ---
-        function handleAirportClick(code) {
+        function handleAirportClick(code, offset) {
             // Scenario 1: Nothing selected yet -> Select Source
             if (selectedSource === null) {
-                selectSource(code);
+                selectSource(code, offset);
                 return;
             }
 
@@ -348,13 +370,15 @@
                     deslectDestOnly();
                 } else {
                     selectedDest = code;
+                    selectedDestOffset = offset;
                     document.getElementById('info').style.display = 'flex';
 
-                    // Add deselect marker on destination airport
+                    // Add deselect marker on destination airport - anchored to the exact
+                    // clicked instance, not whichever copy happens to be nearest the centre.
                     if (deselectDestMarker) map.removeLayer(deselectDestMarker);
                     const destAp = airports[code];
                     if (destAp) {
-                        deselectDestMarker = L.marker([destAp.lat, destAp.lon + nearestOffset(destAp.lon)], {
+                        deselectDestMarker = L.marker([destAp.lat, destAp.lon + offset], {
                             icon: L.divIcon({
                                 className: 'deselect-icon',
                                 html: '<div style="background:rgba(30,30,30,0.85); color:white; border-radius:4px; width:16px; height:16px; text-align:center; line-height:14px; font-weight:bold; font-size:12px; border: 1px solid #555; cursor: pointer;">×</div>',
@@ -372,12 +396,14 @@
                 }
             } else {
                 // Not connected (or data not loaded), switch source
-                selectSource(code);
+                selectSource(code, offset);
             }
         }
 
-        function selectSource(code) {
+        function selectSource(code, offset) {
             selectedSource = code;
+            const ap = airports[code];
+            selectedSourceOffset = offset !== undefined ? offset : nearestOffset(ap ? ap.lon : 0);
             selectedDest = null;
             currentRoutes = []; // Clear previous data
             routeLayer.clearLayers();
@@ -388,11 +414,10 @@
                 deselectDestMarker = null;
             }
 
-            // Add Deselect Marker on source
+            // Add Deselect Marker on source - anchored to the exact clicked instance.
             if (deselectMarker) map.removeLayer(deselectMarker);
-            const ap = airports[code];
             if (ap) {
-                deselectMarker = L.marker([ap.lat, ap.lon + nearestOffset(ap.lon)], {
+                deselectMarker = L.marker([ap.lat, ap.lon + selectedSourceOffset], {
                     icon: L.divIcon({
                         className: 'deselect-icon',
                         html: '<div style="background:rgba(30,30,30,0.85); color:white; border-radius:4px; width:16px; height:16px; text-align:center; line-height:14px; font-weight:bold; font-size:12px; border: 1px solid #555; cursor: pointer;">×</div>',
@@ -404,14 +429,14 @@
                 deselectMarker.on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
                     if (selectedDest !== null) {
-                        // Pan to whichever world copy of the dest airport is currently nearest,
-                        // so the promoted-source view stays in context.
+                        // Pan to the exact world copy of the dest airport that was clicked,
+                        // so the promoted-source view stays anchored to the same instance.
                         const destAp = airports[selectedDest];
                         if (destAp) {
-                            const nearLon = destAp.lon + nearestOffset(destAp.lon);
+                            const nearLon = destAp.lon + selectedDestOffset;
                             map.panTo([destAp.lat, nearLon], { animate: true, duration: 0.5 });
                         }
-                        selectSource(selectedDest);
+                        selectSource(selectedDest, selectedDestOffset);
                     } else {
                         deselect();
                     }
@@ -448,6 +473,7 @@
             }
 
             // Restore all airports
+            visibleFilter = null;
             Object.keys(airports).forEach(iata => showAirport(iata));
         }
 
@@ -477,6 +503,7 @@
                     connectedIatas.add(r.dep);
                     connectedIatas.add(r.arr);
                 });
+                visibleFilter = connectedIatas;
 
                 Object.keys(airports).forEach(iata => {
                     if (connectedIatas.has(iata)) {
@@ -541,11 +568,10 @@
             return pts;
         }
 
-        // Draw a geodesic route shifted to the world copy nearest the current map centre.
+        // Draw a geodesic route anchored to the world copy the source airport was clicked on.
         // The geodesic is always computed in canonical space; the offset is then added
         // to every point's longitude, placing the whole arc on the correct world copy.
-        function drawRouteAtCenter(src, dest, options, layer) {
-            const offset = nearestOffset(src.lon);
+        function drawRouteAtCenter(src, dest, options, layer, offset) {
             const pts = computeGeodesicPoints(src.lat, src.lon, dest.lat, dest.lon);
             // Shift every point onto the correct world copy
             const shifted = pts.map(p => [p[0], p[1] + offset]);
@@ -572,7 +598,7 @@
                             weight: 1.5,
                             opacity: 0.6,
                             pane: 'routesPane'
-                        }, routeLayer);
+                        }, routeLayer, selectedSourceOffset);
                     }
                 });
             }
@@ -594,7 +620,7 @@
                         weight: 2,
                         opacity: 1,
                         pane: 'routesPane'
-                    }, routeLayer);
+                    }, routeLayer, selectedSourceOffset);
                 }
 
                 // Detailed List with Collapsible Cards

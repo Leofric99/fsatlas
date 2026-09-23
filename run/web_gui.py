@@ -133,7 +133,7 @@ def index_html(columns):
     }}
     .toolbar-head {{ display: flex; align-items: center; gap: 14px; }}
     h1 {{ font-size: 17px; margin: 0; font-weight: 600; letter-spacing: -0.01em; }}
-    .map-type {{ margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }}
+    .map-type {{ margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }}
     select, input, button {{
       font: inherit; color: inherit; background: var(--surface-solid);
       border: 1px solid var(--border); border-radius: 10px; min-height: 34px; box-sizing: border-box;
@@ -156,6 +156,11 @@ def index_html(columns):
     }}
     button.icon:hover {{ background: var(--border); transform: none; filter: none; }}
     button.remove {{ color: var(--danger); }}
+    button.danger {{
+      padding: 5px 10px; white-space: nowrap;
+      background: linear-gradient(135deg, var(--danger), color-mix(in srgb, var(--danger) 55%, black));
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--danger) 35%, transparent);
+    }}
     #theme-toggle {{
       width: 34px; height: 34px; padding: 0; background: var(--surface-solid); border: 1px solid var(--border);
       box-shadow: none; display: flex; align-items: center; justify-content: center; color: var(--text);
@@ -167,8 +172,8 @@ def index_html(columns):
     #filters-wrap > #filters {{ overflow: hidden; min-height: 0; }}
     #filters {{ display: grid; gap: 8px; }}
     .filter-row {{ display: grid; grid-template-columns: 64px minmax(120px, 1.2fr) 110px minmax(100px, 1fr) 34px 34px; gap: 8px; align-items: center; }}
-    .filter-row.first {{ grid-template-columns: 64px minmax(120px, 1.2fr) 110px minmax(100px, 1fr) 34px; }}
-    .filter-row.first .logic {{ visibility: hidden; }}
+    .filter-row.first {{ grid-template-columns: minmax(120px, 1.2fr) 110px minmax(100px, 1fr) 34px; }}
+    .filter-row.first .logic {{ display: none; }}
     .filter-row.first .remove {{ display: none; }}
     .actions {{ display: flex; align-items: center; gap: 10px; }}
     #status {{ color: var(--muted); font-size: 13px; }}
@@ -201,7 +206,7 @@ def index_html(columns):
     iframe {{ border: 0; width: 100%; height: 100%; min-height: 450px; background: var(--bg-grad); }}
     @media (max-width: 760px) {{
       .filter-row {{ grid-template-columns: 50px minmax(90px, 1.2fr) 90px minmax(90px, 1fr) 30px 30px; }}
-      .filter-row.first {{ grid-template-columns: 50px minmax(90px, 1.2fr) 90px minmax(90px, 1fr) 30px; }}
+      .filter-row.first {{ grid-template-columns: minmax(90px, 1.2fr) 90px minmax(90px, 1fr) 30px; }}
     }}
   </style>
 </head>
@@ -211,6 +216,7 @@ def index_html(columns):
       <h1>FSAtlas</h1>
       <label class="map-type">Map Type <select id="map-type"></select></label>
       <button id="apply">Apply Filters</button>
+      <button id="reset" class="danger" type="button" title="Reset filters" aria-label="Reset filters">Reset Filters</button>
       <button id="theme-toggle" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode"></button>
       <span id="status"></span>
     </div>
@@ -321,6 +327,11 @@ def index_html(columns):
     }}
 
     document.getElementById('apply').addEventListener('click', applyFilters);
+    document.getElementById('reset').addEventListener('click', () => {{
+      filters.replaceChildren();
+      addRow();
+      applyFilters();
+    }});
     mapType.addEventListener('change', applyFilters);
     addRow();
     applyFilters();

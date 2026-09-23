@@ -6,9 +6,9 @@ A lightweight, browser-based tool for visualising real-world flight data on an i
 
 ## Demo
 
-<video controls src="videos/FSAtlas%20Demo.mp4">
-	<a href="videos/FSAtlas%20Demo.mp4">Watch the FSAtlas demo</a>
-</video>
+<p align="center">
+  <video src="https://github.com/Leofric99/fsatlas/releases/tag/Demo" width="100%" controls></video>
+</p>
 
 ---
 
@@ -42,7 +42,7 @@ This will guide you through installing FSAtlas as a standalone command using [uv
 
 #### Prerequisites
 
-[**uv**](https://docs.astral.sh/uv/getting-started/installation/) — installs and runs FSAtlas in an isolated environment without you needing to manage Python versions or virtualenvs yourself:
+[**UV**](https://docs.astral.sh/uv/getting-started/installation/) — installs and runs FSAtlas in an isolated environment without you needing to manage Python versions or virtualenvs yourself:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh

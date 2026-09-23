@@ -1,11 +1,63 @@
 import pandas as pd
 import os
 import sys
+import country_converter as coco
 
 # Get the path to the current script's directory (run/)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Data file path
 DATA_FILE = os.path.join(CURRENT_DIR, 'database', 'flights.csv')
+
+# Maps the UN geoscheme subregion (from country_converter) to the coarser set of
+# regions we expose as a filter: the usual continents, plus Middle East, North
+# America, South America, Central America (incl. Caribbean) and Antarctica.
+UNREGION_TO_REGION = {
+    'Northern Africa': 'Africa',
+    'Eastern Africa': 'Africa',
+    'Middle Africa': 'Africa',
+    'Southern Africa': 'Africa',
+    'Western Africa': 'Africa',
+    'Caribbean': 'Central America',
+    'Central America': 'Central America',
+    'Northern America': 'North America',
+    'South America': 'South America',
+    'Central Asia': 'Asia',
+    'Eastern Asia': 'Asia',
+    'South-eastern Asia': 'Asia',
+    'Southern Asia': 'Asia',
+    'Western Asia': 'Middle East',
+    'Eastern Europe': 'Europe',
+    'Northern Europe': 'Europe',
+    'Southern Europe': 'Europe',
+    'Western Europe': 'Europe',
+    'Australia and New Zealand': 'Oceania',
+    'Melanesia': 'Oceania',
+    'Micronesia': 'Oceania',
+    'Polynesia': 'Oceania',
+    'Antarctica': 'Antarctica',
+}
+
+def add_region_columns(df):
+    """Derive dep/arr region columns in-memory from the country columns.
+
+    Uses the country_converter library to look up each country's UN geoscheme
+    subregion, then folds that into the broader region set above; this is
+    never written back to the CSV, only added to the in-memory frame.
+    """
+    cc = coco.CountryConverter()
+    for prefix in ('dep', 'arr'):
+        country_col = f'{prefix}_airport_country'
+        region_col = f'{prefix}_airport_region'
+        if country_col not in df.columns:
+            continue
+        countries = df[country_col].unique().tolist()
+        un_regions = cc.convert(names=countries, to='UNregion', not_found='')
+        lookup = {
+            country: UNREGION_TO_REGION.get(un_region, '')
+            for country, un_region in zip(countries, un_regions)
+        }
+        df[region_col] = df[country_col].map(lookup)
+    return df
 
 def load_data():
     """
@@ -37,11 +89,26 @@ def load_data():
         text_cols = df.select_dtypes(include=['object']).columns
         df[text_cols] = df[text_cols].fillna("")
 
+        df = add_region_columns(df)
+
         return df
     
     except Exception as e:
         print(f"Error loading CSV data: {e}")
         return pd.DataFrame()
+
+
+def get_airport_destination_counts(df):
+    """Return each airport's number of unique directly connected airports."""
+    connections = {}
+    for departure, arrival in df[["dep_airport_iata", "arr_airport_iata"]].itertuples(index=False):
+        departure = str(departure).strip()
+        arrival = str(arrival).strip()
+        if not departure or not arrival or departure == "nan" or arrival == "nan":
+            continue
+        connections.setdefault(departure, set()).add(arrival)
+        connections.setdefault(arrival, set()).add(departure)
+    return pd.Series({airport: len(destinations) for airport, destinations in connections.items()})
 
 if __name__ == "__main__":
     # Test loading

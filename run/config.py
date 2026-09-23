@@ -1,5 +1,3 @@
-from PyQt6.QtGui import QColor
-
 # --- Display Names ---
 # Map column names to "appealing" display names
 COLUMN_DISPLAY_NAMES = {
@@ -14,12 +12,18 @@ COLUMN_DISPLAY_NAMES = {
     'dep_airport_icao': 'Dep. ICAO',
     'dep_airport_city': 'Departure City',
     'dep_airport_country': 'Departure Country',
+    'dep_airport_region': 'Departure Region',
+    'dep_airport_lat': 'Dep. Airport Latitude',
+    'dep_airport_lon': 'Dep. Airport Longitude',
     'dep_airport_elevation': 'Dep. Elevation (ft)',
     'arr_airport': 'Arrival Airport',
     'arr_airport_iata': 'Arr. IATA',
     'arr_airport_icao': 'Arr. ICAO',
     'arr_airport_city': 'Arrival City',
     'arr_airport_country': 'Arrival Country',
+    'arr_airport_region': 'Arrival Region',
+    'arr_airport_lat': 'Arr. Airport Latitude',
+    'arr_airport_lon': 'Arr. Airport Longitude',
     'arr_airport_elevation': 'Arr. Elevation (ft)',
     'distance': 'Distance (km)',
     'rough_flight_time': 'Flight Time (hours)',

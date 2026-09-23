@@ -1,52 +1,44 @@
-# Flightsim Atlas
+# FSAtlas
 
-A desktop application for visualising real-world flight data inspired by flightconnections.
+A lightweight, browser-based tool for visualising real-world flight data on an interactive world map, inspired by flightconnections.
 
 ---
 
 ## Screenshots
 
-*Program on first launch* — The application window with an empty map and filter controls at the top.
+*Main view (dark mode)* — the full map with colour-coded airports, the filter bar, and the collapsible airport legend.
 
-![First-run GUI](screenshots/1_app_just_opened.png)
+![Main view, dark mode](screenshots/1_main_view_dark.png)
 
-*Browsing flights* — Click an airport to load all connected flights. Here, all departures and arrivals at Shannon are displayed.
+*Light mode* — the whole UI, including the map chrome, re-themes instantly via the light/dark toggle.
 
-![All flights to or from Shannon](screenshots/2_all_flights_from_shannon.png)
+![Main view, light mode](screenshots/2_main_view_light.png)
 
-*Detailed flight information* — Each flight is shown as a card with full details including airline, aircraft type, callsign, and airport codes.
+*Collapsible panels* — both the filter list and the airport legend tuck away into slim pull-tabs, keeping the map uncluttered.
 
-![Detailed flight information](screenshots/3_shannon_to_chicago.png)
-
-*Filtering in action* — Use the filter bar to narrow results by airline, aircraft type, country, distance, and flight time.
-
-![Filtering flights](screenshots/4_gatwick_with_filters.png)
+![Filter list and legend collapsed](screenshots/3_collapsed_panels.png)
 
 ---
 
 ## What Is It?
 
-Flightsim Atlas visualises flight data on an interactive world map. It reads a CSV file (using data from live tracking services) and displays each flight's departure and arrival airports as colour-coded dots.
+FSAtlas reads a CSV of flight records (built from live tracking data) and renders every departure/arrival airport as a colour-coded dot on an interactive Leaflet map. Click an airport to see every flight connected to it, then click a specific destination to drill into the individual flights on that route.
 
 **Key features:**
 
-- **Instant world map** — all airports displayed on launch
-- **Colour-coded airports** — green (major), yellow (medium), red (small)
-- **Click-to-explore** — click airports to filter flights, click again to drill down or deselect
-- **Detailed flight cards** — airline, aircraft type, callsigns, airport codes, and more
-- **Flexible filtering** — narrow by airline, aircraft type, country, distance, and flight time
-- **Multiple map styles** — OpenStreetMap, Satellite (Esri), and Hybrid (Google)
-- **Performance-optimised** — airports load on startup; flight data fetches on demand
+- **Interactive world map** — every airport in the dataset is plotted on launch, colour-coded by how many non-stop destinations it serves
+- **Click-to-explore** — click an airport to see its connections, click a connected airport to drill into that specific route, click again to back out
+- **Detailed flight cards** — airline, aircraft type, registration, callsign, airport codes, and date for every flight on a route
+- **Flexible column filtering** — build AND/OR filter chains over any column (airline, aircraft type, country, region, distance, flight time, timestamps, and more), with a live example value shown as you pick a column
+- **Departure/Arrival Region** — countries are automatically grouped into regions (Africa, Asia, Europe, Oceania, North/Central/South America, Middle East) purely in memory, with no changes to the source data
+- **Light/dark mode** — a single toggle re-themes the whole app, including the map, legend, and zoom controls, and remembers your preference
+- **Multiple map styles** — Standard (OpenStreetMap), Satellite (Esri), and Hybrid (Google), switched instantly without needing to re-apply filters
+- **Collapsible UI** — both the filter list and the airport legend hide away into small pull-tabs so they never get in the way of the map
+- **Performance-minded** — airports render on canvas, routes are computed on demand per selection, and filtered map views are cached server-side per session
 
 ---
 
-## Installation & Running - Windows
-
-1. Download the ZIP file from the releases tab.
-2. Extract the folder within to a siutable location.
-3. Run FSAtlas.exe from within the extracted folder.
-
-## Installation & Running - CLI Based
+## Installation & Running
 
 ### 1. Clone the repository
 
@@ -57,21 +49,20 @@ cd fsdispatch
 
 ### 2. Install dependencies
 
+It's recommended to use a virtual environment:
+
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate   # on Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-> It is recommended to use a virtual environment:
-> ```bash
-> python3 -m venv .venv
-> source .venv/bin/activate
-> pip install -r requirements.txt
-> ```
-
-### 4. Run the application
+### 3. Run the application
 
 ```bash
 python3 -m run
 ```
+
+This starts a local web server and opens FSAtlas in your default browser. If it doesn't open automatically, the terminal will print the URL to open manually (e.g. `http://127.0.0.1:PORT`).
 
 > **Disclaimer:** This project was developed with the assistance of [GitHub Copilot](https://github.com/features/copilot). I am not a front-end developer, so there may well be bugs, rough edges, or unconventional code patterns. Contributions and bug reports are welcome!

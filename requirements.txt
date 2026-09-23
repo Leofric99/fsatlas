@@ -1,5 +1,3 @@
-PyQt6
-PyQt6-WebEngine
 pandas
-folium
 jinja2
+country_converter

@@ -3,64 +3,170 @@
 <head>
     <meta charset="utf-8">
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; background-color: << bg_color >>; color: << text_color >>; font-family: sans-serif; overflow: hidden; }
-        #map { width: 100%; height: 100%; }
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%; margin: 0; padding: 0;
+            background-color: << bg_color >>; color: << text_color >>;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+        }
+        #map { width: 100%; height: 100%; background: << bg_color >>; }
+        .leaflet-container { background: << bg_color >>; }
+
+        /* Glassy floating info panel */
         .info-panel {
             position: absolute;
-            bottom: 20px; left: 10px;
-            width: 300px;
-            max-height: 50%;
+            bottom: 20px; left: 16px;
+            width: 320px;
+            max-height: 55%;
             display: flex; flex-direction: column;
             background: << panel_bg >>;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            backdrop-filter: blur(22px) saturate(160%);
+            -webkit-backdrop-filter: blur(22px) saturate(160%);
+            border: 1px solid << panel_border >>;
+            padding: 16px 18px;
+            border-radius: 16px;
+            box-shadow: 0 12px 36px << shadow_color >>;
             z-index: 1000;
             display: none;
             resize: both;
             overflow: auto;
-            min-width: 200px;
-            min-height: 100px;
+            min-width: 220px;
+            min-height: 120px;
         }
-        .panel-header { font-weight: bold; font-size: 16px; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .panel-header {
+            font-weight: 600; font-size: 15px; margin-bottom: 10px;
+            border-bottom: 1px solid << card_border >>; padding-bottom: 10px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
         .panel-content { overflow-y: auto; flex: 1; font-size: 13px; }
-        .flight-row { padding: 4px 0; border-bottom: 1px solid rgba(128,128,128,0.2); }
-        .flight-row:hover { background: rgba(128,128,128,0.1); }
         .loader { text-align: center; padding: 20px; font-style: italic; opacity: 0.7; }
-        .close-btn { float: right; cursor: pointer; opacity: 0.7; }
-        .close-btn:hover { opacity: 1; }
+        .close-btn {
+            cursor: pointer; opacity: 0.55; font-size: 15px; line-height: 1;
+            width: 22px; height: 22px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity .15s ease, background .15s ease;
+        }
+        .close-btn:hover { opacity: 1; background: << card_bg >>; }
 
         /* Flight Card Styles */
         .flight-card {
-            background: rgba(255,255,255,0.05);
+            background: << card_bg >>;
+            border: 1px solid << card_border >>;
             border-left: 3px solid << line_color >>;
             margin-bottom: 8px;
-            border-radius: 4px;
-            padding: 10px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            transition: background .15s ease, transform .15s ease;
         }
-        .dark-mode .flight-card { background: rgba(255,255,255,0.05); }
-        .flight-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
+        .flight-card:hover { background: << panel_bg >>; }
+        .flight-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: 600; }
         .flight-sub { font-size: 11px; opacity: 0.7; margin-bottom: 5px; }
-        .flight-details {
-            display: none;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            font-size: 12px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4px;
-        }
         .detail-kv { display: flex; flex-direction: column; margin-bottom: 4px; }
-        .label { opacity: 0.5; font-size: 10px; text-transform: uppercase; }
+        .label { opacity: 0.55; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
         .expand-btn {
-            text-align: center; font-size: 10px; opacity: 0.5; cursor: pointer; margin-top: 5px;
-            background: rgba(0,0,0,0.2); padding: 2px; border-radius: 3px;
+            text-align: center; font-size: 10px; opacity: 0.6; cursor: pointer; margin-top: 6px;
+            background: << card_bg >>; padding: 4px; border-radius: 6px;
+            transition: opacity .15s ease, background .15s ease;
         }
-        .expand-btn:hover { opacity: 1; background: rgba(0,0,0,0.4); }
+        .expand-btn:hover { opacity: 1; background: << panel_bg >>; }
+
+        /* Custom scrollbars to match the glass aesthetic */
+        .panel-content::-webkit-scrollbar { width: 8px; }
+        .panel-content::-webkit-scrollbar-thumb { background: << card_border >>; border-radius: 8px; }
+        .panel-content::-webkit-scrollbar-track { background: transparent; }
+
+        /* Airport legend - bottom right, collapsible into a pull tab.
+           Collapsing hides the panel via display:none (rather than animating width/opacity)
+           so sizing is unambiguous and identical across every browser. Both the panel and the
+           tab get the SAME explicit height always - no flex "stretch"/min-height inference,
+           which Firefox and Chromium resolve differently once a sibling is display:none. */
+        .legend-root {
+            display: flex;
+            align-items: flex-start;
+            background: << panel_bg >>;
+            backdrop-filter: blur(22px) saturate(160%);
+            -webkit-backdrop-filter: blur(22px) saturate(160%);
+            border: 1px solid << panel_border >>;
+            border-right: none;
+            border-radius: 16px 0 0 16px;
+            box-shadow: 0 12px 36px << shadow_color >>;
+            overflow: hidden;
+            color: << text_color >>;
+            margin-right: 0 !important;
+        }
+        .leaflet-right .legend-root { margin-right: 0 !important; }
+        .legend-panel {
+            box-sizing: border-box;
+            flex: 0 0 230px;
+            width: 230px;
+            height: 152px;
+            padding: 14px 18px;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: normal;
+        }
+        .legend-root.collapsed .legend-panel { display: none; }
+        .legend-title { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+        .legend-row { display: flex; align-items: center; gap: 10px; white-space: nowrap; padding: 2px 0; }
+        .legend-dot { width: 14px; height: 14px; border: 1px solid << card_border >>; border-radius: 50%; box-sizing: border-box; flex-shrink: 0; }
+        .legend-tab {
+            box-sizing: border-box;
+            flex: 0 0 42px;
+            width: 42px;
+            height: 152px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 13px;
+            user-select: none;
+            color: << muted_color >>;
+            transition: color .15s ease, background .15s ease;
+        }
+        .legend-tab:hover { color: << text_color >>; background: << card_bg >>; }
+        .legend-tab svg { width: 14px; height: 14px; transition: transform .28s ease; }
+        .legend-root.collapsed .legend-tab svg { transform: rotate(180deg); }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        /* Theme the built-in Leaflet zoom control to match dark/light mode */
+        .leaflet-control-zoom.leaflet-bar {
+            border: 1px solid << panel_border >> !important;
+            border-radius: 12px !important;
+            overflow: hidden;
+            box-shadow: 0 8px 24px << shadow_color >> !important;
+        }
+        .leaflet-control-zoom a {
+            background: << panel_bg >> !important;
+            backdrop-filter: blur(18px) saturate(160%);
+            -webkit-backdrop-filter: blur(18px) saturate(160%);
+            color: << text_color >> !important;
+            border-bottom: 1px solid << panel_border >> !important;
+        }
+        .leaflet-control-zoom a:hover,
+        .leaflet-control-zoom a:focus {
+            background: << card_bg >> !important;
+        }
+        .leaflet-control-zoom a.leaflet-disabled {
+            color: << muted_color >> !important;
+            background: << panel_bg >> !important;
+        }
+
+        /* Glassy tooltip to match the airport node styling */
+        .atlas-tooltip.leaflet-tooltip {
+            background: << panel_bg >> !important;
+            backdrop-filter: blur(16px) saturate(160%);
+            -webkit-backdrop-filter: blur(16px) saturate(160%);
+            border: 1px solid << panel_border >> !important;
+            border-radius: 8px !important;
+            color: << text_color >> !important;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 9px;
+            box-shadow: 0 6px 18px << shadow_color >> !important;
+        }
+        .atlas-tooltip.leaflet-tooltip::before { display: none; }
+    </style>
 </head>
 <body>
     <div id="map"></div>
@@ -73,15 +179,18 @@
     <script>
         // --- DATA ---
         const airportsData = << airports_json >>;
+        const routeRequestUrl = << route_request_url_json >>;
         const airports = {}; // Lookup map
         const airportMarkers = {}; // Marker lookup
 
         // --- CONFIG ---
-        // Green = Big/High, Yellow = Med, Red = Small/Low
-        const COLOR_LOW = '#e74c3c';   // Red
-        const COLOR_MED = '#f1c40f';   // Yellow
-        const COLOR_HIGH = '#2ecc71';  // Green
+        // Destination-count bands: red, yellow, blue, then dark blue.
+        const COLOR_LOW = '#ef5b4a';
+        const COLOR_MED = '#f8c20b';
+        const COLOR_HIGH = '#0784ed';
+        const COLOR_TOP = '#0b4fa3';
         const LINE_COLOR = '<< line_color >>';
+        const MARKER_BORDER = '<< marker_border >>';
 
         // --- MAP INIT ---
         const map = L.map('map', {
@@ -100,6 +209,29 @@
             attribution: '<< attr >>',
             maxZoom: 19
         }).addTo(map);
+
+        // Bottom-right, collapsible into a slim pull tab that stays docked to the edge.
+        const legend = L.control({position: 'bottomright'});
+        legend.onAdd = () => {
+            const container = L.DomUtil.create('div', 'legend-root');
+            container.innerHTML = `
+                <div class="legend-panel">
+                    <span class="legend-title">Airport legend</span>
+                    <div class="legend-row"><span class="legend-dot" style="background:${COLOR_TOP}"></span>&gt; 100 non-stop destinations</div>
+                    <div class="legend-row"><span class="legend-dot" style="background:${COLOR_HIGH}"></span>&gt; 30 non-stop destinations</div>
+                    <div class="legend-row"><span class="legend-dot" style="background:${COLOR_MED}"></span>&gt; 7 non-stop destinations</div>
+                    <div class="legend-row"><span class="legend-dot" style="background:${COLOR_LOW}"></span>&lt; 7 non-stop destinations</div>
+                </div>
+                <div class="legend-tab" title="Toggle airport legend" aria-label="Toggle airport legend">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>`;
+            container.querySelector('.legend-tab').addEventListener('click', () => {
+                container.classList.toggle('collapsed');
+            });
+            L.DomEvent.disableClickPropagation(container);
+            return container;
+        };
+        legend.addTo(map);
 
         // Layers
         const routeLayer = L.layerGroup().addTo(map);
@@ -147,18 +279,19 @@
             let color = COLOR_LOW;
             if (ap.rank === 1) color = COLOR_MED;
             if (ap.rank === 2) color = COLOR_HIGH;
+            if (ap.rank === 3) color = COLOR_TOP;
 
             airportMarkers[ap.iata] = WORLD_OFFSETS.map(offset => {
                 const marker = L.circleMarker([ap.lat, ap.lon + offset], {
-                    radius: 4 + (ap.rank * 1.5),
+                    radius: 3 + (ap.rank * 1.15),
                     fillColor: color,
-                    color: "#000000",
-                    weight: 0.5,
+                    color: MARKER_BORDER,
+                    weight: 0.6,
                     stroke: true,
-                    fillOpacity: 0.8,
+                    fillOpacity: 0.75,
                     pane: 'airportsPane'
                 });
-                marker.bindTooltip(ap.iata + " - " + ap.city, { direction: 'top', offset: [0, -5] });
+                marker.bindTooltip(ap.iata + " - " + ap.city, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' });
                 marker.on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
                     handleAirportClick(ap.iata);
@@ -287,8 +420,15 @@
 
             document.getElementById('info').style.display = 'none';
 
-            // Request Routes from Python
-            console.log("REQUEST_ROUTES|" + code);
+            // Request routes from the local web server, or signal the Qt host.
+            if (routeRequestUrl) {
+                fetch(routeRequestUrl + '?source=' + encodeURIComponent(code))
+                    .then(response => response.ok ? response.json() : [])
+                    .then(loadRoutes)
+                    .catch(() => loadRoutes([]));
+            } else {
+                console.log("REQUEST_ROUTES|" + code);
+            }
         }
 
         function deselect() {

@@ -1,5 +1,6 @@
 services:
   fsatlas:
+    container_name: fsatlas
     build: .
     image: fsatlas:latest
     ports:

@@ -4,7 +4,7 @@ A lightweight, browser-based tool for visualising real-world flight data on an i
 
 ---
 
-## Demo
+## Demo GIF
 
 <p align="center">
   <img src="videos/FSAtlasDemo.gif" alt="FSAtlas demo" width="100%">

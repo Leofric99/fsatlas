@@ -66,6 +66,18 @@ def add_region_columns(df):
         df = df[cols].copy()
     return df
 
+def normalize_airline_names(df):
+    """Strip livery/sticker/anniversary suffixes (e.g. "Saudia (SkyTeam Livery)" ->
+    "Saudia") from the owner column in-memory, so filters group flights by the base
+    airline instead of splintering across every special-livery variant. Truncating from
+    the first '(' (rather than requiring a matching ')') also cleans up the handful of
+    rows in the source data with an unclosed trailing parenthesis. Never written back
+    to the CSV.
+    """
+    if 'owner' in df.columns:
+        df['owner'] = df['owner'].str.replace(r'\s*\(.*$', '', regex=True).str.strip()
+    return df
+
 def load_data():
     """
     Loads the flight data from the CSV file.
@@ -96,6 +108,7 @@ def load_data():
         text_cols = df.select_dtypes(include=['object']).columns
         df[text_cols] = df[text_cols].fillna("")
 
+        df = normalize_airline_names(df)
         df = add_region_columns(df)
 
         return df

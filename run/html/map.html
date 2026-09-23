@@ -428,7 +428,10 @@
 
                 deselectMarker.on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
-                    if (selectedDest !== null) {
+                    // selectedDest === selectedSource means it was auto-selected for a self-loop
+                    // airport (flights only to/from itself) - there's no real second selection to
+                    // step back out of, so fully deselect in one click instead of re-selecting itself.
+                    if (selectedDest !== null && selectedDest !== selectedSource) {
                         // Pan to the exact world copy of the dest airport that was clicked,
                         // so the promoted-source view stays anchored to the same instance.
                         const destAp = airports[selectedDest];

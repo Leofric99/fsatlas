@@ -227,7 +227,7 @@ def index_html(columns):
     const mapTypes = {map_types_json};
     const filters = document.getElementById('filters');
     const mapType = document.getElementById('map-type');
-    mapTypes.forEach(name => mapType.add(new Option(name, name, name === 'Hybrid', name === 'Hybrid')));
+    mapTypes.forEach(name => mapType.add(new Option(name, name, name === 'Dark Mode', name === 'Dark Mode')));
 
     // --- Theme toggle (persists choice, re-themes the map iframe) ---
     const SUN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2.5v3M12 18.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>';
@@ -287,7 +287,7 @@ def index_html(columns):
     function addRow(afterRow) {{
       const row = document.createElement('div');
       row.className = 'filter-row';
-      row.innerHTML = '<select class="logic"><option>AND</option><option>OR</option></select><select class="column"><option value="">Select Column...</option></select><select class="operator"></select><input class="value" placeholder="Value"><button class="icon insert" title="Insert filter below" aria-label="Insert filter below">+</button><button class="icon remove" title="Remove filter" aria-label="Remove filter">×</button>';
+      row.innerHTML = '<select class="logic"><option>AND</option><option>OR</option></select><select class="column"><option value="">Select Filter...</option></select><select class="operator"></select><input class="value" placeholder="Value"><button class="icon insert" title="Insert filter below" aria-label="Insert filter below">+</button><button class="icon remove" title="Remove filter" aria-label="Remove filter">×</button>';
       const columnSelect = row.querySelector('.column');
       columns.forEach(column => columnSelect.add(new Option(column.name, column.id)));
       columnSelect.addEventListener('change', () => updateOperators(row));
@@ -399,7 +399,7 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", 0))
             payload = json.loads(self.rfile.read(length))
             filters = payload.get("filters", [])
-            map_type = payload.get("map_type", "Hybrid")
+            map_type = payload.get("map_type", "Dark Mode")
             if not isinstance(filters, list) or map_type not in config.TILES:
                 raise ValueError
         except (ValueError, json.JSONDecodeError):

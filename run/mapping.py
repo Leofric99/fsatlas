@@ -5,7 +5,7 @@ import math
 from jinja2 import Environment, FileSystemLoader
 from run import config
 
-def create_map_html(df, tile_provider='Standard', theme_mode='light', airport_counts=None, route_request_url=None):
+def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_counts=None, route_request_url=None):
     """
     Generates the HTML/JS for the map.
     Optimized for performance with Lazy Loading.

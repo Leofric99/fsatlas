@@ -86,11 +86,11 @@ Airports are rendered on canvas, routes are calculated only when requested, and 
 
 ## Installation
 
-Choose the setup that best fits your environment. The `uv` installation is the quickest way to run FSAtlas locally; Docker is useful when you want a repeatable, isolated service.
+Choose the setup that best fits your environment.
 
 ### Linux & MacOS
 
-Install FSAtlas as a standalone command using [uv](https://docs.astral.sh/uv/).
+The `uv` installation is the quickest way to run FSAtlas locally for MacOS and Linux.
 
 #### Prerequisites
 

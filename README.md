@@ -84,6 +84,32 @@ uv tool upgrade fsatlas
 
 Coming soon — an updated standalone `.exe` is planned for v2.0.0
 
+### Docker
+
+This will guide you through running FSAtlas in a container using [Docker](https://docs.docker.com/get-docker/) — useful if you'd rather not install Python/uv locally, or want to run FSAtlas on a server.
+
+#### Prerequisites
+
+[**Docker**](https://docs.docker.com/get-docker/) with Compose (included in Docker Desktop, or the `docker-compose-plugin` package on Linux).
+
+#### Build and run
+
+Clone the repo, then from the project root, run:
+
+```bash
+docker build -t fsatlas:latest .
+docker compose up -d
+```
+
+The `-d` flag runs it detached (in the background), so the container keeps running after you close the terminal. FSAtlas will be available at `http://<server_ip>:8000`. To stop it, run `docker compose down`.
+
+To rebuild after pulling updates:
+
+```bash
+docker build -t fsatlas:latest .
+docker compose up -d
+```
+
 ---
 
 > **Disclaimer:** This project was developed with the assistance of [GitHub Copilot](https://github.com/features/copilot). I am not a front-end developer, so there may well be bugs, rough edges, or unconventional code patterns. Contributions and bug reports are welcome!

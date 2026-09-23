@@ -4,6 +4,14 @@ A lightweight, browser-based tool for visualising real-world flight data on an i
 
 ---
 
+## Demo
+
+<video controls src="videos/FSAtlas%20Demo.mp4">
+	<a href="videos/FSAtlas%20Demo.mp4">Watch the FSAtlas demo</a>
+</video>
+
+---
+
 ## What Is It?
 
 FSAtlas reads over 170,000 real-world flight records (built from live tracking data) and renders every departure/arrival airport as a colour-coded dot on an interactive map just like [flightconnections](www.flightconnections.com). 

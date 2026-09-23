@@ -8,6 +8,8 @@ dependencies = [
     "pandas",
     "jinja2",
     "country_converter",
+    "pystray",
+    "Pillow",
 ]
 
 [project.scripts]

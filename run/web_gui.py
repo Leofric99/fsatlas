@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import secrets
+import sys
 import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -314,8 +315,8 @@ def index_html(columns, theme='dark'):
       transition: color .15s ease, filter .15s ease;
     }}
     .filters-tab:hover {{ color: var(--text); filter: brightness(1.18); transform: none; }}
-    .filters-tab svg {{ width: 14px; height: 14px; transition: transform .28s ease; }}
-    .filters-tab.collapsed svg {{ transform: rotate(180deg); }}
+    .filters-tab svg {{ width: 14px; height: 14px; transition: transform .28s ease; transform: rotate(180deg); }}
+    .filters-tab.collapsed svg {{ transform: none; }}
     iframe {{ border: 0; width: 100%; height: 100%; min-height: 450px; background: var(--bg-grad); }}
     @media (max-width: 760px) {{
       .filter-row {{ grid-template-columns: 50px minmax(90px, 1.2fr) 90px minmax(90px, 1fr) 30px 30px; }}
@@ -637,6 +638,13 @@ def main():
             webbrowser.open(url)
         except webbrowser.Error:
             pass
+
+    if sys.platform == "win32" and getattr(sys, "frozen", False):
+        from run.windows_tray import run_with_tray
+
+        run_with_tray(server, LOGO_FILE)
+        return
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:

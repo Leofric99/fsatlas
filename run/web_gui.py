@@ -1,9 +1,10 @@
-"""Optional browser-based UI for Flightsim Atlas.
+"""Browser-based UI for FSAtlas.
 
-Run with ``python -m run.web_gui``. The existing Qt desktop UI remains the
-default entry point at ``python -m run``.
+Run with ``python -m run``, ``python -m run.web_gui``, or the installed ``fsatlas``
+command (see README for setting it up as a uv tool).
 """
 
+import argparse
 import json
 import os
 import secrets
@@ -467,6 +468,12 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        prog="fsatlas",
+        description="FSAtlas - browse real-world flight data on an interactive world map.",
+    )
+    parser.parse_args()
+
     AtlasRequestHandler.state = AtlasState()
     server = ThreadingHTTPServer(("127.0.0.1", 0), AtlasRequestHandler)
     url = f"http://127.0.0.1:{server.server_port}"

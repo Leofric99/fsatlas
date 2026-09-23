@@ -1,0 +1,35 @@
+[project]
+name = "fsatlas"
+version = "0.1.0"
+description = "A lightweight, browser-based tool for visualising real-world flight data on an interactive world map."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pandas",
+    "jinja2",
+    "country_converter",
+]
+
+[project.scripts]
+fsatlas = "run.web_gui:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+# Explicit include list so the bundled dataset/HTML template ship with the tool regardless
+# of .gitignore (hatchling's default file selection follows VCS-ignore rules).
+include = [
+    "run/**/*.py",
+    "run/database/*.csv",
+    "run/html/*.html",
+]
+
+# settings.json matches a .gitignore pattern (see comment there), so `include` above would
+# skip it; force-include bypasses VCS-ignore rules to bundle the default settings file too.
+[tool.hatch.build.targets.wheel.force-include]
+"run/settings.json" = "run/settings.json"
+
+[tool.hatch.build.targets.sdist.force-include]
+"run/settings.json" = "run/settings.json"

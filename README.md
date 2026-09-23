@@ -1,20 +1,20 @@
 # FSAtlas
 
-A lightweight, browser-based tool for visualising real-world flight data on an interactive world map, inspired by flightconnections.
+A lightweight, browser-based tool for visualising real-world flight data on an interactive world map, inspired by [flightconnections](www.flightconnections.com).
 
 ---
 
 ## Screenshots
 
-*Main view (dark mode)* — the full map with colour-coded airports, the filter bar, and the collapsible airport legend.
+*Main view (dark mode)* — the default view on launch: the full map with colour-coded airports, the filter bar, and the airport legend.
 
 ![Main view, dark mode](screenshots/1_main_view_dark.png)
 
-*Light mode* — the whole UI, including the map chrome, re-themes instantly via the light/dark toggle.
+*Light mode, filtered* — an "Airline contains British Airways" filter applied, with the whole UI re-themed instantly via the light/dark toggle.
 
-![Main view, light mode](screenshots/2_main_view_light.png)
+![Light mode, filtered flights](screenshots/2_main_view_light.png)
 
-*Collapsible panels* — both the filter list and the airport legend tuck away into slim pull-tabs, keeping the map uncluttered.
+*Collapsible panels* — the same filtered view with both the filter list and the airport legend tucked away into slim pull-tabs, keeping the map uncluttered.
 
 ![Filter list and legend collapsed](screenshots/3_collapsed_panels.png)
 
@@ -22,7 +22,9 @@ A lightweight, browser-based tool for visualising real-world flight data on an i
 
 ## What Is It?
 
-FSAtlas reads a CSV of flight records (built from live tracking data) and renders every departure/arrival airport as a colour-coded dot on an interactive Leaflet map. Click an airport to see every flight connected to it, then click a specific destination to drill into the individual flights on that route.
+FSAtlas reads over 170,000 real-world flight records (built from live tracking data) and renders every departure/arrival airport as a colour-coded dot on an interactive map just like [flightconnections](www.flightconnections.com). 
+
+Click an airport to see every flight connected to it, then click a specific destination to drill into the individual flights on that route.
 
 **Key features:**
 
@@ -38,41 +40,50 @@ FSAtlas reads a CSV of flight records (built from live tracking data) and render
 
 ---
 
-## Installation & Running
+## Installation
 
-### 1. Clone the repository
+These instructions will guide you through installing and running FSAtlas.
+
+### Linux & MacOS
+
+This will guide you through installing FSAtlas as a standalone command using [uv](https://docs.astral.sh/uv/).
+
+#### Prerequisites
+
+[**uv**](https://docs.astral.sh/uv/getting-started/installation/) — installs and runs FSAtlas in an isolated environment without you needing to manage Python versions or virtualenvs yourself:
 
 ```bash
-git clone https://github.com/Leofric99/fsdispatch.git
-cd fsdispatch
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### 2. Install dependencies
+#### Installation
 
-It's recommended to use a virtual environment:
+Install FSAtlas as a uv tool, which puts a `fsatlas` command onto your `PATH`, runnable from anywhere:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate   # on Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+uv tool install git+https://github.com/Leofric99/fsatlas.git
 ```
 
-### 3. Run the application
+Then run it:
 
 ```bash
-python3 -m run
+fsatlas
 ```
 
 This starts a local web server and opens FSAtlas in your default browser. If it doesn't open automatically, the terminal will print the URL to open manually (e.g. `http://127.0.0.1:PORT`).
 
-### 4. Import more flights (optional)
+Run `fsatlas -h` (or `--help`) at any time to see the command's usage.
 
-Merge additional flight records from a JSON file into `run/database/flights.csv`. The JSON must be a list of objects using the same field names as the CSV columns (e.g. `owner`, `reg`, `dep_airport_iata`, `timestamp_read`, etc). Duplicates (matched on registration, flight number, departure/arrival airport, and timestamp) are skipped automatically.
+To upgrade to the latest version later, use:
 
 ```bash
-python3 -m run.import_flights path/to/new_flights.json
+uv tool upgrade fsatlas
 ```
 
-Add `--dry-run` to preview how many flights would be added/skipped without modifying the CSV.
+### Windows
+
+Coming soon — an updated standalone `.exe` is planned for v2.0.0
+
+---
 
 > **Disclaimer:** This project was developed with the assistance of [GitHub Copilot](https://github.com/features/copilot). I am not a front-end developer, so there may well be bugs, rough edges, or unconventional code patterns. Contributions and bug reports are welcome!

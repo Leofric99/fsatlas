@@ -613,13 +613,30 @@ def main():
         prog="fsatlas",
         description="FSAtlas - browse real-world flight data on an interactive world map.",
     )
-    parser.parse_args()
+    parser.add_argument(
+        "--host", default=os.environ.get("FSATLAS_HOST", "127.0.0.1"),
+        help="Interface to bind to (default: 127.0.0.1; use 0.0.0.0 for containers).",
+    )
+    parser.add_argument(
+        "--port", type=int, default=int(os.environ.get("FSATLAS_PORT", "0")),
+        help="Port to bind to (default: 0, i.e. pick a free port).",
+    )
+    parser.add_argument(
+        "--no-browser", action="store_true",
+        default=os.environ.get("FSATLAS_NO_BROWSER", "") not in ("", "0"),
+        help="Don't try to open a browser window (implied when there's no display to open one on).",
+    )
+    args = parser.parse_args()
 
     AtlasRequestHandler.state = AtlasState()
-    server = ThreadingHTTPServer(("127.0.0.1", 0), AtlasRequestHandler)
-    url = f"http://127.0.0.1:{server.server_port}"
+    server = ThreadingHTTPServer((args.host, args.port), AtlasRequestHandler)
+    url = f"http://{args.host}:{server.server_port}"
     print(f"Flightsim Atlas web UI: {url}")
-    webbrowser.open(url)
+    if not args.no_browser:
+        try:
+            webbrowser.open(url)
+        except webbrowser.Error:
+            pass
     try:
         server.serve_forever()
     except KeyboardInterrupt:

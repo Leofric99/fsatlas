@@ -1,10 +1,24 @@
 # FSAtlas
 
-A lightweight, browser-based tool for visualising real-world flight data on an interactive world map, inspired by [flightconnections](www.flightconnections.com).
+<p align="center">
+  <img src="images/FSAtlas%20Logo.png" alt="FSAtlas logo" width="180">
+</p>
+
+<p align="center">
+  Explore real-world flight data on an interactive world map.
+</p>
+
+<p align="center">
+  <a href="#installation">Install</a> &nbsp;|&nbsp;
+  <a href="#key-features">Features</a> &nbsp;|&nbsp;
+  <a href="#docker">Docker</a>
+</p>
 
 ---
 
-## Demo GIF
+## Demo
+
+
 
 <p align="center">
   <img src="videos/FSAtlasDemo.gif" alt="FSAtlas demo" width="100%">
@@ -14,35 +28,73 @@ A lightweight, browser-based tool for visualising real-world flight data on an i
 
 ## What Is It?
 
-FSAtlas reads over 170,000 real-world flight records (built from live tracking data) and renders every departure/arrival airport as a colour-coded dot on an interactive map just like [flightconnections](www.flightconnections.com). 
+FSAtlas reads over 170,000 real-world flight records built from live tracking data and renders every departure and arrival airport as a colour-coded dot on an interactive map inspired by [flightconnections](www.flightconnections.com).
 
-Click an airport to see every flight connected to it, then click a specific destination to drill into the individual flights on that route.
+Click an airport to explore its connections, select a destination to inspect a route, and open individual flight details when you want to go deeper.
 
-**Key features:**
+## Key Features
 
-- **Interactive world map** — every airport in the dataset is plotted on launch, colour-coded by how many non-stop destinations it serves
-- **Click-to-explore** — click an airport to see its connections, click a connected airport to drill into that specific route, click again to back out
-- **Detailed flight cards** — airline, aircraft type, registration, callsign, airport codes, and date for every flight on a route
-- **Flexible column filtering** — build AND/OR filter chains over any column (airline, aircraft type, country, region, distance, flight time, timestamps, and more), with a live example value shown as you pick a column
-- **Departure/Arrival Region** — countries are automatically grouped into regions (Africa, Asia, Europe, Oceania, North/Central/South America, Middle East) purely in memory, with no changes to the source data
-- **Light/dark mode** — a single toggle re-themes the whole app, including the map, legend, and zoom controls, and remembers your preference
-- **Multiple map styles** — Dark Mode / Light Mode (Esri, auto-selected with the theme toggle), Standard (OpenStreetMap), Satellite (Esri), and Hybrid (Google), switched instantly without needing to re-apply filters
-- **Collapsible UI** — both the filter list and the airport legend hide away into small pull-tabs so they never get in the way of the map
-- **Performance-minded** — airports render on canvas, routes are computed on demand per selection, and filtered map views are cached server-side per session
+### Interactive World Map
+
+The full dataset is plotted as soon as the app opens. Airports are rendered as colour-coded points, with the colour and scale of each point reflecting how many non-stop destinations it serves. This makes busy hubs easy to spot while keeping the wider network readable.
+
+### Click-to-Explore Navigation
+
+Start with the global map, select an airport to reveal its connections, then select a destination to drill into that route. The interface keeps the map visible while you move between the network view and route-level detail.
+
+### Detailed Flight Information
+
+Route results show the individual flights connecting the selected airports. Each flight includes the airline, aircraft type, registration, callsign, airport codes, and date when that information is available.
+
+<p align="center">
+  <img src="images/detailed_flight_info.png" alt="Detailed flight information view" width="100%">
+</p>
+
+### Flexible Filtering
+
+Build filter chains across the available flight-data columns, including airline, aircraft type, country, region, distance, flight time, and timestamps. Filters can be combined with AND/OR logic, and the interface shows a real example value for the selected column to make queries easier to construct.
+
+<p align="center">
+  <img src="images/complex_filters.png" alt="Flight filtering view" width="100%">
+</p>
+
+### Departure and Arrival Regions
+
+Countries are grouped into practical regions such as Africa, Asia, Europe, Oceania, North/Central/South America, and the Middle East. These groupings are calculated in memory, so the original flight data remains unchanged.
+
+### Light and Dark Themes
+
+Switch between light and dark themes from the interface. The selected theme updates the map, controls, legend, and surrounding UI, and your preference is remembered for the next visit.
+
+### Multiple Map Styles
+
+Choose between Dark Mode, Light Mode, Standard OpenStreetMap, Satellite, and Hybrid map styles. The light and dark Esri styles follow the selected theme, while the other options provide different ways to inspect the network.
+
+<p align="center">
+  <img src="images/map_types.png" alt="Map styles selector and map view" width="100%">
+</p>
+
+### Collapsible Interface Panels
+
+Hide the filter list or airport legend when you need more room for the map. Both panels collapse into compact pull-tabs and can be restored without losing the current view or filters.
+
+### Performance-Minded Rendering
+
+Airports are rendered on canvas, routes are calculated only when requested, and filtered map views are cached server-side per session. This keeps the initial map responsive while avoiding unnecessary repeated work.
 
 ---
 
 ## Installation
 
-These instructions will guide you through installing and running FSAtlas.
+Choose the setup that best fits your environment. The `uv` installation is the quickest way to run FSAtlas locally; Docker is useful when you want a repeatable, isolated service.
 
 ### Linux & MacOS
 
-This will guide you through installing FSAtlas as a standalone command using [uv](https://docs.astral.sh/uv/).
+Install FSAtlas as a standalone command using [uv](https://docs.astral.sh/uv/).
 
 #### Prerequisites
 
-[**UV**](https://docs.astral.sh/uv/getting-started/installation/) — installs and runs FSAtlas in an isolated environment without you needing to manage Python versions or virtualenvs yourself:
+[**uv**](https://docs.astral.sh/uv/getting-started/installation/) — manages the isolated environment and makes the `fsatlas` command available on your `PATH`.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -50,7 +102,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 #### Installation
 
-Install FSAtlas as a uv tool, which puts a `fsatlas` command onto your `PATH`, runnable from anywhere:
+Install the latest version directly from the repository:
 
 ```bash
 uv tool install git+https://github.com/Leofric99/fsatlas.git
@@ -62,9 +114,13 @@ Then run it:
 fsatlas
 ```
 
-This starts a local web server and opens FSAtlas in your default browser. If it doesn't open automatically, the terminal will print the URL to open manually (e.g. `http://127.0.0.1:PORT`).
+This starts a local web server and opens FSAtlas in your default browser. If the browser does not open automatically, use the URL printed in the terminal, such as `http://127.0.0.1:PORT`.
 
-Run `fsatlas -h` (or `--help`) at any time to see the command's usage.
+For command-line options and help:
+
+```bash
+fsatlas -h
+```
 
 To upgrade to the latest version later, use:
 
@@ -74,26 +130,34 @@ uv tool upgrade fsatlas
 
 ### Windows
 
-Coming soon — an updated standalone `.exe` is planned for v2.0.0
+Download the standalone `.exe` from the [FSAtlas v2.0.0 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.0.0).
 
-### Docker
+Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
 
-This will guide you through running FSAtlas in a container using [Docker](https://docs.docker.com/get-docker/) — useful if you'd rather not install Python/uv locally, or want to run FSAtlas on a server.
+## Docker
+
+Run FSAtlas in a container using [Docker](https://docs.docker.com/get-docker/). This is useful when you want to run it as a detached service or access it from another device on your network.
 
 #### Prerequisites
 
-[**Docker**](https://docs.docker.com/get-docker/) with Compose (included in Docker Desktop, or the `docker-compose-plugin` package on Linux).
+[**Docker**](https://docs.docker.com/get-docker/) with Compose, included in Docker Desktop or available as the `docker-compose-plugin` package on Linux.
 
 #### Build and run
 
-Clone the repo, then from the project root, run:
+From the project root, build the image and start the service in the background:
 
 ```bash
 docker build -t fsatlas:latest .
 docker compose up -d
 ```
 
-The `-d` flag runs it detached (in the background), so the container keeps running after you close the terminal. FSAtlas will be available at `http://<server_ip>:8000`. To stop it, run `docker compose down`.
+The `-d` flag runs the container in the background, so it keeps running after you close the terminal. FSAtlas will be available at `http://<server_ip>:8000`.
+
+To stop the service:
+
+```bash
+docker compose down
+```
 
 To rebuild after pulling updates:
 

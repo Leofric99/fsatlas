@@ -53,10 +53,10 @@ class Theme:
 
 # Tile providers for folium
 TILES = {
-    # CARTO Dark Matter — dark-mode basemap similar to Volanta's default style
+    # Esri Dark Gray Canvas — free, keyless dark basemap similar to Volanta's default style
     'Dark Mode': (
-        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS'
     ),
     'Standard': 'OpenStreetMap',
     'Satellite': (

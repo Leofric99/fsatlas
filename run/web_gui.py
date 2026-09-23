@@ -17,6 +17,8 @@ import pandas as pd
 
 from run import config, data_loader, filtering, mapping
 
+LOGO_FILE = os.path.join(os.path.dirname(__file__), '..', 'images', 'FSAtlas Logo.png')
+
 # Persisted UI settings (currently just the light/dark preference) - tracked in git with a
 # default value, but local writes are excluded via `git update-index --skip-worktree` so a
 # user's runtime preference never shows up as an uncommitted change.
@@ -241,7 +243,9 @@ def index_html(columns, theme='dark'):
       position: relative; z-index: 5;
     }}
     .toolbar-head {{ display: flex; align-items: center; gap: 14px; }}
+    .brand {{ display: flex; align-items: center; gap: 10px; }}
     h1 {{ font-size: 17px; margin: 0; font-weight: 600; letter-spacing: -0.01em; }}
+    .logo {{ height: 44px; width: auto; display: block; }}
     .map-type {{ margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }}
     select, input, button {{
       font: inherit; color: inherit; background: var(--surface-solid);
@@ -322,7 +326,10 @@ def index_html(columns, theme='dark'):
 <body>
   <section class="toolbar">
     <div class="toolbar-head">
-      <h1>FSAtlas</h1>
+      <div class="brand">
+        <img class="logo" src="/images/logo.png" alt="FSAtlas">
+        <h1>FSAtlas</h1>
+      </div>
       <label class="map-type">Map Type <select id="map-type"></select></label>
       <button id="apply">Apply Filters</button>
       <button id="reset" class="danger" type="button" title="Reset filters" aria-label="Reset filters">Reset Filters</button>
@@ -516,11 +523,29 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_image(self, path):
+        try:
+            with open(path, "rb") as f:
+                body = f.read()
+        except OSError:
+            self.send_html("Not found", HTTPStatus.NOT_FOUND)
+            return
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "public, max-age=86400")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/":
             columns = build_columns(self.state.df)
             self.send_html(index_html(columns, load_settings().get("theme", "dark")))
+            return
+
+        if parsed.path == "/images/logo.png":
+            self.send_image(LOGO_FILE)
             return
 
         if parsed.path.startswith("/map/"):

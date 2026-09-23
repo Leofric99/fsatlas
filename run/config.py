@@ -25,7 +25,8 @@ COLUMN_DISPLAY_NAMES = {
     'arr_airport_lat': 'Arrival Airport Latitude',
     'arr_airport_lon': 'Arrival Airport Longitude',
     'arr_airport_elevation': 'Arrival Elevation (ft)',
-    'distance': 'Distance (km)',
+    # The raw data is already in nautical miles, not km - see 2026-09-23 verification.
+    'distance': 'Distance (Nautical Miles)',
     'rough_flight_time': 'Flight Time (hours)',
     'timestamp_read': 'Timestamp'
 }

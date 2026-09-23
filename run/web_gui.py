@@ -54,6 +54,99 @@ def column_example(series):
     return str(value).strip()[:24]
 
 
+def format_value(value, series):
+    """Format a single value the same way column_example formats its sample."""
+    if pd.api.types.is_float_dtype(series):
+        value = float(value)
+        return str(int(value)) if value.is_integer() else f"{value:.2f}"
+    if pd.api.types.is_integer_dtype(series):
+        return str(int(value))
+    return str(value).strip()
+
+
+def column_options(series, limit=15):
+    """Return sorted distinct values for low-cardinality columns, so the filter UI can use a
+    dropdown instead of a free-text field. Returns None when there are no or too many options.
+    """
+    uniques = series.dropna().unique().tolist()
+    if not pd.api.types.is_numeric_dtype(series):
+        uniques = [v for v in uniques if str(v).strip() != ""]
+    uniques.sort()
+    if 0 < len(uniques) < limit:
+        return [format_value(v, series) for v in uniques]
+    return None
+
+
+# Columns hidden entirely from the filter dropdown.
+HIDDEN_COLUMNS = {"timestamp_read"}
+
+# Non-directional columns get bucketed into a couple of small logical groups.
+COMPANY_COLUMNS = {"owner", "calsign", "flight_number"}
+EQUIPMENT_COLUMNS = {"reg", "type", "type_icao"}
+OTHER_COLUMNS = {"distance", "rough_flight_time"}
+
+
+def build_columns(df):
+    """Build the filter column list, grouped into "Company", "Equipment", "Departure",
+    "Arrival", a synthetic "Departure or Arrival X" per dep_/arr_ column pair (matches rows
+    where either side matches), and "Other" - in that order. Timestamp is hidden entirely.
+    """
+    ungrouped, company, equipment, departure, arrival, combined, other = [], [], [], [], [], [], []
+    seen_dep = {}
+    for column in df.columns:
+        if column in HIDDEN_COLUMNS:
+            continue
+
+        display_name = config.COLUMN_DISPLAY_NAMES.get(column, column)
+        entry = {
+            "id": column, "name": display_name,
+            "numeric": bool(pd.api.types.is_numeric_dtype(df[column])),
+            "example": column_example(df[column]),
+            "options": column_options(df[column]),
+        }
+
+        if column.startswith("dep_"):
+            entry["group"] = "Departure"
+            entry["name"] = display_name.removeprefix("Departure ")
+            departure.append(entry)
+            seen_dep[column.removeprefix("dep_")] = column
+            continue
+
+        if column.startswith("arr_"):
+            entry["group"] = "Arrival"
+            entry["name"] = display_name.removeprefix("Arrival ")
+            arrival.append(entry)
+            dep_col = seen_dep.get(column.removeprefix("arr_"))
+            if dep_col:
+                dep_name = config.COLUMN_DISPLAY_NAMES.get(dep_col, dep_col)
+                base_name = dep_name.removeprefix("Departure ")
+                combined_series = pd.concat([df[dep_col], df[column]], ignore_index=True)
+                combined.append({
+                    "id": f"combined:{dep_col}:{column}",
+                    "name": base_name,
+                    "numeric": bool(pd.api.types.is_numeric_dtype(df[dep_col])),
+                    "example": column_example(df[dep_col]),
+                    "options": column_options(combined_series),
+                    "group": "Departure or Arrival",
+                })
+            continue
+
+        if column in COMPANY_COLUMNS:
+            entry["group"] = "Company"
+            company.append(entry)
+        elif column in EQUIPMENT_COLUMNS:
+            entry["group"] = "Equipment"
+            equipment.append(entry)
+        elif column in OTHER_COLUMNS:
+            entry["group"] = "Other"
+            other.append(entry)
+        else:
+            entry["group"] = None
+            ungrouped.append(entry)
+
+    return ungrouped + company + equipment + departure + arrival + combined + other
+
+
 def route_records(df, source):
     matches = df[(df["dep_airport_iata"] == source) | (df["arr_airport_iata"] == source)]
     return [
@@ -308,10 +401,26 @@ def index_html(columns, theme='dark'):
       operator.replaceChildren();
       if (!column) return;
       operatorsFor(column).forEach(([value, label]) => operator.add(new Option(label, value)));
-      const value = row.querySelector('.value');
-      value.type = column.numeric ? 'number' : 'text';
-      value.step = column.numeric ? 'any' : '';
-      value.placeholder = column.example ? 'e.g. ' + column.example : 'Value';
+
+      // Low-cardinality columns (e.g. Departure Region) get a dropdown of real values
+      // instead of a free-text field, so swap the element type when that changes.
+      const oldValue = row.querySelector('.value');
+      const wantsSelect = Array.isArray(column.options);
+      let value = oldValue;
+      if (wantsSelect !== (oldValue.tagName === 'SELECT')) {{
+        value = document.createElement(wantsSelect ? 'select' : 'input');
+        value.className = 'value';
+        oldValue.replaceWith(value);
+      }}
+
+      if (wantsSelect) {{
+        value.replaceChildren(new Option('Select value...', ''));
+        column.options.forEach(opt => value.add(new Option(opt, opt)));
+      }} else {{
+        value.type = column.numeric ? 'number' : 'text';
+        value.step = column.numeric ? 'any' : '';
+        value.placeholder = column.example ? 'e.g. ' + column.example : 'Value';
+      }}
     }}
 
     function refreshRows() {{
@@ -323,7 +432,19 @@ def index_html(columns, theme='dark'):
       row.className = 'filter-row';
       row.innerHTML = '<select class="logic"><option>AND</option><option>OR</option></select><select class="column"><option value="">Select Filter...</option></select><select class="operator"></select><input class="value" placeholder="Value"><button class="icon insert" title="Insert filter below" aria-label="Insert filter below">+</button><button class="icon remove" title="Remove filter" aria-label="Remove filter">×</button>';
       const columnSelect = row.querySelector('.column');
-      columns.forEach(column => columnSelect.add(new Option(column.name, column.id)));
+      const optgroups = {{}};
+      columns.forEach(column => {{
+        let parent = columnSelect;
+        if (column.group) {{
+          if (!optgroups[column.group]) {{
+            optgroups[column.group] = document.createElement('optgroup');
+            optgroups[column.group].label = column.group;
+            columnSelect.append(optgroups[column.group]);
+          }}
+          parent = optgroups[column.group];
+        }}
+        parent.append(new Option(column.name, column.id));
+      }});
       columnSelect.addEventListener('change', () => updateOperators(row));
       row.querySelector('.insert').addEventListener('click', () => addRow(row));
       row.querySelector('.remove').addEventListener('click', () => {{ row.remove(); refreshRows(); }});
@@ -398,12 +519,7 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/":
-            columns = [
-                {"id": column, "name": config.COLUMN_DISPLAY_NAMES.get(column, column),
-                 "numeric": bool(pd.api.types.is_numeric_dtype(self.state.df[column])),
-                 "example": column_example(self.state.df[column])}
-                for column in self.state.df.columns
-            ]
+            columns = build_columns(self.state.df)
             self.send_html(index_html(columns, load_settings().get("theme", "dark")))
             return
 

@@ -64,6 +64,7 @@ Hide the filter list or airport legend when you need more room for the map. Both
 
 > Airports are rendered on canvas, routes are calculated only when requested, and filtered map views are cached server-side per session. This keeps the initial map responsive while avoiding unnecessary repeated work.
 
+
 ## Quick Start
 
 Choose the setup that best fits your environment.

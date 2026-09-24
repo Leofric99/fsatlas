@@ -21,7 +21,7 @@
 
 
 <p align="center">
-  <img src="videos/FSAtlasDemo.gif" alt="FSAtlas demo" width="100%">
+  <img src="videos/fsatlas_demo.gif" alt="FSAtlas Demo" width="100%">
 </p>
 
 ---

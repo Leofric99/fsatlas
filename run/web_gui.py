@@ -74,10 +74,12 @@ def column_options(series, limit=15):
     uniques = series.dropna().unique().tolist()
     if not pd.api.types.is_numeric_dtype(series):
         uniques = [v for v in uniques if str(v).strip() != ""]
+    # Check the count before sorting/formatting so high-cardinality columns (which get
+    # discarded anyway) don't pay for a sort of every distinct value.
+    if not (0 < len(uniques) < limit):
+        return None
     uniques.sort()
-    if 0 < len(uniques) < limit:
-        return [format_value(v, series) for v in uniques]
-    return None
+    return [format_value(v, series) for v in uniques]
 
 
 # Columns hidden entirely from the filter dropdown.
@@ -152,22 +154,22 @@ def build_columns(df):
 
 def route_records(df, source):
     matches = df[(df["dep_airport_iata"] == source) | (df["arr_airport_iata"] == source)]
-    return [
-        {
-            "dep": str(row.get("dep_airport_iata", "")),
-            "arr": str(row.get("arr_airport_iata", "")),
-            "flight": str(row.get("flight_number", "")),
-            "type": str(row.get("type", "")),
-            "callsign": str(row.get("calsign", "")),
-            "type_icao": str(row.get("type_icao", "")),
-            "reg": str(row.get("reg", "")),
-            "dep_icao": str(row.get("dep_airport_icao", "")),
-            "arr_icao": str(row.get("arr_airport_icao", "")),
-            "airline": str(row.get("owner", "")),
-            "date": str(row.get("timestamp_read", ""))[:10],
-        }
-        for _, row in matches.iterrows()
-    ]
+    if matches.empty:
+        return []
+    result = pd.DataFrame({
+        "dep": matches["dep_airport_iata"].astype(str),
+        "arr": matches["arr_airport_iata"].astype(str),
+        "flight": matches["flight_number"].astype(str),
+        "type": matches["type"].astype(str),
+        "callsign": matches["calsign"].astype(str),
+        "type_icao": matches["type_icao"].astype(str),
+        "reg": matches["reg"].astype(str),
+        "dep_icao": matches["dep_airport_icao"].astype(str),
+        "arr_icao": matches["arr_airport_icao"].astype(str),
+        "airline": matches["owner"].astype(str),
+        "date": matches["timestamp_read"].astype(str).str.slice(0, 10),
+    })
+    return result.to_dict("records")
 
 
 class AtlasState:

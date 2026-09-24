@@ -120,15 +120,19 @@ def load_data():
 
 def get_airport_destination_counts(df):
     """Return each airport's number of unique directly connected airports."""
-    connections = {}
-    for departure, arrival in df[["dep_airport_iata", "arr_airport_iata"]].itertuples(index=False):
-        departure = str(departure).strip()
-        arrival = str(arrival).strip()
-        if not departure or not arrival or departure == "nan" or arrival == "nan":
-            continue
-        connections.setdefault(departure, set()).add(arrival)
-        connections.setdefault(arrival, set()).add(departure)
-    return pd.Series({airport: len(destinations) for airport, destinations in connections.items()})
+    dep = df["dep_airport_iata"].astype(str).str.strip()
+    arr = df["arr_airport_iata"].astype(str).str.strip()
+    valid = (dep != "") & (dep != "nan") & (arr != "") & (arr != "nan")
+    dep, arr = dep[valid], arr[valid]
+
+    # Each flight links its two airports both ways; stacking both directions and
+    # deduping lets a single vectorized groupby count each airport's unique neighbours,
+    # instead of a Python loop building up a dict of sets per row.
+    pairs = pd.concat([
+        pd.DataFrame({"airport": dep, "other": arr}),
+        pd.DataFrame({"airport": arr, "other": dep}),
+    ], ignore_index=True).drop_duplicates()
+    return pairs.groupby("airport")["other"].nunique()
 
 if __name__ == "__main__":
     # Test loading

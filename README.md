@@ -20,8 +20,6 @@
   <img src="videos/fsatlas_demo.gif" alt="FSAtlas Demo" width="100%">
 </p>
 
----
-
 ## What Is FSAtlas?
 
 FSAtlas reads over 170,000 real-world flight records built from live tracking data and renders every departure and arrival airport as a colour-coded dot on an interactive map just like [FlightConnections](www.flightconnections.com), but free, and self-hosted.
@@ -65,8 +63,6 @@ Choose between Dark Mode, Light Mode, Standard OpenStreetMap, Satellite, and Hyb
 Hide the filter list or airport legend when you need more room for the map. Both panels collapse into compact pull-tabs and can be restored without losing the current view or filters.
 
 > Airports are rendered on canvas, routes are calculated only when requested, and filtered map views are cached server-side per session. This keeps the initial map responsive while avoiding unnecessary repeated work.
-
----
 
 ## Quick Start
 

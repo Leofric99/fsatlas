@@ -52,7 +52,7 @@ Route results show the individual flights connecting the selected airports. Each
 
 ### Flexible Filtering
 
-Build filter chains across the available flight-data columns, including airline, aircraft type, country, region, distance, flight time, and timestamps. Filters can be combined with AND/OR logic, and the interface shows a real example value for the selected column to make queries easier to construct.
+Build filter chains across the available flight-data columns, including airline, aircraft type, country, region, distance, flight time, and timestamps. Filters can be combined with AND/OR logic, and grouped together for granular control over the filtering logic.
 
 <p align="center">
   <img src="images/complex_filters.png" alt="Flight filtering view" width="100%">

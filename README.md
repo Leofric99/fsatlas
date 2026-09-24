@@ -1,24 +1,14 @@
 # FSAtlas
 
+[![Latest Release](https://img.shields.io/github/v/release/Leofric99/fsatlas?sort=semver)](https://github.com/Leofric99/fsatlas/releases)
+[![Source Code](https://img.shields.io/badge/source-GitHub-181717?logo=github)](https://github.com/Leofric99/fsatlas)
+
 <p align="center">
   <img src="images/FSAtlas%20Logo.png" alt="FSAtlas logo" width="180">
 </p>
 
-<p align="center">
-  Explore real-world flight data on an interactive world map.
-</p>
-
-<p align="center">
-  <a href="#installation">Install</a> &nbsp;|&nbsp;
-  <a href="#key-features">Features</a> &nbsp;|&nbsp;
-  <a href="#docker">Docker</a>
-</p>
-
----
-
-## Demo
-
-
+> [!NOTE]
+> **FSAtlas** explores real-world flight data on an interactive world map.
 
 <p align="center">
   <img src="videos/FSAtlasDemo.gif" alt="FSAtlas demo" width="100%">
@@ -26,7 +16,7 @@
 
 ---
 
-## What Is It?
+## What Is FSAtlas?
 
 FSAtlas reads over 170,000 real-world flight records built from live tracking data and renders every departure and arrival airport as a colour-coded dot on an interactive map inspired by [flightconnections](www.flightconnections.com).
 
@@ -34,15 +24,13 @@ Click an airport to explore its connections, select a destination to inspect a r
 
 ## Key Features
 
-### Interactive World Map
+### Explore the network
 
 The full dataset is plotted as soon as the app opens. Airports are rendered as colour-coded points, with the colour and scale of each point reflecting how many non-stop destinations it serves. This makes busy hubs easy to spot while keeping the wider network readable.
 
-### Click-to-Explore Navigation
-
 Start with the global map, select an airport to reveal its connections, then select a destination to drill into that route. The interface keeps the map visible while you move between the network view and route-level detail.
 
-### Detailed Flight Information
+### Inspect flight details
 
 Route results show the individual flights connecting the selected airports. Each flight includes the airline, aircraft type, registration, callsign, airport codes, and date when that information is available.
 
@@ -50,23 +38,18 @@ Route results show the individual flights connecting the selected airports. Each
   <img src="images/detailed_flight_info.png" alt="Detailed flight information view" width="100%">
 </p>
 
-### Flexible Filtering
+### Build flexible filters
 
 Build filter chains across the available flight-data columns, including airline, aircraft type, country, region, distance, flight time, and timestamps. Filters can be combined with AND/OR logic, and the interface shows a real example value for the selected column to make queries easier to construct.
 
 <p align="center">
-  <img src="images/complex_filters.png" alt="Flight filtering view" width="100%">
+  <img src="images/complex_filters.png" alt="Complex flight filters view" width="100%">
 </p>
 
-### Departure and Arrival Regions
+> [!TIP]
+> Countries are grouped into practical regions such as Africa, Asia, Europe, Oceania, North/Central/South America, and the Middle East. These groupings are calculated in memory, so the original flight data remains unchanged.
 
-Countries are grouped into practical regions such as Africa, Asia, Europe, Oceania, North/Central/South America, and the Middle East. These groupings are calculated in memory, so the original flight data remains unchanged.
-
-### Light and Dark Themes
-
-Switch between light and dark themes from the interface. The selected theme updates the map, controls, legend, and surrounding UI, and your preference is remembered for the next visit.
-
-### Multiple Map Styles
+### Choose how to view the map
 
 Choose between Dark Mode, Light Mode, Standard OpenStreetMap, Satellite, and Hybrid map styles. The light and dark Esri styles follow the selected theme, while the other options provide different ways to inspect the network.
 
@@ -74,25 +57,27 @@ Choose between Dark Mode, Light Mode, Standard OpenStreetMap, Satellite, and Hyb
   <img src="images/map_types.png" alt="Map styles selector and map view" width="100%">
 </p>
 
-### Collapsible Interface Panels
+Switch between light and dark themes from the interface. The selected theme updates the map, controls, legend, and surrounding UI, and your preference is remembered for the next visit.
+
+### Keep the interface focused
 
 Hide the filter list or airport legend when you need more room for the map. Both panels collapse into compact pull-tabs and can be restored without losing the current view or filters.
 
-### Performance-Minded Rendering
-
-Airports are rendered on canvas, routes are calculated only when requested, and filtered map views are cached server-side per session. This keeps the initial map responsive while avoiding unnecessary repeated work.
+> [!NOTE]
+> Airports are rendered on canvas, routes are calculated only when requested, and filtered map views are cached server-side per session. This keeps the initial map responsive while avoiding unnecessary repeated work.
 
 ---
 
-## Installation
+## Quick Start
 
 Choose the setup that best fits your environment.
 
 ### Windows
 
-Download the standalone `.exe` from the [FSAtlas v2.1.0 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.1.0).
-
-Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
+> [!TIP]
+> Download the standalone `.exe` from the [FSAtlas v2.1.0 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.1.0).
+>
+> Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
 
 ### Linux & MacOS
 
@@ -151,7 +136,8 @@ docker build -t fsatlas:latest .
 docker compose up -d
 ```
 
-The `-d` flag runs the container in the background, so it keeps running after you close the terminal. FSAtlas will be available at `http://<server_ip>:8000`.
+> [!NOTE]
+> The `-d` flag runs the container in the background, so it keeps running after you close the terminal. FSAtlas will be available at `http://<server_ip>:8000`.
 
 To stop the service:
 
@@ -168,4 +154,5 @@ docker compose up -d
 
 ---
 
+> [!IMPORTANT]
 > **Disclaimer:** This project was developed with the assistance of [GitHub Copilot](https://github.com/features/copilot). I am not a front-end developer, so there may be bugs, rough edges, or unconventional code patterns. Contributions and bug reports are welcome!

@@ -98,10 +98,10 @@
         .leaflet-right .legend-root { margin-right: 0 !important; }
         .legend-panel {
             box-sizing: border-box;
-            flex: 0 0 230px;
-            width: 230px;
+            flex: 0 0 210px;
+            width: 210px;
             height: 152px;
-            padding: 14px 18px;
+            padding: 14px 4px 14px 18px;
             font-size: 13px;
             line-height: 1.6;
             white-space: normal;
@@ -112,8 +112,8 @@
         .legend-dot { width: 14px; height: 14px; border: 1px solid << card_border >>; border-radius: 50%; box-sizing: border-box; flex-shrink: 0; }
         .legend-tab {
             box-sizing: border-box;
-            flex: 0 0 42px;
-            width: 42px;
+            flex: 0 0 34px;
+            width: 34px;
             height: 152px;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer;
@@ -129,29 +129,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        /* Theme the built-in Leaflet zoom control to match dark/light mode */
-        .leaflet-control-zoom.leaflet-bar {
-            border: 1px solid << panel_border >> !important;
-            border-radius: 12px !important;
-            overflow: hidden;
-            box-shadow: 0 8px 24px << shadow_color >> !important;
-        }
-        .leaflet-control-zoom a {
-            background: << panel_bg >> !important;
-            backdrop-filter: blur(18px) saturate(160%);
-            -webkit-backdrop-filter: blur(18px) saturate(160%);
-            color: << text_color >> !important;
-            border-bottom: 1px solid << panel_border >> !important;
-        }
-        .leaflet-control-zoom a:hover,
-        .leaflet-control-zoom a:focus {
-            background: << card_bg >> !important;
-        }
-        .leaflet-control-zoom a.leaflet-disabled {
-            color: << muted_color >> !important;
-            background: << panel_bg >> !important;
-        }
-
         /* Glassy tooltip to match the airport node styling */
         .atlas-tooltip.leaflet-tooltip {
             background: << panel_bg >> !important;
@@ -195,8 +172,15 @@
         // --- MAP INIT ---
         const map = L.map('map', {
             preferCanvas: true,
-            minZoom: 2
+            minZoom: 2,
+            zoomControl: false
         }).setView([20, 0], 2);
+
+        // The map now fills the whole viewport behind the floating toolbar, so pan by half
+        // the toolbar's height to keep the previously-visible area looking exactly the same.
+        const PAN_OFFSET = << pan_offset >>;
+        if (PAN_OFFSET) map.panBy([0, -PAN_OFFSET / 2], { animate: false });
+
 
         // Custom Panes for Z-Index ordering
         map.createPane('routesPane');

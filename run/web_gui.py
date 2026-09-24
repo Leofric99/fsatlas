@@ -230,7 +230,7 @@ def index_html(columns, theme='dark'):
     * {{ box-sizing: border-box; }}
     html, body {{ font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; }}
     body {{
-      margin: 0; min-height: 100vh; display: grid; grid-template-rows: auto minmax(0, 1fr);
+      margin: 0; min-height: 100vh;
       background: var(--bg-grad); background-attachment: fixed; color: var(--text);
       transition: background .3s ease, color .3s ease;
     }}
@@ -238,12 +238,14 @@ def index_html(columns, theme='dark'):
       background: var(--surface);
       backdrop-filter: blur(22px) saturate(160%);
       -webkit-backdrop-filter: blur(22px) saturate(160%);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 20px; display: grid; gap: 12px;
+      border: 1px solid var(--border);
+      margin: 14px 20px 12px;
+      padding: 14px 20px; display: grid; gap: 12px; min-width: 0;
+      border-radius: 20px;
       box-shadow: var(--shadow);
       position: relative; z-index: 5;
     }}
-    .toolbar-head {{ display: flex; align-items: center; gap: 14px; }}
+    .toolbar-head {{ display: flex; align-items: center; gap: 14px; flex-wrap: wrap; row-gap: 8px; }}
     .brand {{ display: flex; align-items: center; gap: 10px; }}
     h1 {{ font-size: 17px; margin: 0; font-weight: 600; letter-spacing: -0.01em; }}
     .logo {{ height: 44px; width: auto; display: block; }}
@@ -258,14 +260,14 @@ def index_html(columns, theme='dark'):
       outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
     }}
     button {{
-      cursor: pointer; padding: 5px 14px; font-weight: 600;
+      cursor: pointer; padding: 5px 14px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
       background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border: none;
       box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
     }}
     button:hover {{ transform: translateY(-1px); filter: brightness(1.08); }}
     button:active {{ transform: translateY(0); }}
     button.icon {{
-      width: 34px; padding: 0; background: var(--surface-solid); color: var(--text); font-size: 16px;
+      width: 30px; padding: 0; background: var(--surface-solid); color: var(--text); font-size: 16px;
       line-height: 1; box-shadow: none; border: 1px solid var(--border);
     }}
     button.icon:hover {{ background: var(--border); transform: none; filter: none; }}
@@ -281,12 +283,16 @@ def index_html(columns, theme='dark'):
     }}
     #theme-toggle:hover {{ background: var(--border); transform: none; filter: none; }}
     #theme-toggle svg {{ width: 17px; height: 17px; transition: transform .3s ease; }}
-    #filters-wrap {{ display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease; }}
+    #filters-wrap {{ display: grid; grid-template-rows: 1fr; min-width: 0; transition: grid-template-rows .28s ease; }}
     #filters-wrap.collapsed {{ grid-template-rows: 0fr; }}
     #filters-wrap > #filters {{ overflow: hidden; min-height: 0; }}
-    #filters {{ display: grid; gap: 8px; }}
-    .filter-row {{ display: grid; grid-template-columns: 64px minmax(120px, 1.2fr) 110px minmax(100px, 1fr) 34px 34px; gap: 8px; align-items: center; }}
-    .filter-row.first {{ grid-template-columns: minmax(120px, 1.2fr) 110px minmax(100px, 1fr) 34px; }}
+    #filters {{ display: grid; gap: 8px; min-width: 0; }}
+    .filter-row {{
+      display: grid; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain;
+      grid-template-columns: var(--w-logic, 60px) var(--w-col, 150px) var(--w-op, 110px) minmax(var(--min-field, 90px), 1fr) 32px 32px;
+      gap: 8px; align-items: center;
+    }}
+    .filter-row.first {{ grid-template-columns: var(--w-col, 150px) var(--w-op, 110px) minmax(var(--min-field, 110px), 1fr) 32px; }}
     .filter-row.first .logic {{ display: none; }}
     .filter-row.first .remove {{ display: none; }}
     .actions {{ display: flex; align-items: center; gap: 10px; }}
@@ -305,10 +311,9 @@ def index_html(columns, theme='dark'):
       background: var(--surface);
       backdrop-filter: blur(22px) saturate(160%);
       -webkit-backdrop-filter: blur(22px) saturate(160%);
-      border: 1px solid var(--border);
-      border-top: none;
-      border-radius: 0 0 14px 14px;
-      box-shadow: none;
+      border: none;
+      border-radius: 0 0 16px 16px;
+      box-shadow: var(--shadow);
       color: var(--muted);
       cursor: pointer;
       z-index: 4;
@@ -317,10 +322,9 @@ def index_html(columns, theme='dark'):
     .filters-tab:hover {{ color: var(--text); filter: brightness(1.18); transform: none; }}
     .filters-tab svg {{ width: 14px; height: 14px; transition: transform .28s ease; transform: rotate(180deg); }}
     .filters-tab.collapsed svg {{ transform: none; }}
-    iframe {{ border: 0; width: 100%; height: 100%; min-height: 450px; background: var(--bg-grad); }}
+    iframe {{ border: 0; position: fixed; inset: 0; width: 100%; height: 100%; background: var(--bg-grad); z-index: 1; }}
     @media (max-width: 760px) {{
-      .filter-row {{ grid-template-columns: 50px minmax(90px, 1.2fr) 90px minmax(90px, 1fr) 30px 30px; }}
-      .filter-row.first {{ grid-template-columns: minmax(90px, 1.2fr) 90px minmax(90px, 1fr) 30px; }}
+      .toolbar {{ margin: 8px 8px 10px; border-radius: 16px; }}
     }}
   </style>
 </head>
@@ -363,7 +367,10 @@ def index_html(columns, theme='dark'):
 
     function withTheme(url) {{
       if (!url) return url;
-      return url + (url.includes('?') ? '&' : '?') + 'theme=' + theme;
+      // The map iframe now fills the whole viewport behind the floating toolbar, so the
+      // server needs to know how much of it is covered to keep the map's usual view in place.
+      const offset = Math.round(document.querySelector('.toolbar').getBoundingClientRect().bottom);
+      return url + (url.includes('?') ? '&' : '?') + 'theme=' + theme + '&offset=' + offset;
     }}
 
     function applyTheme(nextTheme, persist) {{
@@ -391,6 +398,7 @@ def index_html(columns, theme='dark'):
     const filtersTab = document.getElementById('filters-tab');
     const filtersWrap = document.getElementById('filters-wrap');
     const toolbar = document.querySelector('.toolbar');
+
     filtersTab.addEventListener('click', () => {{
       filtersWrap.classList.toggle('collapsed');
       filtersTab.classList.toggle('collapsed');
@@ -429,10 +437,66 @@ def index_html(columns, theme='dark'):
         value.step = column.numeric ? 'any' : '';
         value.placeholder = column.example ? 'e.g. ' + column.example : 'Value';
       }}
+      layoutFilterFields();
     }}
+
+    // --- Auto-sizing filter fields: size the logic/column/operator fields to fit their
+    // own text, sharing one width per column across every row so they always line up.
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    function textWidth(text, font) {{
+      measureCtx.font = font;
+      return measureCtx.measureText(text || '').width;
+    }}
+    function fieldFont(el) {{
+      const cs = getComputedStyle(el);
+      return cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    }}
+    function selectTextWidth(select) {{
+      const opt = select.options[select.selectedIndex];
+      return textWidth(opt ? opt.text : '', fieldFont(select));
+    }}
+    const FIELD_PADDING = 46; // horizontal padding/border plus the native dropdown-arrow allowance
+
+    function layoutFilterFields() {{
+      const rows = [...filters.children];
+      if (!rows.length) return;
+      const logicEl = rows[0].querySelector('.logic');
+      const minField = textWidth('0123456789', fieldFont(rows[0].querySelector('.column'))) + FIELD_PADDING;
+      const logicWidth = Math.max(textWidth('AND', fieldFont(logicEl)), textWidth('OR', fieldFont(logicEl))) + FIELD_PADDING;
+      let colWidth = minField;
+      let opWidth = minField;
+      rows.forEach(row => {{
+        colWidth = Math.max(colWidth, selectTextWidth(row.querySelector('.column')) + FIELD_PADDING);
+        opWidth = Math.max(opWidth, selectTextWidth(row.querySelector('.operator')) + FIELD_PADDING);
+      }});
+
+      // AND/OR always keeps its full width unless that would leave the value field with
+      // less than ~10 characters of room, in which case it gives space back.
+      let finalLogic = logicWidth;
+      const available = filters.clientWidth;
+      if (available) {{
+        const fixedOverhead = 32 + 32 + 8 * 5; // insert + remove buttons and the gaps between 6 columns
+        const spareForLogicAndValue = available - fixedOverhead - colWidth - opWidth;
+        finalLogic = Math.min(logicWidth, Math.max(32, spareForLogicAndValue - minField));
+      }}
+
+      filters.style.setProperty('--w-logic', Math.round(finalLogic) + 'px');
+      filters.style.setProperty('--w-col', Math.round(colWidth) + 'px');
+      filters.style.setProperty('--w-op', Math.round(opWidth) + 'px');
+      filters.style.setProperty('--min-field', Math.round(minField) + 'px');
+    }}
+
+    let filterLayoutRaf;
+    function scheduleFilterLayout() {{
+      cancelAnimationFrame(filterLayoutRaf);
+      filterLayoutRaf = requestAnimationFrame(layoutFilterFields);
+    }}
+    window.addEventListener('resize', scheduleFilterLayout);
+    new ResizeObserver(scheduleFilterLayout).observe(toolbar);
 
     function refreshRows() {{
       [...filters.children].forEach((row, index) => row.classList.toggle('first', index === 0));
+      layoutFilterFields();
     }}
 
     function addRow(afterRow) {{
@@ -454,6 +518,8 @@ def index_html(columns, theme='dark'):
         parent.append(new Option(column.name, column.id));
       }});
       columnSelect.addEventListener('change', () => updateOperators(row));
+      row.querySelector('.operator').addEventListener('change', layoutFilterFields);
+      row.querySelector('.logic').addEventListener('change', layoutFilterFields);
       row.querySelector('.insert').addEventListener('click', () => addRow(row));
       row.querySelector('.remove').addEventListener('click', () => {{ row.remove(); refreshRows(); }});
       if (afterRow) afterRow.after(row); else filters.append(row);
@@ -480,7 +546,7 @@ def index_html(columns, theme='dark'):
       const result = await response.json();
       baseMapUrl = result.url;
       document.getElementById('map').src = withTheme(baseMapUrl);
-      document.getElementById('status').textContent = result.count.toLocaleString() + ' flights';
+      document.getElementById('status').textContent = result.count.toLocaleString() + ' Flights';
     }}
 
     document.getElementById('apply').addEventListener('click', applyFilters);
@@ -559,9 +625,14 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
             theme_mode = parse_qs(parsed.query).get("theme", ["dark"])[0]
             if theme_mode not in ("dark", "light"):
                 theme_mode = "dark"
+            try:
+                pan_offset = int(float(parse_qs(parsed.query).get("offset", ["0"])[0]))
+            except ValueError:
+                pan_offset = 0
             self.send_html(mapping.create_map_html(
                 dataframe, map_type, theme_mode, self.state.airport_counts,
                 route_request_url=f"/api/routes/{view_id}",
+                pan_offset=pan_offset,
             ))
             return
 

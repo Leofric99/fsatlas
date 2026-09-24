@@ -26,6 +26,7 @@ include = [
     "run/**/*.py",
     "run/database/*.csv",
     "run/html/*.html",
+    "run/images/*.png",
 ]
 
 # settings.json matches a .gitignore pattern (see comment there), so `include` above would

@@ -18,7 +18,7 @@ import pandas as pd
 
 from run import config, data_loader, filtering, mapping
 
-LOGO_FILE = os.path.join(os.path.dirname(__file__), '..', 'images', 'FSAtlas Logo.png')
+LOGO_FILE = os.path.join(os.path.dirname(__file__), 'images', 'FSAtlas Logo.png')
 
 # Persisted UI settings (currently just the light/dark preference) - tracked in git with a
 # default value, but local writes are excluded via `git update-index --skip-worktree` so a

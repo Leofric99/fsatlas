@@ -71,7 +71,7 @@ Switch between light and dark themes from the interface. The selected theme upda
 Choose between Dark Mode, Light Mode, Standard OpenStreetMap, Satellite, and Hybrid map styles. The light and dark Esri styles follow the selected theme, while the other options provide different ways to inspect the network.
 
 <p align="center">
-  <img src="images/map_types.png" alt="Map styles selector and map view" width="100%">
+  <img src="images/light_mode.png" alt="Different Map types and Dark and Light Modes" width="100%">
 </p>
 
 ### Collapsible Interface Panels

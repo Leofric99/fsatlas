@@ -46,7 +46,7 @@ Build filter chains across the available flight-data columns, including airline,
   <img src="images/complex_filters.png" alt="Flight filtering view" width="100%">
 </p>
 
-> [!TIP]
+> [!NOTE]
 > Countries are grouped into practical regions such as Africa, Asia, Europe, Oceania, North/Central/South America, and the Middle East. These groupings are calculated in memory, so the original flight data remains unchanged.
 
 ### Choose how to view the map
@@ -74,10 +74,9 @@ Choose the setup that best fits your environment.
 
 ### Windows
 
-> [!TIP]
-> Download the standalone `.exe` from the [FSAtlas v2.1.1 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.1.1).
->
-> Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
+Download the standalone `.exe` from the [FSAtlas v2.1.1 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.1.1).
+
+Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
 
 ### Linux & MacOS
 

@@ -88,6 +88,12 @@ Airports are rendered on canvas, routes are calculated only when requested, and 
 
 Choose the setup that best fits your environment.
 
+### Windows
+
+Download the standalone `.exe` from the [FSAtlas v2.0.0 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.0.0).
+
+Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
+
 ### Linux & MacOS
 
 The `uv` installation is the quickest way to run FSAtlas locally for MacOS and Linux.
@@ -127,12 +133,6 @@ To upgrade to the latest version later, use:
 ```bash
 uv tool upgrade fsatlas
 ```
-
-### Windows
-
-Download the standalone `.exe` from the [FSAtlas v2.0.0 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.0.0).
-
-Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
 
 ## Docker
 

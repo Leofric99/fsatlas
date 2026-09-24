@@ -72,56 +72,103 @@ def _mask_for_filter(df, col, op, val, ftype):
         return None
     return _mask_for_column(df, col, op, val, ftype)
 
+def _evaluate_node(df, node):
+    """Recursively evaluate one node of a filter tree and return its boolean mask (or None
+    if it contributes nothing, e.g. an empty/incomplete condition).
+
+    A node is either a group - {'kind': 'group', 'logic': 'AND'|'OR', 'children': [...]} -
+    whose children are combined left-to-right using each child's own 'logic' key, or a leaf
+    condition - {'column', 'operator', 'value', 'type', 'logic'}. 'logic' says how the node
+    combines with the *previous sibling* in its parent's children list, so precedence is
+    entirely determined by the tree's nesting rather than a flat left-to-right fold.
+    """
+    if node.get('kind') == 'group':
+        mask = None
+        for child in node.get('children', []):
+            child_mask = _evaluate_node(df, child)
+            if child_mask is None:
+                continue
+            if mask is None:
+                mask = child_mask
+            elif child.get('logic', 'AND').upper() == 'OR':
+                mask = mask | child_mask
+            else:
+                mask = mask & child_mask
+        return mask
+
+    col = node.get('column')
+    op = node.get('operator')
+    val = node.get('value')
+    ftype = node.get('type', 'text')
+    if not col or (val is None or val == ""):
+        return None
+    return _mask_for_filter(df, col, op, val, ftype)
+
+
+def _flat_list_to_tree(filters):
+    """Convert the legacy flat filter list into a group tree using standard boolean
+    precedence (AND binds tighter than OR), e.g. "X OR Y AND Z" becomes X OR (Y AND Z).
+    This is only a fallback for old-style callers; the GUI now sends an explicit nested
+    tree so the user can pick either grouping intentionally.
+    """
+    or_groups = [[]]
+    for i, f in enumerate(filters):
+        logic = f.get('logic', 'AND').upper() if i > 0 else 'AND'
+        if logic == 'OR':
+            or_groups.append([])
+        or_groups[-1].append(f)
+
+    children = []
+    for gi, group in enumerate(g for g in or_groups if g):
+        group_logic = 'AND' if gi == 0 else 'OR'
+        if len(group) == 1:
+            leaf = dict(group[0])
+            leaf['logic'] = group_logic
+            children.append(leaf)
+        else:
+            sub_children = [dict(group[0], logic='AND')] + [dict(f, logic='AND') for f in group[1:]]
+            children.append({'kind': 'group', 'logic': group_logic, 'children': sub_children})
+    return {'kind': 'group', 'logic': 'AND', 'children': children}
+
+
 def apply_filters(df, filters):
     """
-    Applies a list of filter dictionaries to the DataFrame.
-    filters: list of dicts.
-    Each dict should look like:
+    Applies a nested filter tree to the DataFrame.
+
+    ``filters`` is normally a group node:
+    {
+        'kind': 'group',
+        'logic': 'AND' | 'OR',  # how this group combines with its previous sibling
+        'children': [ <group or leaf condition>, ... ]
+    }
+    A leaf condition looks like:
     {
         'column': 'col_name',
         'operator': '...',  # contains, starts_with, ends_with, equals, >, <, >=, <=
-        'value': ...,      # standard value or list for 'select' (treated as OR/IN locally)
-        'logic': 'AND' | 'OR' # how to combine with previous results (default AND)
+        'value': ...,        # standard value or list for 'select' (treated as OR/IN locally)
+        'logic': 'AND' | 'OR' # how it combines with the previous sibling (default AND)
     }
+
+    For backwards compatibility, a flat list of leaf conditions (old GUI format) or a
+    {column: condition} dict (older legacy format) are also accepted and converted.
     """
     if df.empty or not filters:
         return df
 
-    # If filters is a dict (legacy support - though we're updating GUI), convert to list
-    if isinstance(filters, dict):
+    if isinstance(filters, dict) and filters.get('kind') != 'group':
+        # Legacy {column: condition} dict.
         new_filters = []
         for col, condition in filters.items():
             filter_item = condition.copy()
             filter_item['column'] = col
             filter_item['logic'] = 'AND'
             new_filters.append(filter_item)
-        filters = new_filters
+        filters = _flat_list_to_tree(new_filters)
+    elif isinstance(filters, list):
+        filters = _flat_list_to_tree(filters)
 
-    current_mask = None
-
-    for f in filters:
-        col = f.get('column')
-        op = f.get('operator')
-        val = f.get('value')
-        logic = f.get('logic', 'AND').upper()
-        ftype = f.get('type', 'text') # default to text if missing
-
-        if not col or (val is None or val == ""):
-            continue
-
-        this_mask = _mask_for_filter(df, col, op, val, ftype)
-
-        # Combine with main mask
-        if this_mask is not None:
-            if current_mask is None:
-                current_mask = this_mask
-            else:
-                if logic == 'OR':
-                    current_mask = current_mask | this_mask
-                else: # AND
-                    current_mask = current_mask & this_mask
-
-    if current_mask is None:
+    mask = _evaluate_node(df, filters)
+    if mask is None:
         return df
-        
-    return df[current_mask]
+
+    return df[mask]

@@ -289,15 +289,31 @@ def index_html(columns, theme='dark'):
     #filters-wrap {{ display: grid; grid-template-rows: 1fr; min-width: 0; transition: grid-template-rows .28s ease; }}
     #filters-wrap.collapsed {{ grid-template-rows: 0fr; }}
     #filters-wrap > #filters {{ overflow: hidden; min-height: 0; }}
-    #filters {{ display: grid; gap: 8px; min-width: 0; }}
+    #filters, .filters-list {{ display: grid; gap: 8px; min-width: 0; }}
     .filter-row {{
       display: grid; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain;
-      grid-template-columns: var(--w-logic, 60px) var(--w-col, 150px) var(--w-op, 110px) minmax(var(--min-field, 90px), 1fr) 32px 32px;
+      grid-template-columns: var(--w-logic, 60px) var(--w-col, 150px) var(--w-op, 110px) minmax(var(--min-field, 90px), 1fr) auto;
       gap: 8px; align-items: center;
     }}
-    .filter-row.first {{ grid-template-columns: var(--w-col, 150px) var(--w-op, 110px) minmax(var(--min-field, 110px), 1fr) 32px; }}
-    .filter-row.first .logic {{ display: none; }}
+    .filter-row.first {{ grid-template-columns: var(--w-col, 150px) var(--w-op, 110px) minmax(var(--min-field, 110px), 1fr) auto; }}
+    .filter-row.first > .logic {{ display: none; }}
     .filter-row.first .remove {{ display: none; }}
+    .row-actions {{ display: flex; gap: 6px; align-items: center; }}
+    .row-actions .icon {{ width: 32px; }}
+    .filter-group {{
+      border: 1px solid var(--border); border-radius: 12px; padding: 8px;
+      background: color-mix(in srgb, var(--surface-solid) 55%, transparent);
+      min-width: 0;
+    }}
+    .filter-group.first > .group-head > .logic {{ display: none; }}
+    .filter-group.first > .group-head .remove {{ display: none; }}
+    .group-head {{ display: flex; align-items: center; gap: 8px; min-width: 0; }}
+    .group-head .logic {{ width: var(--w-logic, 60px); flex: none; }}
+    .group-label {{ font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }}
+    .group-head .row-actions {{ margin-left: auto; }}
+    .filter-group > .filters-list {{
+      margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--border);
+    }}
     .actions {{ display: flex; align-items: center; gap: 10px; }}
     #status {{ color: var(--muted); font-size: 13px; }}
     .toolbar.filters-collapsed {{ gap: 0; }}
@@ -461,11 +477,11 @@ def index_html(columns, theme='dark'):
     const FIELD_PADDING = 46; // horizontal padding/border plus the native dropdown-arrow allowance
 
     function layoutFilterFields() {{
-      const rows = [...filters.children];
-      if (!rows.length) return;
-      const logicEl = rows[0].querySelector('.logic');
+      const rows = [...filters.querySelectorAll('.filter-row')];
+      const logicEls = [...filters.querySelectorAll('.filter-row > .logic, .group-head > .logic')];
+      if (!rows.length || !logicEls.length) return;
       const minField = textWidth('0123456789', fieldFont(rows[0].querySelector('.column'))) + FIELD_PADDING;
-      const logicWidth = Math.max(textWidth('AND', fieldFont(logicEl)), textWidth('OR', fieldFont(logicEl))) + FIELD_PADDING;
+      const logicWidth = Math.max(...logicEls.map(el => Math.max(textWidth('AND', fieldFont(el)), textWidth('OR', fieldFont(el))))) + FIELD_PADDING;
       let colWidth = minField;
       let opWidth = minField;
       rows.forEach(row => {{
@@ -478,7 +494,7 @@ def index_html(columns, theme='dark'):
       let finalLogic = logicWidth;
       const available = filters.clientWidth;
       if (available) {{
-        const fixedOverhead = 32 + 32 + 8 * 5; // insert + remove buttons and the gaps between 6 columns
+        const fixedOverhead = 96 + 8 * 4; // row-actions width and the gaps between columns
         const spareForLogicAndValue = available - fixedOverhead - colWidth - opWidth;
         finalLogic = Math.min(logicWidth, Math.max(32, spareForLogicAndValue - minField));
       }}
@@ -497,16 +513,22 @@ def index_html(columns, theme='dark'):
     window.addEventListener('resize', scheduleFilterLayout);
     new ResizeObserver(scheduleFilterLayout).observe(toolbar);
 
+    // --- Filter tree: each level (the root #filters, or a group's inner .filters-list) holds
+    // a mix of condition rows and nested groups. A row/group's own "logic" select says how it
+    // combines with the *previous sibling in its own list*, so wrapping a run of rows in a
+    // group (and giving the group its own logic) is what lets AND/OR precedence be set
+    // explicitly instead of always evaluating strictly left-to-right.
+    function markFirst(list) {{
+      [...list.children].forEach((node, index) => node.classList.toggle('first', index === 0));
+    }}
+
     function refreshRows() {{
-      [...filters.children].forEach((row, index) => row.classList.toggle('first', index === 0));
+      markFirst(filters);
+      filters.querySelectorAll('.filters-list').forEach(markFirst);
       layoutFilterFields();
     }}
 
-    function addRow(afterRow) {{
-      const row = document.createElement('div');
-      row.className = 'filter-row';
-      row.innerHTML = '<select class="logic"><option>AND</option><option>OR</option></select><select class="column"><option value="">Select Filter...</option></select><select class="operator"></select><input class="value" placeholder="Value"><button class="icon insert" title="Insert filter below" aria-label="Insert filter below">+</button><button class="icon remove" title="Remove filter" aria-label="Remove filter">×</button>';
-      const columnSelect = row.querySelector('.column');
+    function populateColumnSelect(columnSelect) {{
       const optgroups = {{}};
       columns.forEach(column => {{
         let parent = columnSelect;
@@ -520,31 +542,124 @@ def index_html(columns, theme='dark'):
         }}
         parent.append(new Option(column.name, column.id));
       }});
-      columnSelect.addEventListener('change', () => updateOperators(row));
-      row.querySelector('.operator').addEventListener('change', layoutFilterFields);
-      row.querySelector('.logic').addEventListener('change', layoutFilterFields);
-      row.querySelector('.insert').addEventListener('click', () => addRow(row));
-      row.querySelector('.remove').addEventListener('click', () => {{ row.remove(); refreshRows(); }});
-      if (afterRow) afterRow.after(row); else filters.append(row);
+    }}
+
+    function removeNode(node) {{
+      const parentList = node.parentElement;
+      const isRoot = parentList === filters;
+      node.remove();
+      // Dissolve a group automatically once its last child is removed.
+      if (!isRoot && parentList.classList.contains('filters-list') && !parentList.children.length) {{
+        removeNode(parentList.closest('.filter-group'));
+        return;
+      }}
       refreshRows();
     }}
 
+    function createConditionRow() {{
+      const row = document.createElement('div');
+      row.className = 'filter-row';
+      row.innerHTML = '<select class="logic"><option>AND</option><option>OR</option></select>' +
+        '<select class="column"><option value="">Select Filter...</option></select>' +
+        '<select class="operator"></select>' +
+        '<input class="value" placeholder="Value">' +
+        '<div class="row-actions">' +
+        '<button class="icon insert" title="Insert filter below" aria-label="Insert filter below">+</button>' +
+        '<button class="icon group" title="Wrap in a group" aria-label="Wrap in a group">⧉</button>' +
+        '<button class="icon remove" title="Remove filter" aria-label="Remove filter">×</button>' +
+        '</div>';
+      const columnSelect = row.querySelector('.column');
+      populateColumnSelect(columnSelect);
+      columnSelect.addEventListener('change', () => updateOperators(row));
+      row.querySelector('.operator').addEventListener('change', layoutFilterFields);
+      row.querySelector('.logic').addEventListener('change', layoutFilterFields);
+      row.querySelector('.insert').addEventListener('click', () => {{
+        row.after(createConditionRow());
+        refreshRows();
+      }});
+      row.querySelector('.group').addEventListener('click', () => wrapInGroup(row));
+      row.querySelector('.remove').addEventListener('click', () => removeNode(row));
+      return row;
+    }}
+
+    function createGroup() {{
+      const group = document.createElement('div');
+      group.className = 'filter-group';
+      group.innerHTML = '<div class="group-head">' +
+        '<select class="logic"><option>AND</option><option>OR</option></select>' +
+        '<span class="group-label">Group</span>' +
+        '<div class="row-actions">' +
+        '<button class="icon insert" title="Insert filter below group" aria-label="Insert filter below group">+</button>' +
+        '<button class="icon ungroup" title="Ungroup" aria-label="Ungroup">⧈</button>' +
+        '<button class="icon remove" title="Remove group" aria-label="Remove group">×</button>' +
+        '</div></div><div class="filters-list"></div>';
+      group.querySelector('.logic').addEventListener('change', layoutFilterFields);
+      group.querySelector('.insert').addEventListener('click', () => {{
+        group.after(createConditionRow());
+        refreshRows();
+      }});
+      group.querySelector('.ungroup').addEventListener('click', () => ungroup(group));
+      group.querySelector('.remove').addEventListener('click', () => removeNode(group));
+      return group;
+    }}
+
+    function wrapInGroup(node) {{
+      const group = createGroup();
+      const logic = node.querySelector(':scope > .logic').value;
+      group.querySelector('.logic').value = logic;
+      node.before(group);
+      group.querySelector('.filters-list').append(node);
+      refreshRows();
+    }}
+
+    function ungroup(group) {{
+      const list = group.parentElement;
+      const children = [...group.querySelector('.filters-list').children];
+      if (children.length) {{
+        children[0].querySelector(':scope > .logic, .group-head > .logic').value = group.querySelector('.logic').value;
+      }}
+      children.forEach(child => group.before(child));
+      group.remove();
+      refreshRows();
+    }}
+
+    function addRow(afterRow) {{
+      const row = createConditionRow();
+      if (afterRow) afterRow.after(row); else filters.append(row);
+      refreshRows();
+      return row;
+    }}
+
+    // --- Serialize the filter tree in the DOM into the nested group structure the backend
+    // expects: {{kind: 'group', logic, children: [...]}} with leaf conditions as children too.
+    function serializeList(listEl) {{
+      return [...listEl.children].map(serializeNode).filter(Boolean);
+    }}
+
+    function serializeNode(node) {{
+      if (node.classList.contains('filter-group')) {{
+        const logic = node.querySelector(':scope > .group-head > .logic').value;
+        const children = serializeList(node.querySelector(':scope > .filters-list'));
+        return children.length ? {{kind: 'group', logic, children}} : null;
+      }}
+      const column = columns.find(item => item.id === node.querySelector('.column').value);
+      const value = node.querySelector('.value').value.trim();
+      if (!column || !value) return null;
+      return {{
+        column: column.id,
+        operator: node.querySelector('.operator').value,
+        value: column.numeric ? Number(value) : value,
+        logic: node.querySelector(':scope > .logic').value,
+        type: column.numeric ? 'number' : 'text'
+      }};
+    }}
+
     async function applyFilters() {{
-      const activeFilters = [...filters.children].map(row => {{
-        const column = columns.find(item => item.id === row.querySelector('.column').value);
-        const value = row.querySelector('.value').value.trim();
-        return column && value ? {{
-          column: column.id,
-          operator: row.querySelector('.operator').value,
-          value: column.numeric ? Number(value) : value,
-          logic: row.querySelector('.logic').value,
-          type: column.numeric ? 'number' : 'text'
-        }} : null;
-      }}).filter(Boolean);
+      const filterTree = {{kind: 'group', logic: 'AND', children: serializeList(filters)}};
       document.getElementById('status').textContent = 'Rendering...';
       const response = await fetch('/api/maps', {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify({{filters: activeFilters, map_type: mapType.value}})
+        body: JSON.stringify({{filters: filterTree, map_type: mapType.value}})
       }});
       const result = await response.json();
       baseMapUrl = result.url;
@@ -674,7 +789,7 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length))
             filters = payload.get("filters", [])
             map_type = payload.get("map_type", "Dark Mode")
-            if not isinstance(filters, list) or map_type not in config.TILES:
+            if not isinstance(filters, (list, dict)) or map_type not in config.TILES:
                 raise ValueError
         except (ValueError, json.JSONDecodeError):
             self.send_json({"error": "Invalid filter request"}, HTTPStatus.BAD_REQUEST)

@@ -119,12 +119,14 @@ Run FSAtlas in a container using [Docker](https://docs.docker.com/get-docker/). 
 
 #### Build and run
 
-From the project root, build the image and start the service in the background:
+From the project root, pull the latest image from Docker Hub and start the service in the background:
 
 ```bash
-docker build -t fsatlas:latest .
+docker compose pull
 docker compose up -d
 ```
+
+The container is now deployed and can be reached at `http://<server_ip>:8777` by default.
 
 To stop the service:
 
@@ -132,10 +134,10 @@ To stop the service:
 docker compose down
 ```
 
-To rebuild after pulling updates:
+To update after a new image is published:
 
 ```bash
-docker build -t fsatlas:latest .
+docker compose pull
 docker compose up -d
 ```
 

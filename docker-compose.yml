@@ -1,8 +1,7 @@
 services:
   fsatlas:
     container_name: fsatlas
-    build: .
-    image: fsatlas:latest
+    image: leofric99/fsatlas:latest
     ports:
-      - "8000:8000"
+      - "8777:8000"
     restart: unless-stopped

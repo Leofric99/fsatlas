@@ -37,7 +37,7 @@ try {
         '--add-data', ((Join-Path $Root 'run\database\flights.csv') + ';run\database'),
         '--add-data', ((Join-Path $Root 'run\html\map.html') + ';run\html'),
         '--add-data', ((Join-Path $Root 'run\settings.json') + ';run'),
-        '--add-data', ((Join-Path $Root 'images\FSAtlas Logo.png') + ';images'),
+        '--add-data', ((Join-Path $Root 'run\images\FSAtlas Logo.png') + ';run\images'),
         '--collect-all', 'country_converter',
         'run\__main__.py'
     )

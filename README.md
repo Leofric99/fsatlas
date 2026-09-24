@@ -90,7 +90,7 @@ Choose the setup that best fits your environment.
 
 ### Windows
 
-Download the standalone `.exe` from the [FSAtlas v2.0.0 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.0.0).
+Download the standalone `.exe` from the [FSAtlas v2.1.0 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.1.0).
 
 Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
 

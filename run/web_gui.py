@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 import pandas as pd
 
 from run import config, data_loader, filtering, mapping
+from run.single_instance import SingleInstance, running_url
 
 LOGO_FILE = os.path.join(os.path.dirname(__file__), 'images', 'FSAtlas Logo.png')
 
@@ -702,9 +703,23 @@ def main():
     )
     args = parser.parse_args()
 
+    instance = None
+    if sys.platform == "win32" and getattr(sys, "frozen", False):
+      instance = SingleInstance.acquire()
+      if instance is None:
+        url = running_url()
+        if url:
+          try:
+            webbrowser.open(url)
+          except webbrowser.Error:
+            pass
+        return
+
     AtlasRequestHandler.state = AtlasState()
     server = ThreadingHTTPServer((args.host, args.port), AtlasRequestHandler)
     url = f"http://{args.host}:{server.server_port}"
+    if instance is not None:
+      instance.publish(url)
     print(f"Flightsim Atlas web UI: {url}")
     if not args.no_browser:
         try:
@@ -715,15 +730,17 @@ def main():
     if sys.platform == "win32" and getattr(sys, "frozen", False):
         from run.windows_tray import run_with_tray
 
-        run_with_tray(server, LOGO_FILE)
-        return
-
     try:
+      if sys.platform == "win32" and getattr(sys, "frozen", False):
+        run_with_tray(server, LOGO_FILE)
+      else:
         server.serve_forever()
     except KeyboardInterrupt:
-        pass
+      pass
     finally:
-        server.server_close()
+      server.server_close()
+      if instance is not None:
+        instance.close()
 
 
 if __name__ == "__main__":

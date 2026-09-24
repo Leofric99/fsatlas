@@ -11,7 +11,7 @@
 > **FSAtlas** explores real-world flight data on an interactive world map.
 
 <p align="center">
-  <img src="videos/FSAtlasDemo.gif" alt="FSAtlas demo" width="100%">
+  <img src="videos/fsatlas_demo.gif" alt="FSAtlas Demo" width="100%">
 </p>
 
 ---
@@ -40,10 +40,10 @@ Route results show the individual flights connecting the selected airports. Each
 
 ### Build flexible filters
 
-Build filter chains across the available flight-data columns, including airline, aircraft type, country, region, distance, flight time, and timestamps. Filters can be combined with AND/OR logic, and the interface shows a real example value for the selected column to make queries easier to construct.
+Build filter chains across the available flight-data columns, including airline, aircraft type, country, region, distance, flight time, and timestamps. Filters can be combined with AND/OR logic, and grouped together for granular control over the filtering logic.
 
 <p align="center">
-  <img src="images/complex_filters.png" alt="Complex flight filters view" width="100%">
+  <img src="images/complex_filters.png" alt="Flight filtering view" width="100%">
 </p>
 
 > [!TIP]
@@ -54,7 +54,7 @@ Build filter chains across the available flight-data columns, including airline,
 Choose between Dark Mode, Light Mode, Standard OpenStreetMap, Satellite, and Hybrid map styles. The light and dark Esri styles follow the selected theme, while the other options provide different ways to inspect the network.
 
 <p align="center">
-  <img src="images/map_types.png" alt="Map styles selector and map view" width="100%">
+  <img src="images/light_mode.png" alt="Different Map types and Dark and Light Modes" width="100%">
 </p>
 
 Switch between light and dark themes from the interface. The selected theme updates the map, controls, legend, and surrounding UI, and your preference is remembered for the next visit.
@@ -75,7 +75,7 @@ Choose the setup that best fits your environment.
 ### Windows
 
 > [!TIP]
-> Download the standalone `.exe` from the [FSAtlas v2.1.0 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.1.0).
+> Download the standalone `.exe` from the [FSAtlas v2.1.1 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.1.1).
 >
 > Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
 

@@ -22,9 +22,11 @@
 
 ## What Is FSAtlas?
 
-FSAtlas reads over 170,000 real-world flight records built from live tracking data and renders every departure and arrival airport as a colour-coded dot on an interactive map just like [FlightConnections](www.flightconnections.com), but free, and self-hosted.
+FSAtlas reads over 170,000 real-world flight records built from live tracking data and renders every departure and arrival airport as a colour-coded dot on an interactive map just like [FlightConnections](https://www.flightconnections.com), but free, and self-hosted.
 
-Click an airport to explore its connections, select a destination to inspect a route, and open an individual flight to view its specific details.
+Click an airport to explore its connections, select a destination to inspect the details of a route, and open an individual flight to view its specific details.
+
+> FSAtlas is designed for finding inspiration for your next flight. It displays routes as an A - B. It is not designed to display routes as waypoints flows, SIDs, STARs, etc. [Simbrief](https://www.simbrief.com) is recommended for this.
 
 ## Key Features
 

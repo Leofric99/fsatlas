@@ -82,15 +82,9 @@ The `timestamp_read` value records the date and time when the flight was discove
 
 Choose the setup that best fits your environment.
 
-### Windows
+### Linux & macOS
 
-Download the standalone `.exe` from the [FSAtlas v2.1.1 release](https://github.com/Leofric99/fsatlas/releases/tag/v2.1.1).
-
-Once it has downloaded, run the `.exe` and enjoy exploring with FSAtlas.
-
-### Linux & MacOS
-
-The `uv` installation is the quickest way to run FSAtlas locally for MacOS and Linux.
+The `uv` installation is the quickest way to run FSAtlas locally for Linux and macOS.
 
 #### Prerequisites
 
@@ -102,41 +96,36 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 #### Installation
 
-Install the latest version directly from the repository:
+Clone the repository and move into the project directory:
 
 ```bash
-uv tool install git+https://github.com/Leofric99/fsatlas.git
+git clone https://github.com/Leofric99/fsatlas.git
+cd fsatlas
 ```
 
-Then run it:
+Before starting FSAtlas, place your flight data in `run/database/flights.csv` as described in [Flight Data](#flight-data). `uv` will create the environment and install the dependencies when you run the project:
 
 ```bash
-fsatlas
+uv run fsatlas
 ```
 
 This starts a local web server and opens FSAtlas in your default browser. If the browser does not open automatically, use the URL printed in the terminal, such as `http://127.0.0.1:PORT`.
 
-To upgrade to the latest version later, use:
-
-```bash
-uv tool upgrade fsatlas
-```
-
 ## Docker
 
-Run FSAtlas in a container using [Docker](https://docs.docker.com/get-docker/). This is useful when you want to run it as a detached service or access it from another device on your network.
+Run FSAtlas in a container using [Docker](https://docs.docker.com/get-docker/). This is useful when you want to run it as a detached service or access it from another device on your network. Build the image from your local checkout so your flight data is included.
 
 #### Prerequisites
 
-[**Docker**](https://docs.docker.com/get-docker/) with Compose, included in Docker Desktop or available as the `docker-compose-plugin` package on Linux.
+[**Docker**](https://docs.docker.com/get-docker/), included in Docker Desktop or available from your Linux distribution's package manager.
 
 #### Build and run
 
-From the project root, pull the latest image from Docker Hub and start the service in the background:
+From the project root, place your flight data in `run/database/flights.csv` as described in [Flight Data](#flight-data), then build and start the container:
 
 ```bash
-docker compose pull
-docker compose up -d
+docker build -t fsatlas .
+docker run -d --name fsatlas -p 8777:8000 fsatlas
 ```
 
 The container is now deployed and can be reached at `http://<server_ip>:8777` by default.
@@ -144,14 +133,8 @@ The container is now deployed and can be reached at `http://<server_ip>:8777` by
 To stop the service:
 
 ```bash
-docker compose down
-```
-
-To update after a new image is published:
-
-```bash
-docker compose pull
-docker compose up -d
+docker stop fsatlas
+docker rm fsatlas
 ```
 
 ## Contributing

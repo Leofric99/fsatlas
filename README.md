@@ -22,7 +22,7 @@
 
 ## What Is FSAtlas?
 
-FSAtlas reads over 170,000 real-world flight records built from live tracking data and renders every departure and arrival airport as a colour-coded dot on an interactive map just like [FlightConnections](https://www.flightconnections.com), but free, and self-hosted.
+FSAtlas reads flight records built from live tracking data and renders every departure and arrival airport as a colour-coded dot on an interactive map just like [FlightConnections](https://www.flightconnections.com), but free, and self-hosted.
 
 Click an airport to explore its connections, select a destination to inspect the details of a route, and open an individual flight to view its specific details.
 
@@ -65,6 +65,17 @@ Choose between Dark Mode, Light Mode, Standard OpenStreetMap, Satellite, and Hyb
 Hide the filter list or airport legend when you need more room for the map. Both panels collapse into compact pull-tabs and can be restored without losing the current view or filters.
 
 > Airports are rendered on canvas, routes are calculated only when requested, and filtered map views are cached server-side per session. This keeps the initial map responsive while avoiding unnecessary repeated work.
+
+## Flight Data
+
+For the time being, you will need to source your own flight data from APIs or other freely available downloads. Place your data in `run/database/flights.csv` using the format below:
+
+```csv
+owner,reg,type,type_icao,flight_number,calsign,dep_airport,dep_airport_iata,dep_airport_icao,dep_airport_city,dep_airport_country,dep_airport_lat,dep_airport_lon,dep_airport_elevation,arr_airport,arr_airport_iata,arr_airport_icao,arr_airport_city,arr_airport_country,arr_airport_lat,arr_airport_lon,arr_airport_elevation,distance,rough_flight_time,timestamp_read
+ACME Airlines,N88888,Acmebus A320,A320,AA88,AAL88,San Francisco International Airport,SFO,KSFO,San Francisco,United States,37.61881,-122.37542,13.1,Singapore Changi International Airport,SIN,WSSS,Singapore,Singapore,1.35019,103.994,22,7333,15.76,03th Nov 2024 at 11:24
+```
+
+The `timestamp_read` value records the date and time when the flight was discovered. I am planning to implement a script that collects this data automatically at some point, so stay tuned for updates.
 
 
 ## Quick Start

@@ -1,3 +1,8 @@
+# Custom
+run/database/*.csv
+run/database/*.db
+run/database/*.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

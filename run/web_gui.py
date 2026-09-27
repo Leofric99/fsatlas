@@ -276,7 +276,7 @@ def index_html(columns, settings):
       position: fixed; z-index: 6; pointer-events: none;
       transition: left .2s ease, top .2s ease;
     }}
-    .map-type {{ margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }}
+    .map-type {{ display: none; }}
     select, input, button {{
       font: inherit; color: inherit; background: var(--surface-solid);
       border: 1px solid var(--border); border-radius: 10px; min-height: 34px; box-sizing: border-box;
@@ -305,6 +305,10 @@ def index_html(columns, settings):
       background: linear-gradient(135deg, var(--danger), color-mix(in srgb, var(--danger) 55%, black));
       box-shadow: 0 4px 14px color-mix(in srgb, var(--danger) 35%, transparent);
     }}
+    /* .map-type used to carry this (pushing itself + everything after it right, leaving the
+       logo alone on the left) - now that it's always hidden, #apply is the first surviving
+       toolbar-head button, so the auto-margin moves here to keep the same grouping. */
+    #apply {{ margin-left: auto; }}
     #theme-toggle {{
       width: 34px; height: 34px; padding: 0; background: var(--surface-solid); border: 1px solid var(--border);
       box-shadow: none; display: flex; align-items: center; justify-content: center; color: var(--text);
@@ -323,6 +327,53 @@ def index_html(columns, settings):
     }}
     #settings-toggle:hover {{ background: var(--border); transform: none; filter: none; }}
     #settings-toggle svg {{ width: 17px; height: 17px; }}
+    /* Map type lives as a single button (matches theme/saved/settings' shape) that opens a
+       small popover instead of a permanent "Map Type: X" label + <select> - same on desktop
+       and mobile. */
+    #map-type-fab-wrap {{ display: flex; position: relative; flex-shrink: 0; }}
+    #map-type-fab {{
+      width: 34px; height: 34px; padding: 0;
+      background: var(--surface-solid); color: var(--text);
+      border: 1px solid var(--border); box-shadow: none;
+      display: flex; align-items: center; justify-content: center;
+    }}
+    #map-type-fab:hover {{ background: var(--border); transform: none; filter: none; }}
+    #map-type-fab svg {{ width: 16px; height: 16px; }}
+    .map-type-menu {{
+      display: none; position: absolute; top: calc(100% + 8px); right: 0; min-width: 152px;
+      padding: 6px; border-radius: 12px; background: var(--surface-solid);
+      border: 1px solid var(--border); box-shadow: var(--shadow); z-index: 8;
+    }}
+    .map-type-menu.open {{ display: block; }}
+    .map-type-menu-item {{
+      display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px;
+      background: transparent; color: var(--text); box-shadow: none; font-size: 13px; font-weight: 500;
+    }}
+    .map-type-menu-item:hover {{ background: var(--border); transform: none; filter: none; }}
+    .map-type-menu-item.active {{ color: var(--accent); font-weight: 700; }}
+    /* Flight count: hidden until a real filter is applied, then a transient bubble bottom-
+       left instead of a permanent inline count - same on desktop and mobile. */
+    #flights-toast {{
+      display: flex; align-items: center; gap: 10px; position: fixed; z-index: 30;
+      left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      padding: 10px 14px; border-radius: 14px; overflow: hidden;
+      background: color-mix(in srgb, var(--accent) 24%, var(--surface-solid) 76%);
+      border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+      backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+      box-shadow: var(--shadow); color: var(--text); font-size: 13px; font-weight: 600;
+      opacity: 0; transform: translateY(10px); pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }}
+    #flights-toast.open {{ opacity: 1; transform: translateY(0); pointer-events: auto; }}
+    #flights-toast-close {{
+      width: 18px; height: 18px; padding: 0; border-radius: 50%; flex-shrink: 0;
+      background: transparent; color: var(--text); box-shadow: none; border: none; opacity: 0.7;
+      display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1;
+    }}
+    #flights-toast-close:hover {{ opacity: 1; transform: none; filter: none; background: transparent; }}
+    .flights-toast-bar {{ position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }}
+    #flights-toast.open .flights-toast-bar {{ animation: flights-toast-shrink 3s linear forwards; }}
+    @keyframes flights-toast-shrink {{ from {{ transform: scaleX(1); }} to {{ transform: scaleX(0); }} }}
     .modal-overlay {{
       position: fixed; inset: 0; background: rgba(8, 10, 14, 0.45);
       display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
@@ -393,7 +444,7 @@ def index_html(columns, settings):
       margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--border);
     }}
     .actions {{ display: flex; align-items: center; gap: 10px; }}
-    #status {{ color: var(--muted); font-size: 13px; }}
+    #status {{ display: none; }}
     .toolbar.filters-collapsed {{ gap: 0; }}
     .filters-tab {{
       position: absolute;
@@ -420,20 +471,92 @@ def index_html(columns, settings):
     .filters-tab svg {{ width: 14px; height: 14px; transition: transform .28s ease; transform: rotate(180deg); }}
     .filters-tab.collapsed svg {{ transform: none; }}
     iframe {{ border: 0; position: fixed; inset: 0; width: 100%; height: 100%; background: var(--bg-grad); z-index: 1; }}
+    .map-type-label {{ margin-right: 4px; }}
+    #filters-menu-btn {{ display: none; }}
+    #filter-menu-footer {{ display: none; }}
+    .action-label {{ display: none; }}
+    /* Mobile mode: the desktop filter builder (always-open grid rows + collapse tab, with
+       Apply/Reset text buttons in the top bar) is replaced by a single "Add Filter" /
+       "Filters (N)" button that opens the *entire* #filters tree fullscreen - every
+       condition and group, grouped and ungrouped, in one scrollable list - with Reset/Apply
+       fixed at the bottom of that list instead of the crowded top bar. Reuses the exact same
+       DOM nodes/listeners (insert/group/remove/column/operator/value all still work
+       untouched), so none of the filtering logic itself is duplicated. Kept entirely inside
+       this query so desktop's inline panel + top-bar buttons are untouched. */
     @media (max-width: 760px) {{
-      .toolbar {{ margin: 8px 8px 10px; border-radius: 16px; }}
+      .toolbar {{ margin: 8px 8px 10px; border-radius: 16px; padding: 12px; gap: 8px; }}
+      .toolbar-head {{ gap: 8px; flex-wrap: nowrap; }}
+      .logo {{ position: static !important; height: 24px; margin: 0; flex-shrink: 0; }}
+      #apply, #reset {{ display: none !important; }}
+      button, select, input {{ min-height: 40px; }}
+      button.icon, #theme-toggle, #saved-toggle, #settings-toggle {{ width: 34px; height: 34px; flex-shrink: 0; }}
+      .row-actions .icon {{ width: 38px; }}
+      #filters-wrap, .filters-tab {{ display: none !important; }}
+      #filters-menu-btn {{
+        display: flex; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0;
+        padding: 0 8px; background: var(--surface-solid); color: var(--text);
+        border: 1px solid var(--border); box-shadow: none; font-size: 11.5px;
+      }}
+      #filters-menu-btn svg {{ width: 13px; height: 13px; flex-shrink: 0; }}
+      #filters-menu-btn span {{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+      #filters-menu-btn.has-filters {{ border-color: var(--accent); color: var(--accent); }}
+      #filters.mobile-editing {{
+        position: fixed; inset: 0; z-index: 60; background: var(--surface-solid);
+        padding: max(16px, env(safe-area-inset-top, 0px)) 16px 96px;
+        overflow-y: auto; display: block;
+      }}
+      #filters.mobile-editing::before {{ content: 'Filters'; display: block; font-size: 15px; font-weight: 700; margin-bottom: 14px; }}
+      #filters.mobile-editing .filter-row,
+      #filters.mobile-editing .filter-group {{
+        background: var(--surface-solid); border: 1px solid var(--border); border-radius: 12px; padding: 12px;
+      }}
+      #filters.mobile-editing .filter-row {{ grid-template-columns: 1fr !important; gap: 10px; }}
+      #filters.mobile-editing .group-head {{ flex-wrap: wrap; gap: 8px; }}
+      #filters.mobile-editing .group-head .row-actions {{ margin-left: 0; flex-basis: 100%; }}
+      #filters.mobile-editing .filters-list {{ margin-top: 12px; padding-left: 14px; }}
+      #filters.mobile-editing .row-actions {{ justify-content: flex-start; gap: 10px; margin-top: 4px; }}
+      #filters.mobile-editing .row-actions .icon {{
+        width: auto; height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
+      }}
+      /* The higher-specificity #filters.mobile-editing .icon rule above would otherwise beat
+         the base rule hiding "remove" on the only/first row (so the tree can never end up
+         with zero conditions) - restore that here. */
+      #filters.mobile-editing .first > .row-actions .remove,
+      #filters.mobile-editing .first > .group-head .row-actions .remove {{ display: none !important; }}
+      #filters.mobile-editing .action-label {{ display: inline; }}
+      body.filter-editing #filter-menu-footer {{
+        display: flex; gap: 10px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 61;
+        padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+        background: var(--surface-solid); border-top: 1px solid var(--border);
+      }}
+      #filter-menu-footer button {{ flex: 1 1 0; }}
+      /* The fullscreen filter editor already covers the viewport itself, but the toolbar's
+         translucent glass background otherwise still shows faintly through/around it - hide
+         it outright so nothing but the map + airport dots is visible behind the editor. */
+      body.filter-editing .toolbar {{ display: none; }}
     }}
   </style>
 </head>
+
 <body>
   <section class="toolbar">
     <div class="toolbar-head">
       <div class="brand">
         <img class="logo" src="/images/logo.png" alt="FSAtlas" width="1377" height="768">
       </div>
-      <label class="map-type">Map Type <select id="map-type"></select></label>
+      <label class="map-type"><span class="map-type-label">Map Type</span><select id="map-type"></select></label>
       <button id="apply">Apply Filters</button>
       <button id="reset" class="danger" type="button" title="Reset filters" aria-label="Reset filters">Reset Filters</button>
+      <button id="filters-menu-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+        <span id="filters-menu-label">Add Filter</span>
+      </button>
+      <div id="map-type-fab-wrap">
+        <button id="map-type-fab" type="button" title="Map style" aria-label="Map style">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        </button>
+        <div id="map-type-menu" class="map-type-menu"></div>
+      </div>
       <button id="theme-toggle" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode"></button>
       <button id="saved-toggle" type="button" title="Saved Flights" aria-label="Saved Flights">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
@@ -450,6 +573,15 @@ def index_html(columns, settings):
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
   </section>
+  <div id="filter-menu-footer">
+    <button id="filter-menu-reset" class="secondary" type="button">Reset</button>
+    <button id="filter-menu-apply" type="button">Apply Filters</button>
+  </div>
+  <div id="flights-toast">
+    <span id="flights-toast-count"></span>
+    <button id="flights-toast-close" type="button" aria-label="Dismiss">&times;</button>
+    <div class="flights-toast-bar"></div>
+  </div>
   <div id="saved-modal" class="modal-overlay">
     <div class="modal">
       <div class="modal-header">
@@ -505,8 +637,81 @@ def index_html(columns, settings):
     const mapType = document.getElementById('map-type');
     const THEME_MAP_TYPES = {{ dark: 'Dark Mode', light: 'Light Mode' }};
     let theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-    let autoMapType = true; // Tracks the theme-matched default until the user manually picks a style
-    mapTypes.forEach(name => mapType.add(new Option(name, name, name === THEME_MAP_TYPES[theme], name === THEME_MAP_TYPES[theme])));
+    // Sentinel (empty string can't collide with a real config.TILES key) for the default
+    // "Use Theme" option - resolved to the real tile name on demand via effectiveMapType(),
+    // so the server/tile layer never sees "Use Theme" itself.
+    const USE_THEME_VALUE = '';
+    mapType.add(new Option('Use Theme', USE_THEME_VALUE, true, true));
+    mapTypes.forEach(name => mapType.add(new Option(name, name, false, false)));
+    function effectiveMapType() {{ return mapType.value === USE_THEME_VALUE ? THEME_MAP_TYPES[theme] : mapType.value; }}
+
+    // --- Mobile-mode detection: width-based (matches the .toolbar breakpoint above) so the
+    // layout adapts the same way for a real phone, a resized window, or dev-tools device
+    // emulation - deliberately not user-agent sniffing, which is unreliable and easy to spoof.
+    function isMobileViewport() {{ return window.matchMedia('(max-width: 760px)').matches; }}
+    let isMobile = isMobileViewport();
+    document.body.classList.toggle('is-mobile', isMobile);
+
+    // --- Map-type button: a single icon button (matches theme/saved/settings' shape) that
+    // opens a tiny popover instead of a permanent "Map Type: X" label + <select> - same on
+    // desktop and mobile. Reuses the exact same #map-type <select>/mapTypes array either way -
+    // it's just a different UI to set the same underlying value, so applyFilters()/
+    // effectiveMapType() stay the single source of truth regardless of which UI changed them.
+    const mapTypeFabWrap = document.getElementById('map-type-fab-wrap');
+    const mapTypeFab = document.getElementById('map-type-fab');
+    const mapTypeMenu = document.getElementById('map-type-menu');
+
+    function closeMapTypeMenu() {{ mapTypeMenu.classList.remove('open'); }}
+
+    function buildMapTypeMenu() {{
+      mapTypeMenu.replaceChildren();
+      [['Use Theme', USE_THEME_VALUE], ...mapTypes.map(name => [name, name])].forEach(([label, value]) => {{
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'map-type-menu-item' + (value === mapType.value ? ' active' : '');
+        item.textContent = label;
+        item.addEventListener('click', () => {{
+          mapType.value = value;
+          applyFilters();
+          closeMapTypeMenu();
+        }});
+        mapTypeMenu.append(item);
+      }});
+    }}
+
+    mapTypeFab.addEventListener('click', e => {{
+      e.stopPropagation();
+      const opening = !mapTypeMenu.classList.contains('open');
+      if (opening) buildMapTypeMenu();
+      mapTypeMenu.classList.toggle('open', opening);
+    }});
+    document.addEventListener('click', e => {{ if (!mapTypeFabWrap.contains(e.target)) closeMapTypeMenu(); }});
+
+    // --- Flight-count toast: hidden while no filter is applied, then a translucent bubble
+    // bottom-left for 3s (with a shrinking timer bar) instead of a permanent inline count -
+    // same on desktop and mobile. Dismissable early via its own close button.
+    const flightsToast = document.getElementById('flights-toast');
+    const flightsToastCount = document.getElementById('flights-toast-count');
+    const flightsToastBar = document.querySelector('.flights-toast-bar');
+    let flightsToastTimer = null;
+
+    function hideFlightsToast() {{
+      flightsToast.classList.remove('open');
+      clearTimeout(flightsToastTimer);
+    }}
+
+    function showFlightsToast(count) {{
+      flightsToastCount.textContent = count.toLocaleString() + ' Flights';
+      flightsToast.classList.add('open');
+      // Force the shrinking bar to restart from full width even if a toast is already showing.
+      flightsToastBar.style.animation = 'none';
+      void flightsToastBar.offsetWidth;
+      flightsToastBar.style.animation = '';
+      clearTimeout(flightsToastTimer);
+      flightsToastTimer = setTimeout(hideFlightsToast, 3000);
+    }}
+
+    document.getElementById('flights-toast-close').addEventListener('click', hideFlightsToast);
 
     // --- Theme toggle (persists choice, re-themes the map iframe) ---
     const SUN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2.5v3M12 18.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>';
@@ -566,8 +771,7 @@ def index_html(columns, settings):
           body: JSON.stringify({{theme}})
         }}).catch(() => {{}});
       }}
-      if (autoMapType && mapType.value !== THEME_MAP_TYPES[theme]) {{
-        mapType.value = THEME_MAP_TYPES[theme];
+      if (mapType.value === USE_THEME_VALUE) {{
         applyFilters();
       }} else if (baseMapUrl) {{
         document.getElementById('map').src = withTheme(baseMapUrl);
@@ -693,6 +897,48 @@ def index_html(columns, settings):
       toolbar.classList.toggle('filters-collapsed');
     }});
 
+    // --- Mobile filter menu - replaces desktop's always-open inline panel entirely on
+    // mobile with a single button (labelled "Add Filter" until anything's configured, then
+    // "Filters (N)") that opens the *entire* #filters tree fullscreen, Reset/Apply fixed at
+    // the bottom. Deliberately reuses the exact same #filters DOM/listeners (insert/group/
+    // remove/column/operator/value) instead of duplicating any filter-tree logic - opening
+    // the menu just repositions the whole tree, it doesn't rebuild or hide any of it.
+    const filtersMenuBtn = document.getElementById('filters-menu-btn');
+    const filtersMenuLabel = document.getElementById('filters-menu-label');
+
+    function countConfiguredFilters() {{
+      return [...filters.querySelectorAll('.column')].filter(col => col.value).length;
+    }}
+
+    function updateFiltersMenuLabel() {{
+      const configured = countConfiguredFilters();
+      const label = configured ? 'Filters (' + configured + ')' : 'Add Filter';
+      filtersMenuLabel.textContent = label;
+      filtersMenuBtn.classList.toggle('has-filters', configured > 0);
+    }}
+
+    // .toolbar's backdrop-filter makes it the containing block for position:fixed descendants
+    // (same reason the logo gets moved out - see applyLogoPlacement below), so #filters has to
+    // move to <body> too or "fullscreen" would mean "the size of the toolbar".
+    function openFilterMenu() {{
+      document.body.appendChild(filters);
+      filters.classList.add('mobile-editing');
+      document.body.classList.add('filter-editing');
+    }}
+
+    function closeFilterMenu() {{
+      filters.classList.remove('mobile-editing');
+      document.body.classList.remove('filter-editing');
+      filtersWrap.appendChild(filters);
+      updateFiltersMenuLabel();
+    }}
+
+    filtersMenuBtn.addEventListener('click', openFilterMenu);
+
+    // Delegated so it keeps working across the column/operator/value swap in updateOperators()
+    // below (the .value element gets replaced with a fresh input/select on column change).
+    filters.addEventListener('change', e => {{ if (e.target.matches('.column')) updateFiltersMenuLabel(); }});
+
     function operatorsFor(column) {{
       // Dropdown-backed columns only ever match a single picked value, so there's no
       // meaningful choice of operator - lock it to "Is" instead of letting the user pick
@@ -783,14 +1029,26 @@ def index_html(columns, settings):
     // Keeps the logo horizontally centered on the first filter row's column select, and
     // vertically in line with the other toolbar-head buttons (Apply Filters, Map Type, etc).
     const logoEl = document.querySelector('.logo');
+    const brandEl = document.querySelector('.brand');
     // .toolbar uses backdrop-filter, which (per spec) makes it the containing block for any
     // position:fixed descendant - so a fixed logo left inside it would be positioned relative
     // to .toolbar, not the viewport. Move it out to <body> so "fixed" means the viewport.
-    document.body.appendChild(logoEl);
+    // Mobile skips all of this and keeps the logo inline in .brand instead (small, static,
+    // no floating tracker) - there's no per-row filter select to center it over once the
+    // filter builder starts collapsed behind the pull-tab.
+    function applyLogoPlacement() {{
+      if (isMobile) {{
+        if (logoEl.parentElement !== brandEl) brandEl.appendChild(logoEl);
+      }} else {{
+        if (logoEl.parentElement !== document.body) document.body.appendChild(logoEl);
+        positionLogo();
+      }}
+    }}
     // The <img> has width/height attributes so its box is sized correctly from the first
     // layout pass, but re-run once the real pixels are in as a safety net regardless.
-    logoEl.addEventListener('load', positionLogo);
+    logoEl.addEventListener('load', () => {{ if (!isMobile) positionLogo(); }});
     function positionLogo() {{
+      if (isMobile) return;
       const targetSelect = filters.querySelector('.filter-row .column');
       const toolbarHead = document.querySelector('.toolbar-head');
       if (!targetSelect || !toolbarHead) return;
@@ -801,11 +1059,22 @@ def index_html(columns, settings):
       logoEl.style.left = Math.round(rect.left + rect.width / 2 - logoRect.width / 2) + 'px';
       logoEl.style.top = Math.round(headRect.top + headRect.height / 2 - logoRect.height / 2) + 'px';
     }}
+    applyLogoPlacement();
 
     let filterLayoutRaf;
     function scheduleFilterLayout() {{
       cancelAnimationFrame(filterLayoutRaf);
-      filterLayoutRaf = requestAnimationFrame(layoutFilterFields);
+      filterLayoutRaf = requestAnimationFrame(() => {{
+        // Re-checked on every resize (not just once at load) so rotating a device, resizing
+        // a window, or toggling dev-tools emulation across the breakpoint takes effect live.
+        const nowMobile = isMobileViewport();
+        if (nowMobile !== isMobile) {{
+          isMobile = nowMobile;
+          document.body.classList.toggle('is-mobile', isMobile);
+          applyLogoPlacement();
+        }}
+        layoutFilterFields();
+      }});
     }}
     window.addEventListener('resize', scheduleFilterLayout);
     new ResizeObserver(scheduleFilterLayout).observe(toolbar);
@@ -823,6 +1092,7 @@ def index_html(columns, settings):
       markFirst(filters);
       filters.querySelectorAll('.filters-list').forEach(markFirst);
       layoutFilterFields();
+      updateFiltersMenuLabel();
     }}
 
     function populateColumnSelect(columnSelect) {{
@@ -861,9 +1131,9 @@ def index_html(columns, settings):
         '<select class="operator"></select>' +
         '<input class="value" placeholder="Value">' +
         '<div class="row-actions">' +
-        '<button class="icon insert" title="Insert filter below" aria-label="Insert filter below">+</button>' +
-        '<button class="icon group" title="Wrap in a group" aria-label="Wrap in a group">⧉</button>' +
-        '<button class="icon remove" title="Remove filter" aria-label="Remove filter">×</button>' +
+        '<button class="icon insert" title="Insert filter below" aria-label="Insert filter below">+<span class="action-label">Insert</span></button>' +
+        '<button class="icon group" title="Wrap in a group" aria-label="Wrap in a group">⧉<span class="action-label">Group</span></button>' +
+        '<button class="icon remove" title="Remove filter" aria-label="Remove filter">×<span class="action-label">Remove</span></button>' +
         '</div>';
       const columnSelect = row.querySelector('.column');
       populateColumnSelect(columnSelect);
@@ -886,9 +1156,9 @@ def index_html(columns, settings):
         '<select class="logic"><option>AND</option><option>OR</option></select>' +
         '<span class="group-label">Group</span>' +
         '<div class="row-actions">' +
-        '<button class="icon insert" title="Insert filter below group" aria-label="Insert filter below group">+</button>' +
-        '<button class="icon ungroup" title="Ungroup" aria-label="Ungroup">⧈</button>' +
-        '<button class="icon remove" title="Remove group" aria-label="Remove group">×</button>' +
+        '<button class="icon insert" title="Insert filter below group" aria-label="Insert filter below group">+<span class="action-label">Insert</span></button>' +
+        '<button class="icon ungroup" title="Ungroup" aria-label="Ungroup">⧈<span class="action-label">Ungroup</span></button>' +
+        '<button class="icon remove" title="Remove group" aria-label="Remove group">×<span class="action-label">Remove</span></button>' +
         '</div></div><div class="filters-list"></div>';
       group.querySelector('.logic').addEventListener('change', layoutFilterFields);
       group.querySelector('.insert').addEventListener('click', () => {{
@@ -957,25 +1227,31 @@ def index_html(columns, settings):
       try {{
         const response = await fsatlasFetch('/api/maps', {{
           method: 'POST', headers: {{'Content-Type': 'application/json'}},
-          body: JSON.stringify({{filters: filterTree, map_type: mapType.value}})
+          body: JSON.stringify({{filters: filterTree, map_type: effectiveMapType()}})
         }});
         const result = await response.json();
         baseMapUrl = result.url;
         document.getElementById('map').src = withTheme(baseMapUrl);
         document.getElementById('status').textContent = result.count.toLocaleString() + ' Flights';
+        // The permanent count stays hidden (see #status CSS) until a real filter is applied,
+        // then shows as a transient toast instead - same on desktop and mobile.
+        if (countConfiguredFilters() > 0) showFlightsToast(result.count); else hideFlightsToast();
       }} catch (err) {{
         document.getElementById('status').textContent = '';
       }}
     }}
 
-    document.getElementById('apply').addEventListener('click', applyFilters);
-    document.getElementById('reset').addEventListener('click', () => {{
+    function resetFilters() {{
       filters.replaceChildren();
       addRow();
       applyFilters();
-    }});
+    }}
+
+    document.getElementById('apply').addEventListener('click', applyFilters);
+    document.getElementById('reset').addEventListener('click', resetFilters);
+    document.getElementById('filter-menu-apply').addEventListener('click', () => {{ applyFilters(); closeFilterMenu(); }});
+    document.getElementById('filter-menu-reset').addEventListener('click', () => {{ resetFilters(); closeFilterMenu(); }});
     mapType.addEventListener('change', () => {{
-      autoMapType = false;
       applyFilters();
     }});
     addRow();

@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         * { box-sizing: border-box; }
         html, body {
@@ -149,8 +150,39 @@
             transition: color .15s ease, background .15s ease;
         }
         .legend-tab:hover { color: << text_color >>; background: << card_bg >>; }
-        .legend-tab svg { width: 14px; height: 14px; transition: transform .28s ease; }
+        .legend-tab svg { width: 14px; height: 14px; transition: transform .28s ease; flex-shrink: 0; }
         .legend-root.collapsed .legend-tab svg { transform: rotate(180deg); }
+        .legend-tab-label { display: none; }
+
+        /* Mobile mode: the floating info card becomes a full-width bottom sheet (fixed to the
+           bottom edge, rounded top corners only, no drag-resize handle - touch resize doesn't
+           work well) instead of a small draggable/resizable panel - easier to read and tap with
+           a thumb. Kept entirely inside this query so the desktop card is untouched. */
+        @media (max-width: 760px) {
+            .info-panel {
+                left: 0; right: 0; bottom: 0; width: 100%;
+                max-height: 72vh;
+                border-radius: 18px 18px 0 0;
+                border-left: none; border-right: none; border-bottom: none;
+                resize: none;
+                padding: 14px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+            }
+            .panel-header { font-size: 15px; }
+            .close-btn { width: 30px; height: 30px; font-size: 18px; }
+            .flight-card { padding: 12px 14px; }
+            .expand-btn, .simbrief-btn, .save-btn { min-height: 40px; display: flex; align-items: center; justify-content: center; }
+            .leaflet-control-attribution { font-size: 9px !important; }
+            /* Collapsed-by-default (see legend.onAdd JS) so it doesn't eat into the map, but
+               a plain chevron alone doesn't say what it toggles. A horizontally-widened tab
+               stuck out too far past the screen edge, so keep the tab's original narrow width
+               and rotate the label vertically instead - it reads sideways but stays fully
+               inside the tab, matching the tab/panel height-parity setup above. */
+            .legend-root.collapsed .legend-tab { flex-direction: column; gap: 6px; padding: 10px 0; }
+            .legend-root.collapsed .legend-tab-label {
+                display: inline; writing-mode: vertical-rl; text-orientation: mixed;
+                font-size: 11px; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
+            }
+        }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -203,6 +235,13 @@
             } catch (err) { /* no parent to notify (e.g. opened standalone) */ }
         }
 
+        // --- MOBILE MODE: width-based, matching the @media breakpoint above, so this stays in
+        // sync with the bottom-sheet CSS whether it's a real phone, a resized window, or
+        // dev-tools device emulation. Re-checked on resize (e.g. device rotation).
+        function isMobileViewport() { return window.matchMedia('(max-width: 760px)').matches; }
+        let isMobile = isMobileViewport();
+        window.addEventListener('resize', () => { isMobile = isMobileViewport(); });
+
         // --- MAP INIT ---
         const map = L.map('map', {
             preferCanvas: true,
@@ -234,15 +273,19 @@
             const container = L.DomUtil.create('div', 'legend-root');
             container.innerHTML = `
                 <div class="legend-panel">
-                    <span class="legend-title">Airport legend</span>
+                    <span class="legend-title">Map Legend</span>
                     <div class="legend-row"><span class="legend-dot" style="background:${COLOR_TOP}"></span>&gt; 100 non-stop destinations</div>
                     <div class="legend-row"><span class="legend-dot" style="background:${COLOR_HIGH}"></span>&gt; 30 non-stop destinations</div>
                     <div class="legend-row"><span class="legend-dot" style="background:${COLOR_MED}"></span>&gt; 7 non-stop destinations</div>
                     <div class="legend-row"><span class="legend-dot" style="background:${COLOR_LOW}"></span>&lt; 7 non-stop destinations</div>
                 </div>
-                <div class="legend-tab" title="Toggle airport legend" aria-label="Toggle airport legend">
+                <div class="legend-tab" title="Toggle map legend" aria-label="Toggle map legend">
+                    <span class="legend-tab-label">Map Legend</span>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>`;
+            // Starts collapsed on mobile - the small pull tab stays reachable but doesn't eat
+            // into the limited map area the way the full legend card would.
+            if (isMobile) container.classList.add('collapsed');
             container.querySelector('.legend-tab').addEventListener('click', () => {
                 container.classList.toggle('collapsed');
             });
@@ -649,8 +692,15 @@
                 bounds = L.latLngBounds([[depAp.lat, depAp.lon + offset], [depAp.lat, depAp.lon + offset]]);
             }
 
+            // On mobile the panel is a full-width bottom sheet, not a left-side card, so the
+            // dead space it covers is at the bottom rather than the left - pad accordingly.
             const panelRect = document.getElementById('info').getBoundingClientRect();
-            map.fitBounds(bounds, {
+            map.fitBounds(bounds, isMobile ? {
+                paddingTopLeft: [50, 50],
+                paddingBottomRight: [50, panelRect.height + 20],
+                maxZoom: 7,
+                animate: true
+            } : {
                 paddingTopLeft: [panelRect.right + 20, 50],
                 paddingBottomRight: [50, 50],
                 maxZoom: 7,

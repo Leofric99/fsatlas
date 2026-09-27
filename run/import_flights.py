@@ -120,10 +120,10 @@ def recompute_flight_times(df, cruise_speeds):
 
 
 def import_flights(json_path, dry_run=False):
-    if os.path.exists(DATA_FILE):
+    if os.path.exists(DATA_FILE) and os.path.getsize(DATA_FILE) > 0:
         existing = pd.read_csv(DATA_FILE, dtype=str, keep_default_na=False)
     else:
-        print(f"{DATA_FILE} not found; creating it with columns: {', '.join(REQUIRED_COLUMNS)}")
+        print(f"{DATA_FILE} not found or empty; creating it with columns: {', '.join(REQUIRED_COLUMNS)}")
         existing = pd.DataFrame(columns=REQUIRED_COLUMNS)
 
     new_records = load_new_records(json_path)

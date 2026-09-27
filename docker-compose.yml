@@ -5,3 +5,12 @@ services:
     ports:
       - "8777:8000"
     restart: unless-stopped
+    volumes:
+      # Persists the app's two small JSON files (settings.json + saved_items.json) outside
+      # the container so they survive image updates/recreation. Mounted as a directory
+      # (matching FSATLAS_DATA_DIR=/data set in the Dockerfile) rather than bind-mounting the
+      # files individually - Docker would otherwise create a phantom directory in place of a
+      # file that doesn't exist yet on the host. Change the host side (left of the colon) to
+      # wherever you'd like this data to live; both files are created there automatically
+      # with sensible defaults the first time the container starts if they don't already exist.
+      - ./data:/data

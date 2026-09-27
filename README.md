@@ -130,6 +130,11 @@ docker run -d --name fsatlas -p 8777:8000 fsatlas
 
 The container is now deployed and can be reached at `http://<server_ip>:8777` by default.
 
+By default, settings/saved items (`settings.json`/`saved_items.json`) live inside the
+container and are lost when it's recreated. To persist them on the host, bind-mount a
+directory to `/data` (see the `volumes:` entry and its comment in `docker-compose.yml` for
+details) - both files are created there automatically on first start if they don't exist.
+
 To stop the service:
 
 ```bash

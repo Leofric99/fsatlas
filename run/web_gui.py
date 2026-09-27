@@ -22,12 +22,24 @@ from run.single_instance import SingleInstance, running_url
 
 LOGO_FILE = os.path.join(os.path.dirname(__file__), 'images', 'FSAtlas Logo.png')
 
-# Persisted UI settings (theme preference, the SimBrief Pilot ID/username used to
-# pre-fill exports, and bookmarked flights) - tracked in git with default values, but local
-# writes are excluded via `git update-index --skip-worktree` so a user's runtime settings
-# never show up as an uncommitted change.
-SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
-DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": "", "saved_flights": []}
+# Where the two small persisted JSON files below live. Defaults to run/ (so a plain `uv run`/
+# `python -m run` checkout keeps settings.json exactly where it's always lived) but can be
+# pointed elsewhere - the Docker image sets this to a dedicated /data directory so both files
+# can be bind-mounted from the host without shadowing the app code in /app/run (see
+# docker-compose.yml).
+DATA_DIR = os.environ.get("FSATLAS_DATA_DIR") or os.path.dirname(__file__)
+
+# Persisted UI settings (theme preference and the SimBrief Pilot ID/username used to pre-fill
+# exports) - tracked in git with default values, but local writes are excluded via
+# `git update-index --skip-worktree` so a user's runtime settings never show up as an
+# uncommitted change.
+SETTINGS_FILE = os.path.join(DATA_DIR, 'settings.json')
+DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": ""}
+
+# Saved flights (bookmarked routes) and saved searches (named filter sets) - split out of
+# settings.json into their own file since they're user data rather than app preferences.
+SAVED_ITEMS_FILE = os.path.join(DATA_DIR, 'saved_items.json')
+DEFAULT_SAVED_ITEMS = {"saved_flights": [], "saved_searches": []}
 
 
 def normalize_saved_flight(flight):
@@ -48,6 +60,22 @@ def normalize_saved_flight(flight):
     return flight
 
 
+def normalize_saved_search(search):
+    """Ensure a saved-search dict has an id/description/filters/saved_at - mirrors
+    normalize_saved_flight's role, called on load and again just before writing.
+    """
+    if not isinstance(search.get("id"), str) or not search["id"]:
+        search["id"] = secrets.token_urlsafe(8)
+    if not isinstance(search.get("description"), str):
+        search["description"] = ""
+    search["description"] = search["description"].strip()
+    if not isinstance(search.get("filters"), (dict, list)):
+        search["filters"] = {"kind": "group", "logic": "AND", "children": []}
+    if not isinstance(search.get("saved_at"), str) or not search["saved_at"]:
+        search["saved_at"] = datetime.now(timezone.utc).isoformat()
+    return search
+
+
 def load_settings():
     try:
         with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
@@ -58,15 +86,56 @@ def load_settings():
         settings["theme"] = DEFAULT_SETTINGS["theme"]
     if not isinstance(settings.get("simbrief_pilot_id"), str):
         settings["simbrief_pilot_id"] = DEFAULT_SETTINGS["simbrief_pilot_id"]
-    if not isinstance(settings.get("saved_flights"), list):
-        settings["saved_flights"] = []
-    settings["saved_flights"] = [normalize_saved_flight(f) for f in settings["saved_flights"] if isinstance(f, dict)]
     return settings
 
 
 def save_settings(settings):
+    os.makedirs(DATA_DIR, exist_ok=True)
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
         json.dump(settings, f)
+
+
+def load_saved_items():
+    try:
+        with open(SAVED_ITEMS_FILE, "r", encoding="utf-8") as f:
+            items = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        items = {}
+    if not isinstance(items.get("saved_flights"), list):
+        items["saved_flights"] = []
+    if not isinstance(items.get("saved_searches"), list):
+        items["saved_searches"] = []
+    items["saved_flights"] = [normalize_saved_flight(f) for f in items["saved_flights"] if isinstance(f, dict)]
+    items["saved_searches"] = [normalize_saved_search(s) for s in items["saved_searches"] if isinstance(s, dict)]
+    return items
+
+
+def save_saved_items(items):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(SAVED_ITEMS_FILE, "w", encoding="utf-8") as f:
+        json.dump(items, f)
+
+
+def ensure_data_files():
+    """Create settings.json / saved_items.json with defaults on first run (of a native
+    checkout, or a fresh Docker bind-mounted data dir). Migrates a legacy 'saved_flights'
+    list out of settings.json (where earlier versions stored it) into the new file, if found.
+    """
+    os.makedirs(DATA_DIR, exist_ok=True)
+    if not os.path.exists(SETTINGS_FILE):
+        save_settings(dict(DEFAULT_SETTINGS))
+    if not os.path.exists(SAVED_ITEMS_FILE):
+        legacy_flights = []
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                raw_settings = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            raw_settings = {}
+        if isinstance(raw_settings.get("saved_flights"), list):
+            legacy_flights = raw_settings.pop("saved_flights")
+            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+                json.dump(raw_settings, f)
+        save_saved_items({"saved_flights": legacy_flights, "saved_searches": []})
 
 
 def flight_key(flight):
@@ -286,7 +355,10 @@ def index_html(columns, settings):
       padding: 14px 20px; display: grid; gap: 12px; min-width: 0;
       border-radius: 20px;
       box-shadow: var(--shadow);
-      position: relative; z-index: 5;
+      /* Sticky (not just relative) so the whole heading bar - and the logo pinned over it -
+         stays put at the top of the viewport instead of scrolling away when the filter list
+         grows tall enough to make the page scroll. */
+      position: sticky; top: 0; z-index: 5;
     }}
     .toolbar-head {{ display: flex; align-items: center; gap: 14px; flex-wrap: wrap; row-gap: 8px; }}
     .brand {{ display: flex; align-items: center; gap: 10px; }}
@@ -426,6 +498,24 @@ def index_html(columns, settings):
     .saved-list {{ display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }}
     .saved-empty {{ font-size: 13px; color: var(--muted); text-align: center; padding: 18px 4px; line-height: 1.5; }}
     #saved-modal .modal {{ width: 460px; }}
+    /* Two independently expandable/collapsible sections (Saved Routes / Saved Searches) in
+       the Saved Items modal - same grid-rows collapse trick used for #filters-wrap. */
+    .saved-section {{ border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }}
+    .saved-section + .saved-section {{ margin-top: 10px; }}
+    .saved-section-toggle {{
+      width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+      background: var(--surface-solid); border: none; border-radius: 0; box-shadow: none;
+      color: var(--text); font-weight: 600; font-size: 13px; justify-content: flex-start;
+    }}
+    .saved-section-toggle:hover {{ background: var(--border); transform: none; filter: none; }}
+    .saved-section-chevron {{ width: 14px; height: 14px; flex-shrink: 0; transition: transform .2s ease; }}
+    .saved-section-toggle.collapsed .saved-section-chevron {{ transform: rotate(-90deg); }}
+    .saved-section-count {{ margin-left: auto; font-size: 11px; color: var(--muted); font-weight: 500; }}
+    /* Plain display:none toggle rather than the grid-rows/overflow animation used elsewhere
+       (e.g. #filters-wrap) - that trick left a sliver of the "Sort by" label peeking through
+       the collapsed box here, since flex children don't reliably shrink to a 0-height track. */
+    .saved-section-wrap.collapsed {{ display: none; }}
+    .saved-section-inner {{ padding: 12px; }}
     .saved-toolbar {{ display: flex; justify-content: flex-end; margin-bottom: 10px; }}
     .saved-sort-label {{ display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }}
     .saved-sort-label select {{ font-size: 12px; padding: 6px 8px; margin-bottom: 0; }}
@@ -543,7 +633,7 @@ def index_html(columns, settings):
       .toolbar {{ margin: 8px 8px 10px; border-radius: 16px; padding: 12px; gap: 8px; }}
       .toolbar-head {{ gap: 8px; flex-wrap: nowrap; }}
       .logo {{ position: static !important; height: 24px; margin: 0; flex-shrink: 0; }}
-      #apply, #reset {{ display: none !important; }}
+      #apply, #reset, #save-search-btn {{ display: none !important; }}
       button, select, input {{ min-height: 40px; }}
       button.icon, #theme-toggle, #saved-toggle, #settings-toggle {{ width: 34px; height: 34px; flex-shrink: 0; }}
       .row-actions .icon {{ width: 38px; }}
@@ -603,6 +693,7 @@ def index_html(columns, settings):
       <label class="map-type"><span class="map-type-label">Map Type</span><select id="map-type"></select></label>
       <button id="apply">Apply Filters</button>
       <button id="reset" class="danger" type="button" title="Reset filters" aria-label="Reset filters">Reset Filters</button>
+      <button id="save-search-btn" class="secondary" type="button" title="Save the current filters as a search" aria-label="Save the current filters as a search">Save Search</button>
       <button id="filters-menu-btn" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
         <span id="filters-menu-label">Add Filter</span>
@@ -614,7 +705,7 @@ def index_html(columns, settings):
         <div id="map-type-menu" class="map-type-menu"></div>
       </div>
       <button id="theme-toggle" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode"></button>
-      <button id="saved-toggle" type="button" title="Saved Flights" aria-label="Saved Flights">
+      <button id="saved-toggle" type="button" title="Saved Items" aria-label="Saved Items">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
       </button>
       <button id="settings-toggle" type="button" title="Settings" aria-label="Settings">
@@ -631,6 +722,7 @@ def index_html(columns, settings):
   </section>
   <div id="filter-menu-footer">
     <button id="filter-menu-reset" class="secondary" type="button">Reset</button>
+    <button id="filter-menu-save-search" class="secondary" type="button">Save Search</button>
     <button id="filter-menu-apply" type="button">Apply Filters</button>
   </div>
   <div id="flights-toast">
@@ -641,22 +733,45 @@ def index_html(columns, settings):
   <div id="saved-modal" class="modal-overlay">
     <div class="modal">
       <div class="modal-header">
-        <h2>Saved Flights</h2>
+        <h2>Saved Items</h2>
         <button id="saved-close" class="icon" type="button" aria-label="Close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="saved-toolbar">
-          <label class="saved-sort-label">Sort by
-            <select id="saved-sort">
-              <option value="saved-desc">Saved (Newest First)</option>
-              <option value="saved-asc">Saved (Oldest First)</option>
-              <option value="distance-asc">Distance (Shortest First)</option>
-              <option value="distance-desc">Distance (Longest First)</option>
-              <option value="tag">Tag (A-Z)</option>
-            </select>
-          </label>
+        <div class="saved-section">
+          <button class="saved-section-toggle" type="button" aria-expanded="true">
+            <svg class="saved-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <span>Saved Routes</span>
+            <span id="saved-routes-count" class="saved-section-count"></span>
+          </button>
+          <div class="saved-section-wrap">
+            <div class="saved-section-inner">
+              <div class="saved-toolbar">
+                <label class="saved-sort-label">Sort by
+                  <select id="saved-sort">
+                    <option value="saved-desc">Saved (Newest First)</option>
+                    <option value="saved-asc">Saved (Oldest First)</option>
+                    <option value="distance-asc">Distance (Shortest First)</option>
+                    <option value="distance-desc">Distance (Longest First)</option>
+                    <option value="tag">Tag (A-Z)</option>
+                  </select>
+                </label>
+              </div>
+              <div id="saved-list" class="saved-list"></div>
+            </div>
+          </div>
         </div>
-        <div id="saved-list" class="saved-list"></div>
+        <div class="saved-section">
+          <button class="saved-section-toggle" type="button" aria-expanded="true">
+            <svg class="saved-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <span>Saved Searches</span>
+            <span id="saved-searches-count" class="saved-section-count"></span>
+          </button>
+          <div class="saved-section-wrap">
+            <div class="saved-section-inner">
+              <div id="saved-searches-list" class="saved-list"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -681,6 +796,22 @@ def index_html(columns, settings):
       <div class="modal-footer">
         <button id="settings-cancel" class="secondary" type="button">Cancel</button>
         <button id="settings-save" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+  <div id="save-search-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Save Search</h2>
+        <button id="save-search-close" class="icon" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label for="save-search-description">Brief Description</label>
+        <input id="save-search-description" type="text" placeholder="e.g. Long-haul United flights" maxlength="120">
+      </div>
+      <div class="modal-footer">
+        <button id="save-search-cancel" class="secondary" type="button">Cancel</button>
+        <button id="save-search-confirm" type="button">Save</button>
       </div>
     </div>
   </div>
@@ -894,6 +1025,7 @@ def index_html(columns, settings):
 
     function renderSavedFlights() {{
       const flights = sortedSavedFlights();
+      document.getElementById('saved-routes-count').textContent = flights.length ? String(flights.length) : '';
       if (!flights.length) {{
         savedList.innerHTML = '<div class="saved-empty">No saved flights yet. Use the bookmark button in a flight\\'s More Info panel to save one.</div>';
         return;
@@ -1012,9 +1144,130 @@ def index_html(columns, settings):
       }} catch (err) {{ /* map iframe isn't ready yet - ignore */ }}
     }}
 
+    // --- Saved Searches (named filter sets, saved via the "Save Search" button below) ---
+    const savedSearchesList = document.getElementById('saved-searches-list');
+    let savedSearchesRaw = [];
+
+    function renderSavedSearches() {{
+      document.getElementById('saved-searches-count').textContent = savedSearchesRaw.length ? String(savedSearchesRaw.length) : '';
+      if (!savedSearchesRaw.length) {{
+        savedSearchesList.innerHTML = '<div class="saved-empty">No saved searches yet. Use "Save Search" in the filter bar to save one.</div>';
+        return;
+      }}
+      savedSearchesList.innerHTML = savedSearchesRaw.map((s, i) => `
+        <div class="saved-row" data-idx="${{i}}">
+          <div class="saved-row-top">
+            <div class="saved-route">${{escapeHtml(s.description)}}</div>
+            <button class="saved-remove" type="button" title="Remove" aria-label="Remove">&times;</button>
+          </div>
+        </div>
+      `).join('');
+      [...savedSearchesList.querySelectorAll('.saved-row')].forEach((row, i) => {{
+        const search = savedSearchesRaw[i];
+        row.addEventListener('click', () => applySavedSearch(search));
+        row.querySelector('.saved-remove').addEventListener('click', async e => {{
+          e.stopPropagation();
+          try {{
+            await fsatlasFetch('/api/saved-searches', {{
+              method: 'DELETE', headers: {{'Content-Type': 'application/json'}},
+              body: JSON.stringify({{id: search.id}})
+            }});
+          }} catch (err) {{ /* best effort */ }}
+          loadSavedSearches();
+        }});
+      }});
+    }}
+
+    async function loadSavedSearches() {{
+      try {{
+        const response = await fsatlasFetch('/api/saved-searches');
+        savedSearchesRaw = await response.json();
+        renderSavedSearches();
+      }} catch (err) {{
+        savedSearchesList.innerHTML = '<div class="saved-empty">Could not load saved searches.</div>';
+      }}
+    }}
+
+    // Rebuilds the #filters DOM tree (rows/groups) from a saved {{kind, logic, children}}
+    // tree - the inverse of serializeList()/serializeNode() below - then applies it.
+    function buildFilterTreeNode(nodeData) {{
+      if (nodeData && nodeData.kind === 'group') {{
+        const group = createGroup();
+        group.querySelector(':scope > .group-head > .logic').value = nodeData.logic || 'AND';
+        const list = group.querySelector(':scope > .filters-list');
+        (nodeData.children || []).forEach(child => list.append(buildFilterTreeNode(child)));
+        return group;
+      }}
+      const row = createConditionRow();
+      row.querySelector('.column').value = nodeData.column || '';
+      updateOperators(row);
+      row.querySelector('.operator').value = nodeData.operator || '';
+      row.querySelector('.value').value = nodeData.value ?? '';
+      row.querySelector(':scope > .logic').value = nodeData.logic || 'AND';
+      return row;
+    }}
+
+    function applySavedSearch(search) {{
+      savedModal.classList.remove('open');
+      filters.replaceChildren();
+      const children = (search.filters && search.filters.children) || [];
+      if (children.length) {{
+        children.forEach(child => filters.append(buildFilterTreeNode(child)));
+      }} else {{
+        addRow();
+      }}
+      refreshRows();
+      applyFilters();
+    }}
+
+    // --- Save Search modal (own small modal rather than window.prompt(), which isn't
+    // reliably supported/available in every browser context) ---
+    const saveSearchModal = document.getElementById('save-search-modal');
+    const saveSearchDescInput = document.getElementById('save-search-description');
+
+    function openSaveSearchModal() {{
+      saveSearchDescInput.value = '';
+      saveSearchModal.classList.add('open');
+      saveSearchDescInput.focus();
+    }}
+    function closeSaveSearchModal() {{ saveSearchModal.classList.remove('open'); }}
+
+    async function confirmSaveSearch() {{
+      const trimmed = saveSearchDescInput.value.trim();
+      if (!trimmed) {{ saveSearchDescInput.focus(); return; }}
+      const filterTree = {{kind: 'group', logic: 'AND', children: serializeList(filters)}};
+      try {{
+        await fsatlasFetch('/api/saved-searches', {{
+          method: 'POST', headers: {{'Content-Type': 'application/json'}},
+          body: JSON.stringify({{description: trimmed, filters: filterTree}})
+        }});
+      }} catch (err) {{ /* best effort */ }}
+      closeSaveSearchModal();
+      if (savedModal.classList.contains('open')) loadSavedSearches();
+    }}
+
+    document.getElementById('save-search-btn').addEventListener('click', openSaveSearchModal);
+    document.getElementById('filter-menu-save-search').addEventListener('click', openSaveSearchModal);
+    document.getElementById('save-search-close').addEventListener('click', closeSaveSearchModal);
+    document.getElementById('save-search-cancel').addEventListener('click', closeSaveSearchModal);
+    document.getElementById('save-search-confirm').addEventListener('click', confirmSaveSearch);
+    saveSearchModal.addEventListener('click', e => {{ if (e.target === saveSearchModal) closeSaveSearchModal(); }});
+    saveSearchDescInput.addEventListener('keydown', e => {{ if (e.key === 'Enter') {{ e.preventDefault(); confirmSaveSearch(); }} }});
+
+    // Each section (Saved Routes / Saved Searches) expands/collapses independently.
+    [...document.querySelectorAll('.saved-section-toggle')].forEach(btn => {{
+      btn.addEventListener('click', () => {{
+        const wrap = btn.nextElementSibling;
+        const collapsed = wrap.classList.toggle('collapsed');
+        btn.classList.toggle('collapsed', collapsed);
+        btn.setAttribute('aria-expanded', String(!collapsed));
+      }});
+    }});
+
     document.getElementById('saved-toggle').addEventListener('click', () => {{
       savedModal.classList.add('open');
       loadSavedFlights();
+      loadSavedSearches();
     }});
     document.getElementById('saved-close').addEventListener('click', () => savedModal.classList.remove('open'));
     savedModal.addEventListener('click', e => {{ if (e.target === savedModal) savedModal.classList.remove('open'); }});
@@ -1258,6 +1511,15 @@ def index_html(columns, settings):
     }}
     window.addEventListener('resize', scheduleFilterLayout);
     new ResizeObserver(scheduleFilterLayout).observe(toolbar);
+    // Safety net for positionLogo(): .toolbar is sticky so it shouldn't itself move on
+    // scroll, but re-checking here too keeps the logo glued to it through the brief instant
+    // before the sticky offset engages (and through any future layout change that might
+    // reintroduce document scroll).
+    let logoScrollRaf;
+    window.addEventListener('scroll', () => {{
+      cancelAnimationFrame(logoScrollRaf);
+      logoScrollRaf = requestAnimationFrame(positionLogo);
+    }}, {{ passive: true }});
 
     // --- Filter tree: each level (the root #filters, or a group's inner .filters-list) holds
     // a mix of condition rows and nested groups. A row/group's own "logic" select says how it
@@ -1520,7 +1782,11 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/saved-flights":
-            self.send_json(load_settings()["saved_flights"])
+            self.send_json(load_saved_items()["saved_flights"])
+            return
+
+        if parsed.path == "/api/saved-searches":
+            self.send_json(load_saved_items()["saved_searches"])
             return
 
         self.send_html("Not found", HTTPStatus.NOT_FOUND)
@@ -1587,17 +1853,39 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
             except (ValueError, json.JSONDecodeError):
                 self.send_json({"error": "Invalid flight payload"}, HTTPStatus.BAD_REQUEST)
                 return
-            settings = load_settings()
+            items = load_saved_items()
             key = flight_key(flight)
-            existing = next((f for f in settings["saved_flights"] if flight_key(f) == key), None)
+            existing = next((f for f in items["saved_flights"] if flight_key(f) == key), None)
             if existing:
                 flight.setdefault("saved_at", existing.get("saved_at"))
             flight = normalize_saved_flight(flight)
-            saved = [f for f in settings["saved_flights"] if flight_key(f) != key]
+            saved = [f for f in items["saved_flights"] if flight_key(f) != key]
             saved.append(flight)
-            settings["saved_flights"] = saved
-            save_settings(settings)
+            items["saved_flights"] = saved
+            save_saved_items(items)
             self.send_json({"ok": True, "saved_flights": saved})
+            return
+
+        if parsed.path == "/api/saved-searches":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                payload = json.loads(self.rfile.read(length))
+                if not isinstance(payload, dict):
+                    raise ValueError
+                description = payload.get("description", "")
+                filter_tree = payload.get("filters")
+                if not isinstance(description, str) or not description.strip():
+                    raise ValueError
+                if not isinstance(filter_tree, (dict, list)):
+                    raise ValueError
+            except (ValueError, json.JSONDecodeError):
+                self.send_json({"error": "Invalid saved search payload"}, HTTPStatus.BAD_REQUEST)
+                return
+            items = load_saved_items()
+            search = normalize_saved_search({"description": description, "filters": filter_tree})
+            items["saved_searches"].append(search)
+            save_saved_items(items)
+            self.send_json({"ok": True, "saved_searches": items["saved_searches"]})
             return
 
         if parsed.path != "/api/maps":
@@ -1628,11 +1916,27 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
             except (ValueError, json.JSONDecodeError):
                 self.send_json({"error": "Invalid flight payload"}, HTTPStatus.BAD_REQUEST)
                 return
-            settings = load_settings()
+            items = load_saved_items()
             key = flight_key(flight)
-            settings["saved_flights"] = [f for f in settings["saved_flights"] if flight_key(f) != key]
-            save_settings(settings)
-            self.send_json({"ok": True, "saved_flights": settings["saved_flights"]})
+            items["saved_flights"] = [f for f in items["saved_flights"] if flight_key(f) != key]
+            save_saved_items(items)
+            self.send_json({"ok": True, "saved_flights": items["saved_flights"]})
+            return
+
+        if parsed.path == "/api/saved-searches":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                payload = json.loads(self.rfile.read(length))
+                search_id = payload.get("id") if isinstance(payload, dict) else None
+                if not isinstance(search_id, str):
+                    raise ValueError
+            except (ValueError, json.JSONDecodeError):
+                self.send_json({"error": "Invalid saved search payload"}, HTTPStatus.BAD_REQUEST)
+                return
+            items = load_saved_items()
+            items["saved_searches"] = [s for s in items["saved_searches"] if s["id"] != search_id]
+            save_saved_items(items)
+            self.send_json({"ok": True, "saved_searches": items["saved_searches"]})
             return
 
         self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
@@ -1665,6 +1969,8 @@ def main():
     if args.import_file:
         from run.import_flights import import_flights
         sys.exit(import_flights(args.import_file))
+
+    ensure_data_files()
 
     instance = None
     if sys.platform == "win32" and getattr(sys, "frozen", False):

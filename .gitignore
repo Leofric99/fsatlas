@@ -3,6 +3,7 @@ run/database/flights.csv
 run/database/flights.db
 run/database/flights.json
 run/settings.json
+run/saved_items.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

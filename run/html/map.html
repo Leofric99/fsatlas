@@ -78,6 +78,18 @@
         }
         .simbrief-btn:hover { background: << line_color >>; color: << marker_border >>; }
         .simbrief-btn:disabled { opacity: 0.6; cursor: default; pointer-events: none; }
+        .save-btn {
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            width: 100%; margin-top: 6px; text-align: center;
+            font-size: 11px; font-weight: 600; cursor: pointer; padding: 6px 8px; border-radius: 6px;
+            border: 1px solid << line_color >>; color: << line_color >>; background: << accent_soft >>;
+            transition: background .15s ease, color .15s ease;
+        }
+        .save-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
+        .save-btn:hover { background: << line_color >>; color: << marker_border >>; }
+        .save-btn.saved { background: << line_color >>; color: << marker_border >>; }
+        .save-btn:disabled { opacity: 0.6; cursor: default; pointer-events: none; }
+        .flight-card.highlighted { border-left-color: << line_color >>; background: << accent_soft >>; }
 
         /* Custom scrollbars to match the glass aesthetic */
         .panel-content::-webkit-scrollbar { width: 8px; }
@@ -245,6 +257,9 @@
         let _isDragging = false;
         let _dragTimer = null;
         let visibleFilter = null; // Set of visible IATA codes, or null to show all
+        let pendingSavedFlight = null; // record to auto-select+highlight once its routes load
+        let highlightedFlightKey = null; // flightKey() of the card to keep expanded across re-renders
+        let lastRenderedRoutes = []; // pairRoutes from the most recent CASE B render, for highlighting
 
         // Nearest multiple of 360 that places canonicalLon closest to the map centre.
         // Formula-based (not a fixed lookup) so it keeps working no matter how many
@@ -455,6 +470,7 @@
             selectedSource = null;
             selectedDest = null;
             currentRoutes = [];
+            highlightedFlightKey = null;
             routeLayer.clearLayers();
             document.getElementById('info').style.display = 'none';
 
@@ -506,16 +522,124 @@
                     }
                 });
 
+                // A pending saved-flight jump takes priority over the usual self-loop check -
+                // pick its destination if the current (filtered) view actually connects to it.
+                if (pendingSavedFlight && pendingSavedFlight.dep === selectedSource) {
+                    const wantedArr = pendingSavedFlight.arr;
+                    if (wantedArr && connectedIatas.has(wantedArr)) {
+                        selectedDest = wantedArr;
+                        selectedDestOffset = selectedSourceOffset;
+                        document.getElementById('info').style.display = 'flex';
+                    } else if (routes.length > 0 && connectedIatas.size === 1) {
+                        selectedDest = selectedSource;
+                        selectedDestOffset = selectedSourceOffset;
+                        document.getElementById('info').style.display = 'flex';
+                    }
+                    // Otherwise the saved flight isn't reachable under the current filters -
+                    // fall through to CASE A (all connections) rather than showing nothing.
+                }
                 // Every route is a self-loop (source flies only to/from itself) - there's no
                 // second node to click, so show the flight details right away.
-                if (routes.length > 0 && connectedIatas.size === 1) {
+                else if (routes.length > 0 && connectedIatas.size === 1) {
                     selectedDest = selectedSource;
                     selectedDestOffset = selectedSourceOffset;
                     document.getElementById('info').style.display = 'flex';
                 }
 
                 renderMapState();
+
+                if (pendingSavedFlight) {
+                    if (selectedDest) {
+                        frameSavedFlightRoute(pendingSavedFlight);
+                        scrollToHighlightedCard(pendingSavedFlight);
+                    }
+                    pendingSavedFlight = null;
+                }
             }
+        }
+
+        // --- SAVED FLIGHTS ---
+        const BOOKMARK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>';
+        const BOOKMARK_ICON_FILLED = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>';
+        const savedFlightKeys = new Set();
+
+        // Shared identity for a route record - must match `flight_key` in web_gui.py so the
+        // "already saved" state and save/unsave requests agree on what a duplicate is.
+        function flightKey(r) {
+            return [r.reg, r.flight, r.dep, r.arr, r.date].join('|');
+        }
+
+        fetch('/api/saved-flights')
+            .then(response => response.ok ? response.json() : [])
+            .then(flights => (flights || []).forEach(f => savedFlightKeys.add(flightKey(f))))
+            .catch(() => {});
+
+        function setSaveButtonState(btn, saved) {
+            btn.classList.toggle('saved', saved);
+            btn.innerHTML = (saved ? BOOKMARK_ICON_FILLED : BOOKMARK_ICON) + (saved ? ' Saved' : ' Save Flight');
+        }
+
+        async function toggleSaveFlight(route, btn) {
+            const key = flightKey(route);
+            const wasSaved = savedFlightKeys.has(key);
+            btn.disabled = true;
+            try {
+                await fetch('/api/saved-flights', {
+                    method: wasSaved ? 'DELETE' : 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(route)
+                });
+                if (wasSaved) savedFlightKeys.delete(key); else savedFlightKeys.add(key);
+                setSaveButtonState(btn, !wasSaved);
+            } catch (err) { /* leave state unchanged on failure */ }
+            btn.disabled = false;
+        }
+
+        // Called from the parent page when a saved flight is clicked in the "Saved Flights" tab.
+        window.showSavedFlight = function(record) {
+            pendingSavedFlight = record;
+            highlightedFlightKey = flightKey(record);
+            const depAp = airports[record.dep];
+            const offset = depAp ? nearestOffset(depAp.lon) : 0;
+            selectSource(record.dep, offset);
+        };
+
+        // Frames the whole route (both airports, and the curve's north/south bulge) once the
+        // info panel is showing - read *after* it renders so we know its real height instead of
+        // reserving a worst-case amount of space (which fought with the map's minZoom).
+        function frameSavedFlightRoute(record) {
+            const depAp = airports[record.dep];
+            const arrAp = airports[record.arr];
+            if (!depAp) return;
+
+            const offset = nearestOffset(depAp.lon);
+            let bounds;
+            if (arrAp && record.arr !== record.dep) {
+                const curvePoints = computeGeodesicPoints(depAp.lat, depAp.lon, arrAp.lat, arrAp.lon)
+                    .map(p => [p[0], p[1] + offset]);
+                bounds = L.latLngBounds(curvePoints);
+            } else {
+                bounds = L.latLngBounds([[depAp.lat, depAp.lon + offset], [depAp.lat, depAp.lon + offset]]);
+            }
+
+            const panelRect = document.getElementById('info').getBoundingClientRect();
+            map.fitBounds(bounds, {
+                paddingTopLeft: [panelRect.right + 20, 50],
+                paddingBottomRight: [50, 50],
+                maxZoom: 7,
+                animate: true
+            });
+        }
+
+        // Scrolls to the flight card matching a saved record, once rendered. The card's
+        // expanded/highlighted state itself is driven by `highlightedFlightKey` inside
+        // renderMapState, so it survives incidental re-renders (e.g. the pan above triggering
+        // a `moveend`-driven re-render before or after this runs).
+        function scrollToHighlightedCard(record) {
+            const idx = lastRenderedRoutes.findIndex(r => flightKey(r) === flightKey(record));
+            if (idx === -1) return;
+            const card = document.getElementById('flight-card-' + idx);
+            if (card) card.scrollIntoView({behavior: 'smooth', block: 'center'});
         }
 
         // --- SIMBRIEF EXPORT ---
@@ -643,6 +767,7 @@
 
                 // Filter routes
                 const pairRoutes = currentRoutes.filter(r => r.dep === selectedDest || r.arr === selectedDest);
+                lastRenderedRoutes = pairRoutes;
 
                 // Draw ONE bold line (skip self-loops - there's nowhere for the line to go)
                 const srcAp = airports[selectedSource];
@@ -671,9 +796,10 @@
                     const arr = r.arr;
 
                     const uniqueId = 'flight-detail-' + idx;
+                    const isHighlighted = highlightedFlightKey !== null && flightKey(r) === highlightedFlightKey;
 
                     html += `
-                    <div class="flight-card">
+                    <div class="flight-card${isHighlighted ? ' highlighted' : ''}" id="flight-card-${idx}">
                         <div class="flight-header">
                             <span>${r.flight}</span>
                             <span style="opacity:0.7">${type_icao}</span>
@@ -682,7 +808,7 @@
                             ${dep} (${dep_icao}) &rarr; ${arr} (${arr_icao})
                         </div>
 
-                        <div id="${uniqueId}" style="display:none; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
+                        <div id="${uniqueId}" style="display:${isHighlighted ? 'block' : 'none'}; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:11px;">
                                 <div class="detail-kv" style="grid-column: span 2"><span class="label">Airline</span><span>${airline}</span></div>
                                 <div class="detail-kv"><span class="label">Callsign</span><span>${callsign}</span></div>
@@ -694,10 +820,11 @@
                                 <div class="detail-kv" style="grid-column: span 2"><span class="label">Date Recorded</span><span>${date}</span></div>
                             </div>
                             <button class="simbrief-btn" id="simbrief-${idx}" type="button">&#9992; Export to SimBrief</button>
+                            <button class="save-btn" id="save-${idx}" type="button"></button>
                         </div>
 
-                        <div class="expand-btn" onclick="let el = document.getElementById('${uniqueId}'); el.style.display = (el.style.display === 'none' ? 'block' : 'none'); this.innerText = (el.style.display === 'block' ? '▲ Less Info' : '▼ More Info');">
-                            ▼ More Info
+                        <div class="expand-btn" id="expand-btn-${idx}" onclick="highlightedFlightKey = null; let el = document.getElementById('${uniqueId}'); el.style.display = (el.style.display === 'none' ? 'block' : 'none'); this.innerText = (el.style.display === 'block' ? '▲ Less Info' : '▼ More Info');">
+                            ${isHighlighted ? '▲ Less Info' : '▼ More Info'}
                         </div>
                     </div>`;
                 });
@@ -709,6 +836,11 @@
                 pairRoutes.forEach((r, idx) => {
                     const btn = document.getElementById('simbrief-' + idx);
                     if (btn) btn.addEventListener('click', () => exportToSimbrief(r, btn));
+                    const saveBtn = document.getElementById('save-' + idx);
+                    if (saveBtn) {
+                        setSaveButtonState(saveBtn, savedFlightKeys.has(flightKey(r)));
+                        saveBtn.addEventListener('click', () => toggleSaveFlight(r, saveBtn));
+                    }
                 });
             }
         }

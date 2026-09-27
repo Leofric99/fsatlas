@@ -21,12 +21,12 @@ from run.single_instance import SingleInstance, running_url
 
 LOGO_FILE = os.path.join(os.path.dirname(__file__), 'images', 'FSAtlas Logo.png')
 
-# Persisted UI settings (theme preference + the SimBrief Pilot ID/username used to
-# pre-fill exports) - tracked in git with default values, but local writes are excluded
-# via `git update-index --skip-worktree` so a user's runtime settings never show up as
-# an uncommitted change.
+# Persisted UI settings (theme preference, the SimBrief Pilot ID/username used to
+# pre-fill exports, and bookmarked flights) - tracked in git with default values, but local
+# writes are excluded via `git update-index --skip-worktree` so a user's runtime settings
+# never show up as an uncommitted change.
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
-DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": ""}
+DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": "", "saved_flights": []}
 
 
 def load_settings():
@@ -34,17 +34,26 @@ def load_settings():
         with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
             settings = json.load(f)
     except (OSError, json.JSONDecodeError):
-        return dict(DEFAULT_SETTINGS)
+        settings = {}
     if settings.get("theme") not in ("dark", "light"):
         settings["theme"] = DEFAULT_SETTINGS["theme"]
     if not isinstance(settings.get("simbrief_pilot_id"), str):
         settings["simbrief_pilot_id"] = DEFAULT_SETTINGS["simbrief_pilot_id"]
+    if not isinstance(settings.get("saved_flights"), list):
+        settings["saved_flights"] = []
     return settings
 
 
 def save_settings(settings):
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
         json.dump(settings, f)
+
+
+def flight_key(flight):
+    """Stable identity for a route record - shared with the client-side `flightKey` in
+    map.html so save/unsave requests and the "already saved" check agree on duplicates.
+    """
+    return "|".join(str(flight.get(field, "")) for field in ("reg", "flight", "dep", "arr", "date"))
 
 
 def column_example(series):
@@ -291,6 +300,12 @@ def index_html(columns, settings):
     }}
     #theme-toggle:hover {{ background: var(--border); transform: none; filter: none; }}
     #theme-toggle svg {{ width: 17px; height: 17px; transition: transform .3s ease; }}
+    #saved-toggle {{
+      width: 34px; height: 34px; padding: 0; background: var(--surface-solid); border: 1px solid var(--border);
+      box-shadow: none; display: flex; align-items: center; justify-content: center; color: var(--text);
+    }}
+    #saved-toggle:hover {{ background: var(--border); transform: none; filter: none; }}
+    #saved-toggle svg {{ width: 17px; height: 17px; }}
     #settings-toggle {{
       width: 34px; height: 34px; padding: 0; background: var(--surface-solid); border: 1px solid var(--border);
       box-shadow: none; display: flex; align-items: center; justify-content: center; color: var(--text);
@@ -320,6 +335,21 @@ def index_html(columns, settings):
     .modal-footer {{ display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }}
     button.secondary {{ background: var(--surface-solid); color: var(--text); box-shadow: none; border: 1px solid var(--border); }}
     button.secondary:hover {{ background: var(--border); filter: none; transform: none; }}
+    .saved-list {{ display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }}
+    .saved-empty {{ font-size: 13px; color: var(--muted); text-align: center; padding: 18px 4px; line-height: 1.5; }}
+    .saved-row {{
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--surface-solid); cursor: pointer; transition: background .15s ease;
+    }}
+    .saved-row:hover {{ background: var(--border); }}
+    .saved-route {{ font-weight: 600; font-size: 13px; }}
+    .saved-type {{ font-size: 11px; color: var(--muted); }}
+    .saved-remove {{
+      width: 26px; height: 26px; padding: 0; background: transparent; color: var(--danger);
+      box-shadow: none; border: none; font-size: 16px; line-height: 1; flex-shrink: 0;
+    }}
+    .saved-remove:hover {{ background: color-mix(in srgb, var(--danger) 18%, transparent); filter: none; transform: none; }}
     #filters-wrap {{ display: grid; grid-template-rows: 1fr; min-width: 0; transition: grid-template-rows .28s ease; }}
     #filters-wrap.collapsed {{ grid-template-rows: 0fr; }}
     #filters-wrap > #filters {{ overflow: hidden; min-height: 0; }}
@@ -392,6 +422,9 @@ def index_html(columns, settings):
       <button id="apply">Apply Filters</button>
       <button id="reset" class="danger" type="button" title="Reset filters" aria-label="Reset filters">Reset Filters</button>
       <button id="theme-toggle" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode"></button>
+      <button id="saved-toggle" type="button" title="Saved Flights" aria-label="Saved Flights">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      </button>
       <button id="settings-toggle" type="button" title="Settings" aria-label="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </button>
@@ -404,6 +437,17 @@ def index_html(columns, settings):
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
   </section>
+  <div id="saved-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Saved Flights</h2>
+        <button id="saved-close" class="icon" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="saved-list" class="saved-list"></div>
+      </div>
+    </div>
+  </div>
   <div id="settings-modal" class="modal-overlay">
     <div class="modal">
       <div class="modal-header">
@@ -473,6 +517,64 @@ def index_html(columns, settings):
 
     themeToggle.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark', true));
     applyTheme(theme, false);
+
+    // --- Saved Flights tab ---
+    const savedModal = document.getElementById('saved-modal');
+    const savedList = document.getElementById('saved-list');
+
+    function renderSavedFlights(flights) {{
+      if (!flights.length) {{
+        savedList.innerHTML = '<div class="saved-empty">No saved flights yet. Use the bookmark button in a flight\\'s More Info panel to save one.</div>';
+        return;
+      }}
+      savedList.innerHTML = flights.map((f, i) => `
+        <div class="saved-row" data-idx="${{i}}">
+          <div>
+            <div class="saved-route">${{f.dep_icao || '?'}} &rarr; ${{f.arr_icao || '?'}}</div>
+            <div class="saved-type">${{f.type_icao || ''}}</div>
+          </div>
+          <button class="saved-remove" type="button" title="Remove" aria-label="Remove">&times;</button>
+        </div>
+      `).join('');
+
+      [...savedList.querySelectorAll('.saved-row')].forEach((row, i) => {{
+        const flight = flights[i];
+        row.addEventListener('click', () => viewSavedFlight(flight));
+        row.querySelector('.saved-remove').addEventListener('click', async e => {{
+          e.stopPropagation();
+          try {{
+            await fetch('/api/saved-flights', {{
+              method: 'DELETE', headers: {{'Content-Type': 'application/json'}},
+              body: JSON.stringify(flight)
+            }});
+          }} catch (err) {{ /* best effort */ }}
+          loadSavedFlights();
+        }});
+      }});
+    }}
+
+    async function loadSavedFlights() {{
+      try {{
+        const response = await fetch('/api/saved-flights');
+        renderSavedFlights(await response.json());
+      }} catch (err) {{
+        savedList.innerHTML = '<div class="saved-empty">Could not load saved flights.</div>';
+      }}
+    }}
+
+    function viewSavedFlight(flight) {{
+      savedModal.classList.remove('open');
+      try {{
+        document.getElementById('map').contentWindow.showSavedFlight(flight);
+      }} catch (err) {{ /* map iframe isn't ready yet - ignore */ }}
+    }}
+
+    document.getElementById('saved-toggle').addEventListener('click', () => {{
+      savedModal.classList.add('open');
+      loadSavedFlights();
+    }});
+    document.getElementById('saved-close').addEventListener('click', () => savedModal.classList.remove('open'));
+    savedModal.addEventListener('click', e => {{ if (e.target === savedModal) savedModal.classList.remove('open'); }});
 
     // --- Settings modal (SimBrief Pilot ID) ---
     let savedPilotId = {pilot_id_json};
@@ -870,6 +972,10 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
                             HTTPStatus.OK if view else HTTPStatus.NOT_FOUND)
             return
 
+        if parsed.path == "/api/saved-flights":
+            self.send_json(load_settings()["saved_flights"])
+            return
+
         self.send_html("Not found", HTTPStatus.NOT_FOUND)
 
     def do_POST(self):
@@ -925,6 +1031,24 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
             self.send_json({"url": simbrief_api.build_export_url(flight, pilot_id)})
             return
 
+        if parsed.path == "/api/saved-flights":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                flight = json.loads(self.rfile.read(length))
+                if not isinstance(flight, dict):
+                    raise ValueError
+            except (ValueError, json.JSONDecodeError):
+                self.send_json({"error": "Invalid flight payload"}, HTTPStatus.BAD_REQUEST)
+                return
+            settings = load_settings()
+            key = flight_key(flight)
+            saved = [f for f in settings["saved_flights"] if flight_key(f) != key]
+            saved.append(flight)
+            settings["saved_flights"] = saved
+            save_settings(settings)
+            self.send_json({"ok": True, "saved_flights": saved})
+            return
+
         if parsed.path != "/api/maps":
             self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
             return
@@ -940,6 +1064,27 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
             return
         view_id, count = self.state.create_view(filters, map_type)
         self.send_json({"url": f"/map/{view_id}", "count": count})
+
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+
+        if parsed.path == "/api/saved-flights":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                flight = json.loads(self.rfile.read(length))
+                if not isinstance(flight, dict):
+                    raise ValueError
+            except (ValueError, json.JSONDecodeError):
+                self.send_json({"error": "Invalid flight payload"}, HTTPStatus.BAD_REQUEST)
+                return
+            settings = load_settings()
+            key = flight_key(flight)
+            settings["saved_flights"] = [f for f in settings["saved_flights"] if flight_key(f) != key]
+            save_settings(settings)
+            self.send_json({"ok": True, "saved_flights": settings["saved_flights"]})
+            return
+
+        self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
 
 def main():

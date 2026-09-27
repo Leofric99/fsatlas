@@ -268,7 +268,14 @@ def index_html(columns, settings):
     .toolbar-head {{ display: flex; align-items: center; gap: 14px; flex-wrap: wrap; row-gap: 8px; }}
     .brand {{ display: flex; align-items: center; gap: 10px; }}
     h1 {{ font-size: 17px; margin: 0; font-weight: 600; letter-spacing: -0.01em; }}
-    .logo {{ height: 44px; width: auto; display: block; }}
+    /* Taken out of the toolbar-head flow and tracked by positionLogo() (see script below) so it
+       can float centered above the first filter row's column select, regardless of where that
+       select ends up as the filter fields resize/wrap/collapse. */
+    .logo {{
+      height: 44px; width: auto; display: block;
+      position: fixed; z-index: 6; pointer-events: none;
+      transition: left .2s ease, top .2s ease;
+    }}
     .map-type {{ margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }}
     select, input, button {{
       font: inherit; color: inherit; background: var(--surface-solid);
@@ -422,7 +429,7 @@ def index_html(columns, settings):
   <section class="toolbar">
     <div class="toolbar-head">
       <div class="brand">
-        <img class="logo" src="/images/logo.png" alt="FSAtlas">
+        <img class="logo" src="/images/logo.png" alt="FSAtlas" width="1377" height="768">
       </div>
       <label class="map-type">Map Type <select id="map-type"></select></label>
       <button id="apply">Apply Filters</button>
@@ -744,6 +751,7 @@ def index_html(columns, settings):
     const FIELD_PADDING = 46; // horizontal padding/border plus the native dropdown-arrow allowance
 
     function layoutFilterFields() {{
+      positionLogo();
       const rows = [...filters.querySelectorAll('.filter-row')];
       const logicEls = [...filters.querySelectorAll('.filter-row > .logic, .group-head > .logic')];
       if (!rows.length || !logicEls.length) return;
@@ -770,6 +778,28 @@ def index_html(columns, settings):
       filters.style.setProperty('--w-col', Math.round(colWidth) + 'px');
       filters.style.setProperty('--w-op', Math.round(opWidth) + 'px');
       filters.style.setProperty('--min-field', Math.round(minField) + 'px');
+    }}
+
+    // Keeps the logo horizontally centered on the first filter row's column select, and
+    // vertically in line with the other toolbar-head buttons (Apply Filters, Map Type, etc).
+    const logoEl = document.querySelector('.logo');
+    // .toolbar uses backdrop-filter, which (per spec) makes it the containing block for any
+    // position:fixed descendant - so a fixed logo left inside it would be positioned relative
+    // to .toolbar, not the viewport. Move it out to <body> so "fixed" means the viewport.
+    document.body.appendChild(logoEl);
+    // The <img> has width/height attributes so its box is sized correctly from the first
+    // layout pass, but re-run once the real pixels are in as a safety net regardless.
+    logoEl.addEventListener('load', positionLogo);
+    function positionLogo() {{
+      const targetSelect = filters.querySelector('.filter-row .column');
+      const toolbarHead = document.querySelector('.toolbar-head');
+      if (!targetSelect || !toolbarHead) return;
+      const rect = targetSelect.getBoundingClientRect();
+      if (!rect.width) return; // filters panel collapsed - keep the logo at its last position
+      const headRect = toolbarHead.getBoundingClientRect();
+      const logoRect = logoEl.getBoundingClientRect();
+      logoEl.style.left = Math.round(rect.left + rect.width / 2 - logoRect.width / 2) + 'px';
+      logoEl.style.top = Math.round(headRect.top + headRect.height / 2 - logoRect.height / 2) + 'px';
     }}
 
     let filterLayoutRaf;

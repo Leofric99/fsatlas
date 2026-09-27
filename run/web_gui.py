@@ -276,6 +276,7 @@ def index_html(columns, settings):
     select:focus, input:focus, button:focus-visible {{
       outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
     }}
+    select:disabled {{ opacity: 0.6; cursor: not-allowed; }}
     button {{
       cursor: pointer; padding: 5px 14px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
       background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border: none;
@@ -335,6 +336,9 @@ def index_html(columns, settings):
     .modal-footer {{ display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }}
     button.secondary {{ background: var(--surface-solid); color: var(--text); box-shadow: none; border: 1px solid var(--border); }}
     button.secondary:hover {{ background: var(--border); filter: none; transform: none; }}
+    .connection-modal .modal-body {{ display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding-top: 4px; }}
+    .connection-modal svg {{ width: 40px; height: 40px; color: var(--danger); flex-shrink: 0; }}
+    .modal-message {{ font-size: 13px; color: var(--muted); line-height: 1.5; margin: 0; }}
     .saved-list {{ display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }}
     .saved-empty {{ font-size: 13px; color: var(--muted); text-align: center; padding: 18px 4px; line-height: 1.5; }}
     .saved-row {{
@@ -416,7 +420,6 @@ def index_html(columns, settings):
     <div class="toolbar-head">
       <div class="brand">
         <img class="logo" src="/images/logo.png" alt="FSAtlas">
-        <h1>FSAtlas</h1>
       </div>
       <label class="map-type">Map Type <select id="map-type"></select></label>
       <button id="apply">Apply Filters</button>
@@ -472,6 +475,18 @@ def index_html(columns, settings):
       </div>
     </div>
   </div>
+  <div id="connection-modal" class="modal-overlay">
+    <div class="modal connection-modal">
+      <div class="modal-header">
+        <h2>Connection Lost</h2>
+        <button id="connection-close" class="icon" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86l-8.18 14.18A2 2 0 0 0 3.82 21h16.36a2 2 0 0 0 1.71-2.96L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+        <p class="modal-message">Lost connection to the FSAtlas server. Make sure it is still running, then try again.</p>
+      </div>
+    </div>
+  </div>
   <iframe id="map" title="Flight map"></iframe>
   <script>
     const columns = {columns_json};
@@ -489,6 +504,40 @@ def index_html(columns, settings):
     const themeToggle = document.getElementById('theme-toggle');
     let baseMapUrl = '';
 
+    // --- Connection-lost detection ---
+    const connectionModal = document.getElementById('connection-modal');
+
+    function showConnectionLost() {{ connectionModal.classList.add('open'); }}
+    function hideConnectionLost() {{ connectionModal.classList.remove('open'); }}
+
+    document.getElementById('connection-close').addEventListener('click', hideConnectionLost);
+    connectionModal.addEventListener('click', e => {{ if (e.target === connectionModal) hideConnectionLost(); }});
+
+    // Also surfaces connection loss hit by the map iframe's own fetches (same-origin, so the
+    // origin check just guards against unrelated postMessage senders, not a trust boundary).
+    window.addEventListener('message', e => {{
+      if (e.origin === window.location.origin && e.data && e.data.type === 'fsatlas:connection-lost') {{
+        showConnectionLost();
+      }}
+    }});
+
+    // Wraps fetch() to this server: a network-level failure (server unreachable/crashed) pops
+    // the modal instead of failing silently or leaving stuck "Loading..." text; HTTP error
+    // statuses still resolve normally so callers keep handling those themselves.
+    async function fsatlasFetch(url, options) {{
+      try {{
+        const response = await fetch(url, options);
+        hideConnectionLost();
+        return response;
+      }} catch (err) {{
+        showConnectionLost();
+        throw err;
+      }}
+    }}
+
+    // Heartbeat - catches the server going away even when the user isn't actively doing anything.
+    setInterval(() => {{ fsatlasFetch('/api/settings').catch(() => {{}}); }}, 5000);
+
     function withTheme(url) {{
       if (!url) return url;
       // The map iframe now fills the whole viewport behind the floating toolbar, so the
@@ -502,7 +551,7 @@ def index_html(columns, settings):
       document.documentElement.dataset.theme = theme;
       themeToggle.innerHTML = theme === 'dark' ? MOON_ICON : SUN_ICON;
       if (persist) {{
-        fetch('/api/settings', {{
+        fsatlasFetch('/api/settings', {{
           method: 'POST', headers: {{'Content-Type': 'application/json'}},
           body: JSON.stringify({{theme}})
         }}).catch(() => {{}});
@@ -543,7 +592,7 @@ def index_html(columns, settings):
         row.querySelector('.saved-remove').addEventListener('click', async e => {{
           e.stopPropagation();
           try {{
-            await fetch('/api/saved-flights', {{
+            await fsatlasFetch('/api/saved-flights', {{
               method: 'DELETE', headers: {{'Content-Type': 'application/json'}},
               body: JSON.stringify(flight)
             }});
@@ -555,7 +604,7 @@ def index_html(columns, settings):
 
     async function loadSavedFlights() {{
       try {{
-        const response = await fetch('/api/saved-flights');
+        const response = await fsatlasFetch('/api/saved-flights');
         renderSavedFlights(await response.json());
       }} catch (err) {{
         savedList.innerHTML = '<div class="saved-empty">Could not load saved flights.</div>';
@@ -599,7 +648,7 @@ def index_html(columns, settings):
       simbriefStatus.style.color = 'var(--muted)';
       simbriefStatus.textContent = 'Checking...';
       try {{
-        const response = await fetch('/api/simbrief/verify', {{
+        const response = await fsatlasFetch('/api/simbrief/verify', {{
           method: 'POST', headers: {{'Content-Type': 'application/json'}},
           body: JSON.stringify({{pilot_id: pilotId}})
         }});
@@ -615,7 +664,7 @@ def index_html(columns, settings):
     document.getElementById('settings-save').addEventListener('click', async () => {{
       savedPilotId = pilotIdInput.value.trim();
       try {{
-        await fetch('/api/settings', {{
+        await fsatlasFetch('/api/settings', {{
           method: 'POST', headers: {{'Content-Type': 'application/json'}},
           body: JSON.stringify({{simbrief_pilot_id: savedPilotId}})
         }});
@@ -635,6 +684,10 @@ def index_html(columns, settings):
     }});
 
     function operatorsFor(column) {{
+      // Dropdown-backed columns only ever match a single picked value, so there's no
+      // meaningful choice of operator - lock it to "Is" instead of letting the user pick
+      // Contains/Starts With/etc, which wouldn't make sense against a fixed value list.
+      if (Array.isArray(column.options)) return [['equals', 'Is']];
       return column.numeric
         ? [['equals', 'Equals (=)'], ['>', 'Greater (>)'], ['<', 'Less (<)'], ['>=', 'Greater/Eq (>=)'], ['<=', 'Less/Eq (<=)']]
         : [['contains', 'Contains'], ['equals', 'Equals'], ['starts_with', 'Starts With'], ['ends_with', 'Ends With']];
@@ -651,6 +704,7 @@ def index_html(columns, settings):
       // instead of a free-text field, so swap the element type when that changes.
       const oldValue = row.querySelector('.value');
       const wantsSelect = Array.isArray(column.options);
+      operator.disabled = wantsSelect;
       let value = oldValue;
       if (wantsSelect !== (oldValue.tagName === 'SELECT')) {{
         value = document.createElement(wantsSelect ? 'select' : 'input');
@@ -867,14 +921,18 @@ def index_html(columns, settings):
     async function applyFilters() {{
       const filterTree = {{kind: 'group', logic: 'AND', children: serializeList(filters)}};
       document.getElementById('status').textContent = 'Rendering...';
-      const response = await fetch('/api/maps', {{
-        method: 'POST', headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify({{filters: filterTree, map_type: mapType.value}})
-      }});
-      const result = await response.json();
-      baseMapUrl = result.url;
-      document.getElementById('map').src = withTheme(baseMapUrl);
-      document.getElementById('status').textContent = result.count.toLocaleString() + ' Flights';
+      try {{
+        const response = await fsatlasFetch('/api/maps', {{
+          method: 'POST', headers: {{'Content-Type': 'application/json'}},
+          body: JSON.stringify({{filters: filterTree, map_type: mapType.value}})
+        }});
+        const result = await response.json();
+        baseMapUrl = result.url;
+        document.getElementById('map').src = withTheme(baseMapUrl);
+        document.getElementById('status').textContent = result.count.toLocaleString() + ' Flights';
+      }} catch (err) {{
+        document.getElementById('status').textContent = '';
+      }}
     }}
 
     document.getElementById('apply').addEventListener('click', applyFilters);

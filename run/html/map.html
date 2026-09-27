@@ -189,6 +189,14 @@
         const LINE_COLOR = '<< line_color >>';
         const MARKER_BORDER = '<< marker_border >>';
 
+        // Tells the parent page (which owns the "Connection Lost" popup) that a fetch to this
+        // same-origin server failed at the network level - the server is unreachable/crashed.
+        function notifyConnectionLost() {
+            try {
+                window.parent.postMessage({type: 'fsatlas:connection-lost'}, window.location.origin);
+            } catch (err) { /* no parent to notify (e.g. opened standalone) */ }
+        }
+
         // --- MAP INIT ---
         const map = L.map('map', {
             preferCanvas: true,
@@ -460,7 +468,7 @@
                 fetch(routeRequestUrl + '?source=' + encodeURIComponent(code))
                     .then(response => response.ok ? response.json() : [])
                     .then(loadRoutes)
-                    .catch(() => loadRoutes([]));
+                    .catch(() => { notifyConnectionLost(); loadRoutes([]); });
             } else {
                 console.log("REQUEST_ROUTES|" + code);
             }
@@ -572,7 +580,7 @@
         fetch('/api/saved-flights')
             .then(response => response.ok ? response.json() : [])
             .then(flights => (flights || []).forEach(f => savedFlightKeys.add(flightKey(f))))
-            .catch(() => {});
+            .catch(() => notifyConnectionLost());
 
         function setSaveButtonState(btn, saved) {
             btn.classList.toggle('saved', saved);
@@ -591,7 +599,7 @@
                 });
                 if (wasSaved) savedFlightKeys.delete(key); else savedFlightKeys.add(key);
                 setSaveButtonState(btn, !wasSaved);
-            } catch (err) { /* leave state unchanged on failure */ }
+            } catch (err) { notifyConnectionLost(); }
             btn.disabled = false;
         }
 
@@ -660,6 +668,7 @@
                 if (!response.ok || !result.url) throw new Error(result.error || 'Export failed');
                 window.open(result.url, '_blank', 'noopener');
             } catch (err) {
+                if (err instanceof TypeError) notifyConnectionLost();
                 btn.innerText = 'Export failed';
                 setTimeout(() => { btn.innerHTML = originalLabel; btn.disabled = false; }, 2500);
                 return;

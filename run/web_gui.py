@@ -1656,7 +1656,15 @@ def main():
         default=os.environ.get("FSATLAS_NO_BROWSER", "") not in ("", "0"),
         help="Don't try to open a browser window (implied when there's no display to open one on).",
     )
+    parser.add_argument(
+        "-i", "--import", dest="import_file", metavar="JSONFILE",
+        help="Import flight records from JSONFILE into flights.csv, then exit without starting the server.",
+    )
     args = parser.parse_args()
+
+    if args.import_file:
+        from run.import_flights import import_flights
+        sys.exit(import_flights(args.import_file))
 
     instance = None
     if sys.platform == "win32" and getattr(sys, "frozen", False):

@@ -358,16 +358,9 @@ def index_html(columns, settings):
          normal flow (the map iframe, modals, toast, etc are all position:fixed already), so
          its containing block is barely taller than itself, leaving position:sticky almost no
          room to actually stick before un-sticking again on the very next scroll tick. Fixed
-         positioning pins it solidly regardless, with max-height + overflow-y below letting a
-         long filter list scroll *inside* the toolbar instead of relying on page-level scroll,
-         which no longer exists at all. (Scrolling .toolbar's own overflow, rather than
-         constraining #filters-wrap's grid row to a 1fr/min-height:0 track, avoids that track
-         squashing every filter row down to a few px instead of actually overflowing -
-         .filters-tab, positioned absolute against .toolbar, isn't affected by this internal
-         scroll since out-of-flow descendants don't move with an ancestor's own overflow.) */
+         positioning pins it solidly regardless; no max-height/overflow here on purpose - the
+         filter bar should never need its own scrollbar. */
       position: fixed; top: 14px; left: 20px; right: 20px; z-index: 5;
-      max-height: calc(100vh - 28px);
-      overflow-y: auto;
     }}
     .toolbar-head {{ display: flex; align-items: center; gap: 14px; flex-wrap: wrap; row-gap: 8px; }}
     .brand {{ display: flex; align-items: center; gap: 10px; }}
@@ -647,7 +640,7 @@ def index_html(columns, settings):
        untouched), so none of the filtering logic itself is duplicated. Kept entirely inside
        this query so desktop's inline panel + top-bar buttons are untouched. */
     @media (max-width: 760px) {{
-      .toolbar {{ top: 8px; left: 8px; right: 8px; max-height: calc(100vh - 16px); border-radius: 16px; padding: 12px; gap: 8px; }}
+      .toolbar {{ top: 8px; left: 8px; right: 8px; border-radius: 16px; padding: 12px; gap: 8px; }}
       .toolbar-head {{ gap: 8px; flex-wrap: nowrap; }}
       .logo {{ position: static !important; height: 24px; margin: 0; flex-shrink: 0; }}
       #apply, #reset, #save-search-btn {{ display: none !important; }}
@@ -757,12 +750,12 @@ def index_html(columns, settings):
       </div>
       <div class="modal-body">
         <div class="saved-section">
-          <button class="saved-section-toggle" type="button" aria-expanded="true">
+          <button class="saved-section-toggle collapsed" type="button" aria-expanded="false">
             <svg class="saved-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             <span>Saved Routes</span>
             <span id="saved-routes-count" class="saved-section-count"></span>
           </button>
-          <div class="saved-section-wrap">
+          <div class="saved-section-wrap collapsed">
             <div class="saved-section-inner">
               <div class="saved-toolbar">
                 <label class="saved-sort-label">Sort by
@@ -780,12 +773,12 @@ def index_html(columns, settings):
           </div>
         </div>
         <div class="saved-section">
-          <button class="saved-section-toggle" type="button" aria-expanded="true">
+          <button class="saved-section-toggle collapsed" type="button" aria-expanded="false">
             <svg class="saved-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             <span>Saved Searches</span>
             <span id="saved-searches-count" class="saved-section-count"></span>
           </button>
-          <div class="saved-section-wrap">
+          <div class="saved-section-wrap collapsed">
             <div class="saved-section-inner">
               <div id="saved-searches-list" class="saved-list"></div>
             </div>

@@ -351,14 +351,23 @@ def index_html(columns, settings):
       backdrop-filter: blur(22px) saturate(160%);
       -webkit-backdrop-filter: blur(22px) saturate(160%);
       border: 1px solid var(--border);
-      margin: 14px 20px 12px;
       padding: 14px 20px; display: grid; gap: 12px; min-width: 0;
       border-radius: 20px;
       box-shadow: var(--shadow);
-      /* Sticky (not just relative) so the whole heading bar - and the logo pinned over it -
-         stays put at the top of the viewport instead of scrolling away when the filter list
-         grows tall enough to make the page scroll. */
-      position: sticky; top: 0; z-index: 5;
+      /* Fixed (not sticky) - .toolbar ends up being the only element left in the document's
+         normal flow (the map iframe, modals, toast, etc are all position:fixed already), so
+         its containing block is barely taller than itself, leaving position:sticky almost no
+         room to actually stick before un-sticking again on the very next scroll tick. Fixed
+         positioning pins it solidly regardless, with max-height + overflow-y below letting a
+         long filter list scroll *inside* the toolbar instead of relying on page-level scroll,
+         which no longer exists at all. (Scrolling .toolbar's own overflow, rather than
+         constraining #filters-wrap's grid row to a 1fr/min-height:0 track, avoids that track
+         squashing every filter row down to a few px instead of actually overflowing -
+         .filters-tab, positioned absolute against .toolbar, isn't affected by this internal
+         scroll since out-of-flow descendants don't move with an ancestor's own overflow.) */
+      position: fixed; top: 14px; left: 20px; right: 20px; z-index: 5;
+      max-height: calc(100vh - 28px);
+      overflow-y: auto;
     }}
     .toolbar-head {{ display: flex; align-items: center; gap: 14px; flex-wrap: wrap; row-gap: 8px; }}
     .brand {{ display: flex; align-items: center; gap: 10px; }}
@@ -410,6 +419,14 @@ def index_html(columns, settings):
     }}
     #theme-toggle:hover {{ background: var(--border); transform: none; filter: none; }}
     #theme-toggle svg {{ width: 17px; height: 17px; transition: transform .3s ease; }}
+    /* Small icon button, matching the map-style/theme/saved/settings group it now sits
+       alongside, rather than a full text button. */
+    #save-search-btn {{
+      width: 34px; height: 34px; padding: 0; background: var(--surface-solid); border: 1px solid var(--border);
+      box-shadow: none; display: flex; align-items: center; justify-content: center; color: var(--text);
+    }}
+    #save-search-btn:hover {{ background: var(--border); transform: none; filter: none; }}
+    #save-search-btn svg {{ width: 16px; height: 16px; }}
     #saved-toggle {{
       width: 34px; height: 34px; padding: 0; background: var(--surface-solid); border: 1px solid var(--border);
       box-shadow: none; display: flex; align-items: center; justify-content: center; color: var(--text);
@@ -630,7 +647,7 @@ def index_html(columns, settings):
        untouched), so none of the filtering logic itself is duplicated. Kept entirely inside
        this query so desktop's inline panel + top-bar buttons are untouched. */
     @media (max-width: 760px) {{
-      .toolbar {{ margin: 8px 8px 10px; border-radius: 16px; padding: 12px; gap: 8px; }}
+      .toolbar {{ top: 8px; left: 8px; right: 8px; max-height: calc(100vh - 16px); border-radius: 16px; padding: 12px; gap: 8px; }}
       .toolbar-head {{ gap: 8px; flex-wrap: nowrap; }}
       .logo {{ position: static !important; height: 24px; margin: 0; flex-shrink: 0; }}
       #apply, #reset, #save-search-btn {{ display: none !important; }}
@@ -693,7 +710,6 @@ def index_html(columns, settings):
       <label class="map-type"><span class="map-type-label">Map Type</span><select id="map-type"></select></label>
       <button id="apply">Apply Filters</button>
       <button id="reset" class="danger" type="button" title="Reset filters" aria-label="Reset filters">Reset Filters</button>
-      <button id="save-search-btn" class="secondary" type="button" title="Save the current filters as a search" aria-label="Save the current filters as a search">Save Search</button>
       <button id="filters-menu-btn" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
         <span id="filters-menu-label">Add Filter</span>
@@ -704,6 +720,9 @@ def index_html(columns, settings):
         </button>
         <div id="map-type-menu" class="map-type-menu"></div>
       </div>
+      <button id="save-search-btn" type="button" title="Save the current filters as a search" aria-label="Save the current filters as a search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+      </button>
       <button id="theme-toggle" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode"></button>
       <button id="saved-toggle" type="button" title="Saved Items" aria-label="Saved Items">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
@@ -1511,15 +1530,6 @@ def index_html(columns, settings):
     }}
     window.addEventListener('resize', scheduleFilterLayout);
     new ResizeObserver(scheduleFilterLayout).observe(toolbar);
-    // Safety net for positionLogo(): .toolbar is sticky so it shouldn't itself move on
-    // scroll, but re-checking here too keeps the logo glued to it through the brief instant
-    // before the sticky offset engages (and through any future layout change that might
-    // reintroduce document scroll).
-    let logoScrollRaf;
-    window.addEventListener('scroll', () => {{
-      cancelAnimationFrame(logoScrollRaf);
-      logoScrollRaf = requestAnimationFrame(positionLogo);
-    }}, {{ passive: true }});
 
     // --- Filter tree: each level (the root #filters, or a group's inner .filters-list) holds
     // a mix of condition rows and nested groups. A row/group's own "logic" select says how it

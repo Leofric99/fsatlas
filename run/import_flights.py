@@ -120,11 +120,12 @@ def recompute_flight_times(df, cruise_speeds):
 
 
 def import_flights(json_path, dry_run=False):
-    if not os.path.exists(DATA_FILE):
-        print(f"Error: {DATA_FILE} not found", file=sys.stderr)
-        return 1
+    if os.path.exists(DATA_FILE):
+        existing = pd.read_csv(DATA_FILE, dtype=str, keep_default_na=False)
+    else:
+        print(f"{DATA_FILE} not found; creating it with columns: {', '.join(REQUIRED_COLUMNS)}")
+        existing = pd.DataFrame(columns=REQUIRED_COLUMNS)
 
-    existing = pd.read_csv(DATA_FILE, dtype=str, keep_default_na=False)
     new_records = load_new_records(json_path)
 
     cruise_speeds = load_cruise_speeds()
@@ -144,6 +145,7 @@ def import_flights(json_path, dry_run=False):
     print(f"  {duplicates} duplicate(s) skipped")
 
     if not dry_run:
+        os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
         deduped.to_csv(DATA_FILE, index=False)
 
     return 0

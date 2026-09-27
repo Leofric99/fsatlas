@@ -1,7 +1,7 @@
 # Custom
-run/database/*.csv
-run/database/*.db
-run/database/*.json
+run/database/flights.csv
+run/database/flights.db
+run/database/flights.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

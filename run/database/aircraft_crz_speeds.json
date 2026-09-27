@@ -1,0 +1,2432 @@
+{
+  "320": {
+    "name": "Airbus A320",
+    "type": "Narrowbody",
+    "cruise_tas_knots": 454
+  },
+  "76V": {
+    "name": "Boeing 767-300 Freighter",
+    "type": "Widebody",
+    "cruise_tas_knots": 470
+  },
+  "A109": {
+    "name": "AgustaWestland AW109",
+    "type": "Helicopter",
+    "cruise_tas_knots": 154
+  },
+  "A119": {
+    "name": "AgustaWestland AW119 Koala",
+    "type": "Helicopter",
+    "cruise_tas_knots": 131
+  },
+  "A124": {
+    "name": "Antonov An-124 Ruslan",
+    "type": "Widebody",
+    "cruise_tas_knots": 465
+  },
+  "A139": {
+    "name": "AgustaWestland AW139",
+    "type": "Helicopter",
+    "cruise_tas_knots": 165
+  },
+  "A169": {
+    "name": "AgustaWestland AW169",
+    "type": "Helicopter",
+    "cruise_tas_knots": 145
+  },
+  "A189": {
+    "name": "AgustaWestland AW189",
+    "type": "Helicopter",
+    "cruise_tas_knots": 147
+  },
+  "A19N": {
+    "name": "Airbus A319neo",
+    "type": "Narrowbody",
+    "cruise_tas_knots": 450
+  },
+  "A20N": {
+    "name": "Airbus A320neo",
+    "cruise_tas_knots": 455,
+    "type": "Narrowbody"
+  },
+  "A21N": {
+    "name": "Airbus A321neo",
+    "cruise_tas_knots": 455,
+    "type": "Narrowbody"
+  },
+  "A221": {
+    "name": "Airbus A220-100",
+    "cruise_tas_knots": 447,
+    "type": "Narrowbody"
+  },
+  "A223": {
+    "name": "Airbus A220-300",
+    "cruise_tas_knots": 447,
+    "type": "Narrowbody"
+  },
+  "A306": {
+    "name": "Airbus A300-600",
+    "cruise_tas_knots": 452,
+    "type": "Widebody"
+  },
+  "A30B": {
+    "name": "Airbus A300B2/B4",
+    "cruise_tas_knots": 450,
+    "type": "Widebody"
+  },
+  "A310": {
+    "name": "Airbus A310",
+    "cruise_tas_knots": 458,
+    "type": "Widebody"
+  },
+  "A313": {
+    "name": "Airbus A310-300",
+    "type": "Widebody",
+    "cruise_tas_knots": 458
+  },
+  "A318": {
+    "name": "Airbus A318",
+    "cruise_tas_knots": 447,
+    "type": "Narrowbody"
+  },
+  "A319": {
+    "name": "Airbus A319",
+    "cruise_tas_knots": 451,
+    "type": "Narrowbody"
+  },
+  "A320": {
+    "name": "Airbus A320",
+    "cruise_tas_knots": 455,
+    "type": "Narrowbody"
+  },
+  "A321": {
+    "name": "Airbus A321",
+    "cruise_tas_knots": 455,
+    "type": "Narrowbody"
+  },
+  "A332": {
+    "name": "Airbus A330-200",
+    "cruise_tas_knots": 466,
+    "type": "Widebody"
+  },
+  "A333": {
+    "name": "Airbus A330-300",
+    "cruise_tas_knots": 466,
+    "type": "Widebody"
+  },
+  "A338": {
+    "name": "Airbus A330-800neo",
+    "cruise_tas_knots": 466,
+    "type": "Widebody"
+  },
+  "A339": {
+    "name": "Airbus A330-900neo",
+    "cruise_tas_knots": 466,
+    "type": "Widebody"
+  },
+  "A342": {
+    "name": "Airbus A340-200",
+    "cruise_tas_knots": 458,
+    "type": "Widebody"
+  },
+  "A343": {
+    "name": "Airbus A340-300",
+    "cruise_tas_knots": 458,
+    "type": "Widebody"
+  },
+  "A345": {
+    "name": "Airbus A340-500",
+    "cruise_tas_knots": 464,
+    "type": "Widebody"
+  },
+  "A346": {
+    "name": "Airbus A340-600",
+    "cruise_tas_knots": 464,
+    "type": "Widebody"
+  },
+  "A359": {
+    "name": "Airbus A350-900",
+    "cruise_tas_knots": 488,
+    "type": "Widebody"
+  },
+  "A35K": {
+    "name": "Airbus A350-1000",
+    "cruise_tas_knots": 488,
+    "type": "Widebody"
+  },
+  "A388": {
+    "name": "Airbus A380-800",
+    "cruise_tas_knots": 490,
+    "type": "Widebody"
+  },
+  "A400": {
+    "name": "Airbus A400M Atlas",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 420
+  },
+  "A40M": {
+    "name": "Airbus A400M Atlas",
+    "cruise_tas_knots": 420,
+    "type": "Military / Transport"
+  },
+  "A660": {
+    "name": "Airbus A330-200 MRTT",
+    "type": "Widebody",
+    "cruise_tas_knots": 470
+  },
+  "AA5": {
+    "name": "Grumman American AA-5",
+    "type": "General Aviation",
+    "cruise_tas_knots": 139
+  },
+  "AC11": {
+    "name": "Rockwell Commander 112/114",
+    "type": "General Aviation",
+    "cruise_tas_knots": 135
+  },
+  "AC50": {
+    "name": "Aero Commander 500",
+    "type": "General Aviation",
+    "cruise_tas_knots": 170
+  },
+  "AC6L": {
+    "name": "Aero Commander 680 / Grand Commander",
+    "type": "General Aviation",
+    "cruise_tas_knots": 185
+  },
+  "AC90": {
+    "name": "Aero Turbo Commander 690 / 900",
+    "type": "Turboprop",
+    "cruise_tas_knots": 280
+  },
+  "AC95": {
+    "name": "Aero Commander 950 / 1000",
+    "type": "Turboprop",
+    "cruise_tas_knots": 285
+  },
+  "AEST": {
+    "name": "Piper PA-60 Aerostar",
+    "type": "General Aviation",
+    "cruise_tas_knots": 220
+  },
+  "AJ27": {
+    "name": "Aero Commander 200",
+    "type": "General Aviation",
+    "cruise_tas_knots": 185
+  },
+  "AN12": {
+    "name": "Antonov An-12",
+    "cruise_tas_knots": 360,
+    "type": "Turboprop"
+  },
+  "AN124": {
+    "name": "Antonov An-124 Ruslan",
+    "cruise_tas_knots": 465,
+    "type": "Widebody"
+  },
+  "AN225": {
+    "name": "Antonov An-225 Mriya",
+    "cruise_tas_knots": 430,
+    "type": "Widebody"
+  },
+  "AN24": {
+    "name": "Antonov An-24",
+    "cruise_tas_knots": 240,
+    "type": "Turboprop"
+  },
+  "AN26": {
+    "name": "Antonov An-26",
+    "cruise_tas_knots": 235,
+    "type": "Turboprop"
+  },
+  "AN32": {
+    "name": "Antonov An-32",
+    "type": "Turboprop",
+    "cruise_tas_knots": 250
+  },
+  "AP22": {
+    "name": "Aeroprakt A-22 Foxbat",
+    "type": "General Aviation",
+    "cruise_tas_knots": 90
+  },
+  "AP32": {
+    "name": "Aeroprakt A-32 Vixxen",
+    "type": "General Aviation",
+    "cruise_tas_knots": 100
+  },
+  "ARJ2": {
+    "name": "COMAC ARJ21",
+    "cruise_tas_knots": 440,
+    "type": "Regional Jet"
+  },
+  "AS20": {
+    "name": "Schleicher ASW 20",
+    "type": "General Aviation",
+    "cruise_tas_knots": 90
+  },
+  "AS29": {
+    "name": "Schleicher ASG 29",
+    "type": "General Aviation",
+    "cruise_tas_knots": 95
+  },
+  "AS50": {
+    "name": "Eurocopter AS350 Ecureuil",
+    "type": "Helicopter",
+    "cruise_tas_knots": 132
+  },
+  "AS55": {
+    "name": "Eurocopter AS355 Ecureuil 2",
+    "type": "Helicopter",
+    "cruise_tas_knots": 120
+  },
+  "AS65": {
+    "name": "Eurocopter AS365 Dauphin",
+    "type": "Helicopter",
+    "cruise_tas_knots": 150
+  },
+  "ASTO": {
+    "name": "Astro SS-1 / General Aviation",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "ASTR": {
+    "name": "Gulfstream Astra",
+    "type": "Business Jet",
+    "cruise_tas_knots": 460
+  },
+  "AT3T": {
+    "name": "Air Tractor AT-300",
+    "type": "General Aviation",
+    "cruise_tas_knots": 125
+  },
+  "AT43": {
+    "name": "ATR 42-300",
+    "cruise_tas_knots": 250,
+    "type": "Turboprop"
+  },
+  "AT45": {
+    "name": "ATR 42-500",
+    "cruise_tas_knots": 270,
+    "type": "Turboprop"
+  },
+  "AT46": {
+    "name": "ATR 42-600",
+    "type": "Turboprop",
+    "cruise_tas_knots": 270
+  },
+  "AT5T": {
+    "name": "Air Tractor AT-502",
+    "type": "Turboprop",
+    "cruise_tas_knots": 135
+  },
+  "AT6T": {
+    "name": "Air Tractor AT-602",
+    "type": "Turboprop",
+    "cruise_tas_knots": 140
+  },
+  "AT72": {
+    "name": "ATR 72-200/500",
+    "cruise_tas_knots": 260,
+    "type": "Turboprop"
+  },
+  "AT73": {
+    "name": "ATR 72-210",
+    "type": "Turboprop",
+    "cruise_tas_knots": 260
+  },
+  "AT75": {
+    "name": "ATR 72-500",
+    "type": "Turboprop",
+    "cruise_tas_knots": 270
+  },
+  "AT76": {
+    "name": "ATR 72-600",
+    "cruise_tas_knots": 275,
+    "type": "Turboprop"
+  },
+  "AT8T": {
+    "name": "Air Tractor AT-802",
+    "type": "Turboprop",
+    "cruise_tas_knots": 150
+  },
+  "B06": {
+    "name": "Bell 206 JetRanger",
+    "type": "Helicopter",
+    "cruise_tas_knots": 115
+  },
+  "B190": {
+    "name": "Beechcraft 1900 Airliner",
+    "cruise_tas_knots": 280,
+    "type": "Turboprop"
+  },
+  "B300": {
+    "name": "Beechcraft Super King Air 300 / 350",
+    "type": "Turboprop",
+    "cruise_tas_knots": 310
+  },
+  "B350": {
+    "name": "Beechcraft Super King Air 350",
+    "cruise_tas_knots": 312,
+    "type": "Turboprop"
+  },
+  "B37M": {
+    "name": "Boeing 737 MAX 7",
+    "cruise_tas_knots": 451,
+    "type": "Narrowbody"
+  },
+  "B38M": {
+    "name": "Boeing 737 MAX 8",
+    "cruise_tas_knots": 451,
+    "type": "Narrowbody"
+  },
+  "B39M": {
+    "name": "Boeing 737 MAX 9",
+    "cruise_tas_knots": 451,
+    "type": "Narrowbody"
+  },
+  "B3XM": {
+    "name": "Boeing 737 MAX 10",
+    "cruise_tas_knots": 451,
+    "type": "Narrowbody"
+  },
+  "B407": {
+    "name": "Bell 407",
+    "type": "Helicopter",
+    "cruise_tas_knots": 133
+  },
+  "B412": {
+    "name": "Bell 412",
+    "type": "Helicopter",
+    "cruise_tas_knots": 122
+  },
+  "B429": {
+    "name": "Bell 429 GlobalRanger",
+    "type": "Helicopter",
+    "cruise_tas_knots": 150
+  },
+  "B430": {
+    "name": "Bell 430",
+    "type": "Helicopter",
+    "cruise_tas_knots": 135
+  },
+  "B461": {
+    "name": "BAe 146-100",
+    "cruise_tas_knots": 420,
+    "type": "Regional Jet"
+  },
+  "B462": {
+    "name": "BAe 146-200",
+    "cruise_tas_knots": 420,
+    "type": "Regional Jet"
+  },
+  "B463": {
+    "name": "BAe 146-300",
+    "cruise_tas_knots": 420,
+    "type": "Regional Jet"
+  },
+  "B505": {
+    "name": "Bell 505 Jet Ranger X",
+    "type": "Helicopter",
+    "cruise_tas_knots": 125
+  },
+  "B703": {
+    "name": "Boeing 707-320B",
+    "cruise_tas_knots": 480,
+    "type": "Narrowbody"
+  },
+  "B712": {
+    "name": "Boeing 717-200",
+    "cruise_tas_knots": 438,
+    "type": "Narrowbody"
+  },
+  "B720": {
+    "name": "Boeing 720",
+    "cruise_tas_knots": 485,
+    "type": "Narrowbody"
+  },
+  "B721": {
+    "name": "Boeing 727-100",
+    "cruise_tas_knots": 452,
+    "type": "Narrowbody"
+  },
+  "B722": {
+    "name": "Boeing 727-200",
+    "cruise_tas_knots": 452,
+    "type": "Narrowbody"
+  },
+  "B731": {
+    "name": "Boeing 737-100",
+    "cruise_tas_knots": 424,
+    "type": "Narrowbody"
+  },
+  "B732": {
+    "name": "Boeing 737-200",
+    "cruise_tas_knots": 424,
+    "type": "Narrowbody"
+  },
+  "B733": {
+    "name": "Boeing 737-300",
+    "cruise_tas_knots": 439,
+    "type": "Narrowbody"
+  },
+  "B734": {
+    "name": "Boeing 737-400",
+    "cruise_tas_knots": 439,
+    "type": "Narrowbody"
+  },
+  "B735": {
+    "name": "Boeing 737-500",
+    "cruise_tas_knots": 439,
+    "type": "Narrowbody"
+  },
+  "B736": {
+    "name": "Boeing 737-600",
+    "cruise_tas_knots": 451,
+    "type": "Narrowbody"
+  },
+  "B737": {
+    "name": "Boeing 737-700",
+    "cruise_tas_knots": 451,
+    "type": "Narrowbody"
+  },
+  "B738": {
+    "name": "Boeing 737-800",
+    "cruise_tas_knots": 451,
+    "type": "Narrowbody"
+  },
+  "B739": {
+    "name": "Boeing 737-900",
+    "cruise_tas_knots": 451,
+    "type": "Narrowbody"
+  },
+  "B741": {
+    "name": "Boeing 747-100",
+    "cruise_tas_knots": 478,
+    "type": "Widebody"
+  },
+  "B742": {
+    "name": "Boeing 747-200",
+    "cruise_tas_knots": 478,
+    "type": "Widebody"
+  },
+  "B743": {
+    "name": "Boeing 747-300",
+    "cruise_tas_knots": 478,
+    "type": "Widebody"
+  },
+  "B744": {
+    "name": "Boeing 747-400",
+    "cruise_tas_knots": 487,
+    "type": "Widebody"
+  },
+  "B748": {
+    "name": "Boeing 747-8",
+    "cruise_tas_knots": 492,
+    "type": "Widebody"
+  },
+  "B752": {
+    "name": "Boeing 757-200",
+    "cruise_tas_knots": 447,
+    "type": "Narrowbody"
+  },
+  "B753": {
+    "name": "Boeing 757-300",
+    "cruise_tas_knots": 447,
+    "type": "Narrowbody"
+  },
+  "B762": {
+    "name": "Boeing 767-200",
+    "cruise_tas_knots": 466,
+    "type": "Widebody"
+  },
+  "B763": {
+    "name": "Boeing 767-300",
+    "cruise_tas_knots": 466,
+    "type": "Widebody"
+  },
+  "B764": {
+    "name": "Boeing 767-400",
+    "cruise_tas_knots": 466,
+    "type": "Widebody"
+  },
+  "B772": {
+    "name": "Boeing 777-200",
+    "cruise_tas_knots": 481,
+    "type": "Widebody"
+  },
+  "B773": {
+    "name": "Boeing 777-300",
+    "cruise_tas_knots": 481,
+    "type": "Widebody"
+  },
+  "B77L": {
+    "name": "Boeing 777-200LR",
+    "cruise_tas_knots": 481,
+    "type": "Widebody"
+  },
+  "B77W": {
+    "name": "Boeing 777-300ER",
+    "cruise_tas_knots": 481,
+    "type": "Widebody"
+  },
+  "B77X": {
+    "name": "Boeing 777X",
+    "cruise_tas_knots": 484,
+    "type": "Widebody"
+  },
+  "B788": {
+    "name": "Boeing 787-8",
+    "cruise_tas_knots": 488,
+    "type": "Widebody"
+  },
+  "B789": {
+    "name": "Boeing 787-9",
+    "cruise_tas_knots": 488,
+    "type": "Widebody"
+  },
+  "B78X": {
+    "name": "Boeing 787-10",
+    "cruise_tas_knots": 488,
+    "type": "Widebody"
+  },
+  "BCS1": {
+    "name": "Airbus A220-100",
+    "type": "Narrowbody",
+    "cruise_tas_knots": 447
+  },
+  "BCS3": {
+    "name": "Airbus A220-300",
+    "type": "Narrowbody",
+    "cruise_tas_knots": 447
+  },
+  "BE10": {
+    "name": "Beechcraft King Air 100",
+    "cruise_tas_knots": 240,
+    "type": "Turboprop"
+  },
+  "BE20": {
+    "name": "Beechcraft Super King Air 200",
+    "cruise_tas_knots": 280,
+    "type": "Turboprop"
+  },
+  "BE24": {
+    "name": "Beechcraft Sierra",
+    "type": "General Aviation",
+    "cruise_tas_knots": 130
+  },
+  "BE30": {
+    "name": "Beechcraft Super King Air 300",
+    "type": "Turboprop",
+    "cruise_tas_knots": 310
+  },
+  "BE33": {
+    "name": "Beechcraft Debonair / Bonanza 33",
+    "cruise_tas_knots": 160,
+    "type": "General Aviation"
+  },
+  "BE35": {
+    "name": "Beechcraft Bonanza V-Tail",
+    "cruise_tas_knots": 165,
+    "type": "General Aviation"
+  },
+  "BE36": {
+    "name": "Beechcraft Bonanza 36",
+    "cruise_tas_knots": 170,
+    "type": "General Aviation"
+  },
+  "BE40": {
+    "name": "Beechjet 400A / Hawker 400XP",
+    "cruise_tas_knots": 450,
+    "type": "Business Jet"
+  },
+  "BE4W": {
+    "name": "Hawker 400XP",
+    "type": "Business Jet",
+    "cruise_tas_knots": 450
+  },
+  "BE55": {
+    "name": "Beechcraft Baron 55",
+    "type": "General Aviation",
+    "cruise_tas_knots": 180
+  },
+  "BE58": {
+    "name": "Beechcraft Baron 58",
+    "cruise_tas_knots": 200,
+    "type": "General Aviation"
+  },
+  "BE76": {
+    "name": "Beechcraft Duchess",
+    "cruise_tas_knots": 155,
+    "type": "General Aviation"
+  },
+  "BE99": {
+    "name": "Beechcraft Model 99",
+    "type": "Turboprop",
+    "cruise_tas_knots": 205
+  },
+  "BE9L": {
+    "name": "Beechcraft King Air 90",
+    "cruise_tas_knots": 220,
+    "type": "Turboprop"
+  },
+  "BE9T": {
+    "name": "Beechcraft King Air F90",
+    "type": "Turboprop",
+    "cruise_tas_knots": 230
+  },
+  "BK17": {
+    "name": "Kawasaki BK 117 / EC145",
+    "type": "Helicopter",
+    "cruise_tas_knots": 133
+  },
+  "BL8": {
+    "name": "Bellanca Scout / Decathlon",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "BLCF": {
+    "name": "Boeing 747 LCF Dreamlifter",
+    "type": "Widebody",
+    "cruise_tas_knots": 474
+  },
+  "BN2P": {
+    "name": "Britten-Norman BN-2 Islander",
+    "type": "Turboprop",
+    "cruise_tas_knots": 130
+  },
+  "BR23": {
+    "name": "Beechcraft Model 23 Musketeer",
+    "type": "General Aviation",
+    "cruise_tas_knots": 117
+  },
+  "BSTP": {
+    "name": "Beechcraft Starship",
+    "type": "Turboprop",
+    "cruise_tas_knots": 335
+  },
+  "BT36": {
+    "name": "Beechcraft Bonanza 36",
+    "type": "General Aviation",
+    "cruise_tas_knots": 168
+  },
+  "C130": {
+    "name": "Lockheed C-130 Hercules",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 300
+  },
+  "C150": {
+    "name": "Cessna 150",
+    "type": "General Aviation",
+    "cruise_tas_knots": 100
+  },
+  "C152": {
+    "name": "Cessna 152",
+    "cruise_tas_knots": 107,
+    "type": "General Aviation"
+  },
+  "C17": {
+    "name": "Boeing C-17 Globemaster III",
+    "cruise_tas_knots": 450,
+    "type": "Military / Transport"
+  },
+  "C170": {
+    "name": "Cessna 170",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "C172": {
+    "name": "Cessna 172 Skyhawk",
+    "cruise_tas_knots": 122,
+    "type": "General Aviation"
+  },
+  "C177": {
+    "name": "Cessna 177 Cardinal",
+    "cruise_tas_knots": 130,
+    "type": "General Aviation"
+  },
+  "C180": {
+    "name": "Cessna 180 Skywagon",
+    "type": "General Aviation",
+    "cruise_tas_knots": 135
+  },
+  "C182": {
+    "name": "Cessna 182 Skylane",
+    "cruise_tas_knots": 145,
+    "type": "General Aviation"
+  },
+  "C185": {
+    "name": "Cessna 185 Skywagon",
+    "type": "General Aviation",
+    "cruise_tas_knots": 140
+  },
+  "C205": {
+    "name": "Cessna 205 Super Skywagon",
+    "type": "General Aviation",
+    "cruise_tas_knots": 142
+  },
+  "C206": {
+    "name": "Cessna 206 Stationair",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "C207": {
+    "name": "Cessna 207 Skywagon",
+    "type": "General Aviation",
+    "cruise_tas_knots": 140
+  },
+  "C208": {
+    "name": "Cessna 208 Caravan",
+    "cruise_tas_knots": 175,
+    "type": "Turboprop"
+  },
+  "C210": {
+    "name": "Cessna 210 Centurion",
+    "cruise_tas_knots": 160,
+    "type": "General Aviation"
+  },
+  "C212": {
+    "name": "CASA C-212 Aviocar",
+    "type": "Turboprop",
+    "cruise_tas_knots": 190
+  },
+  "C25A": {
+    "name": "Cessna Citation Jet CJ2",
+    "cruise_tas_knots": 410,
+    "type": "Business Jet"
+  },
+  "C25B": {
+    "name": "Cessna Citation Jet CJ3",
+    "cruise_tas_knots": 416,
+    "type": "Business Jet"
+  },
+  "C25C": {
+    "name": "Cessna Citation Jet CJ4",
+    "cruise_tas_knots": 451,
+    "type": "Business Jet"
+  },
+  "C25M": {
+    "name": "Cessna CitationJet CJ1+",
+    "type": "Business Jet",
+    "cruise_tas_knots": 389
+  },
+  "C27J": {
+    "name": "Alenia C-27J Spartan",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 315
+  },
+  "C295": {
+    "name": "CASA C-295",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 260
+  },
+  "C303": {
+    "name": "Cessna 303 Crusader",
+    "type": "General Aviation",
+    "cruise_tas_knots": 170
+  },
+  "C30J": {
+    "name": "Lockheed Martin C-130J Super Hercules",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 350
+  },
+  "C310": {
+    "name": "Cessna 310",
+    "cruise_tas_knots": 185,
+    "type": "General Aviation"
+  },
+  "C337": {
+    "name": "Cessna 337 Skymaster",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "C340": {
+    "name": "Cessna 340",
+    "type": "General Aviation",
+    "cruise_tas_knots": 200
+  },
+  "C402": {
+    "name": "Cessna 402",
+    "cruise_tas_knots": 180,
+    "type": "General Aviation"
+  },
+  "C404": {
+    "name": "Cessna 404 Titan",
+    "type": "General Aviation",
+    "cruise_tas_knots": 180
+  },
+  "C408": {
+    "name": "Cessna 408 SkyCourier",
+    "type": "Turboprop",
+    "cruise_tas_knots": 210
+  },
+  "C414": {
+    "name": "Cessna 414 Chancellor",
+    "cruise_tas_knots": 200,
+    "type": "General Aviation"
+  },
+  "C421": {
+    "name": "Cessna 421 Golden Eagle",
+    "cruise_tas_knots": 220,
+    "type": "General Aviation"
+  },
+  "C425": {
+    "name": "Cessna 425 Conquest I",
+    "type": "Turboprop",
+    "cruise_tas_knots": 230
+  },
+  "C441": {
+    "name": "Cessna 441 Conquest II",
+    "type": "Turboprop",
+    "cruise_tas_knots": 295
+  },
+  "C5": {
+    "name": "Lockheed C-5 Galaxy",
+    "cruise_tas_knots": 470,
+    "type": "Military / Transport"
+  },
+  "C500": {
+    "name": "Cessna Citation I",
+    "type": "Business Jet",
+    "cruise_tas_knots": 350
+  },
+  "C501": {
+    "name": "Cessna Citation I/SP",
+    "type": "Business Jet",
+    "cruise_tas_knots": 350
+  },
+  "C510": {
+    "name": "Cessna Citation Mustang",
+    "cruise_tas_knots": 340,
+    "type": "Business Jet"
+  },
+  "C525": {
+    "name": "Cessna Citation Jet CJ1",
+    "cruise_tas_knots": 380,
+    "type": "Business Jet"
+  },
+  "C550": {
+    "name": "Cessna Citation II",
+    "cruise_tas_knots": 361,
+    "type": "Business Jet"
+  },
+  "C551": {
+    "name": "Cessna Citation II/SP",
+    "type": "Business Jet",
+    "cruise_tas_knots": 361
+  },
+  "C55B": {
+    "name": "Cessna Citation Bravo",
+    "type": "Business Jet",
+    "cruise_tas_knots": 400
+  },
+  "C560": {
+    "name": "Cessna Citation V",
+    "cruise_tas_knots": 411,
+    "type": "Business Jet"
+  },
+  "C56X": {
+    "name": "Cessna Citation Excel / XLS",
+    "cruise_tas_knots": 441,
+    "type": "Business Jet"
+  },
+  "C5M": {
+    "name": "Lockheed C-5M Super Galaxy",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 470
+  },
+  "C650": {
+    "name": "Cessna Citation III/VI/VII",
+    "cruise_tas_knots": 468,
+    "type": "Business Jet"
+  },
+  "C680": {
+    "name": "Cessna Citation Sovereign",
+    "cruise_tas_knots": 460,
+    "type": "Business Jet"
+  },
+  "C68A": {
+    "name": "Cessna Citation Latitude",
+    "type": "Business Jet",
+    "cruise_tas_knots": 446
+  },
+  "C700": {
+    "name": "Cessna Citation Longitude",
+    "cruise_tas_knots": 483,
+    "type": "Business Jet"
+  },
+  "C72R": {
+    "name": "Cessna 172 Cutlass RG",
+    "type": "General Aviation",
+    "cruise_tas_knots": 130
+  },
+  "C750": {
+    "name": "Cessna Citation X",
+    "cruise_tas_knots": 528,
+    "type": "Business Jet"
+  },
+  "C77R": {
+    "name": "Cessna 177 Cardinal RG",
+    "type": "General Aviation",
+    "cruise_tas_knots": 140
+  },
+  "C82R": {
+    "name": "Cessna 182 Skylane RG",
+    "type": "General Aviation",
+    "cruise_tas_knots": 155
+  },
+  "C82S": {
+    "name": "Cessna 182 Skylane",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "C82T": {
+    "name": "Cessna T182 Turbo Skylane",
+    "type": "General Aviation",
+    "cruise_tas_knots": 165
+  },
+  "C919": {
+    "name": "COMAC C919",
+    "cruise_tas_knots": 450,
+    "type": "Narrowbody"
+  },
+  "CC11": {
+    "name": "CubCrafters CC11 Carbon Cub",
+    "type": "General Aviation",
+    "cruise_tas_knots": 100
+  },
+  "CH75": {
+    "name": "Zenith CH 750 Cruzer",
+    "type": "General Aviation",
+    "cruise_tas_knots": 100
+  },
+  "CH7B": {
+    "name": "Zenith CH 750 / CH 701",
+    "type": "General Aviation",
+    "cruise_tas_knots": 95
+  },
+  "CJ6": {
+    "name": "Nanchang CJ-6",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "CL30": {
+    "name": "Bombardier Challenger 300",
+    "cruise_tas_knots": 470,
+    "type": "Business Jet"
+  },
+  "CL35": {
+    "name": "Bombardier Challenger 350",
+    "cruise_tas_knots": 470,
+    "type": "Business Jet"
+  },
+  "CL60": {
+    "name": "Bombardier Challenger 600",
+    "cruise_tas_knots": 441,
+    "type": "Business Jet"
+  },
+  "COL4": {
+    "name": "Cessna 400 Corvalis TT",
+    "type": "General Aviation",
+    "cruise_tas_knots": 235
+  },
+  "COLT": {
+    "name": "Piper PA-22 Colt",
+    "type": "General Aviation",
+    "cruise_tas_knots": 100
+  },
+  "CONC": {
+    "name": "A\u00e9rospatiale/BAC Concorde",
+    "cruise_tas_knots": 1170,
+    "type": "Supersonic"
+  },
+  "CRES": {
+    "name": "PAC Cresco",
+    "type": "Turboprop",
+    "cruise_tas_knots": 140
+  },
+  "CRJ1": {
+    "name": "Bombardier CRJ-100",
+    "cruise_tas_knots": 424,
+    "type": "Regional Jet"
+  },
+  "CRJ2": {
+    "name": "Bombardier CRJ-200",
+    "cruise_tas_knots": 424,
+    "type": "Regional Jet"
+  },
+  "CRJ7": {
+    "name": "Bombardier CRJ-700",
+    "cruise_tas_knots": 447,
+    "type": "Regional Jet"
+  },
+  "CRJ9": {
+    "name": "Bombardier CRJ-900",
+    "cruise_tas_knots": 447,
+    "type": "Regional Jet"
+  },
+  "CRJX": {
+    "name": "Bombardier CRJ-1000",
+    "cruise_tas_knots": 447,
+    "type": "Regional Jet"
+  },
+  "CRUZ": {
+    "name": "CSA SportCruiser",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "CT4": {
+    "name": "PAC CT/4 Airtrainer",
+    "type": "General Aviation",
+    "cruise_tas_knots": 130
+  },
+  "CV99": {
+    "name": "Convair CV-990 Coronado",
+    "cruise_tas_knots": 530,
+    "type": "Narrowbody"
+  },
+  "D11": {
+    "name": "Druine D.11",
+    "type": "General Aviation",
+    "cruise_tas_knots": 100
+  },
+  "D228": {
+    "name": "Dornier 228",
+    "type": "Turboprop",
+    "cruise_tas_knots": 223
+  },
+  "D328": {
+    "name": "Dornier 328",
+    "cruise_tas_knots": 335,
+    "type": "Turboprop"
+  },
+  "DA40": {
+    "name": "Diamond DA40 Star",
+    "cruise_tas_knots": 145,
+    "type": "General Aviation"
+  },
+  "DA42": {
+    "name": "Diamond DA42 Twin Star",
+    "cruise_tas_knots": 170,
+    "type": "General Aviation"
+  },
+  "DA50": {
+    "name": "Diamond DA50 RG",
+    "type": "General Aviation",
+    "cruise_tas_knots": 180
+  },
+  "DA62": {
+    "name": "Diamond DA62",
+    "cruise_tas_knots": 190,
+    "type": "General Aviation"
+  },
+  "DC10": {
+    "name": "McDonnell Douglas DC-10",
+    "cruise_tas_knots": 474,
+    "type": "Widebody"
+  },
+  "DC3": {
+    "name": "Douglas DC-3",
+    "cruise_tas_knots": 140,
+    "type": "Turboprop / Piston"
+  },
+  "DC3T": {
+    "name": "Basler BT-67 / DC-3 Turbo",
+    "type": "Turboprop",
+    "cruise_tas_knots": 210
+  },
+  "DC6": {
+    "name": "Douglas DC-6",
+    "cruise_tas_knots": 270,
+    "type": "Piston"
+  },
+  "DC85": {
+    "name": "McDonnell Douglas DC-8-50",
+    "cruise_tas_knots": 458,
+    "type": "Widebody"
+  },
+  "DC86": {
+    "name": "McDonnell Douglas DC-8-60",
+    "cruise_tas_knots": 480,
+    "type": "Narrowbody"
+  },
+  "DC87": {
+    "name": "McDonnell Douglas DC-8-70",
+    "cruise_tas_knots": 480,
+    "type": "Narrowbody"
+  },
+  "DC91": {
+    "name": "McDonnell Douglas DC-9-10",
+    "type": "Narrowbody",
+    "cruise_tas_knots": 425
+  },
+  "DC93": {
+    "name": "McDonnell Douglas DC-9-30",
+    "cruise_tas_knots": 425,
+    "type": "Narrowbody"
+  },
+  "DH8A": {
+    "name": "De Havilland Dash 8-100",
+    "cruise_tas_knots": 240,
+    "type": "Turboprop"
+  },
+  "DH8B": {
+    "name": "De Havilland Dash 8-200",
+    "cruise_tas_knots": 260,
+    "type": "Turboprop"
+  },
+  "DH8C": {
+    "name": "De Havilland Dash 8-300",
+    "cruise_tas_knots": 283,
+    "type": "Turboprop"
+  },
+  "DH8D": {
+    "name": "De Havilland Dash 8-400 (Q400)",
+    "cruise_tas_knots": 360,
+    "type": "Turboprop"
+  },
+  "DHC1": {
+    "name": "de Havilland Canada DHC-1 Chipmunk",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "DHC2": {
+    "name": "de Havilland Canada DHC-2 Beaver",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "DHC6": {
+    "name": "de Havilland Canada DHC-6 Twin Otter",
+    "type": "Turboprop",
+    "cruise_tas_knots": 150
+  },
+  "DV20": {
+    "name": "Diamond DV20 Katana",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "E110": {
+    "name": "Embraer EMB 110 Bandeirante",
+    "cruise_tas_knots": 210,
+    "type": "Turboprop"
+  },
+  "E120": {
+    "name": "Embraer EMB 120 Brasilia",
+    "cruise_tas_knots": 298,
+    "type": "Turboprop"
+  },
+  "E121": {
+    "name": "Embraer EMB 121 Xingu",
+    "type": "Turboprop",
+    "cruise_tas_knots": 230
+  },
+  "E135": {
+    "name": "Embraer ERJ-135",
+    "cruise_tas_knots": 433,
+    "type": "Regional Jet"
+  },
+  "E145": {
+    "name": "Embraer ERJ-145",
+    "cruise_tas_knots": 433,
+    "type": "Regional Jet"
+  },
+  "E170": {
+    "name": "Embraer E170",
+    "cruise_tas_knots": 447,
+    "type": "Regional Jet"
+  },
+  "E175": {
+    "name": "Embraer E175",
+    "cruise_tas_knots": 447,
+    "type": "Regional Jet"
+  },
+  "E190": {
+    "name": "Embraer E190",
+    "cruise_tas_knots": 447,
+    "type": "Regional Jet"
+  },
+  "E195": {
+    "name": "Embraer E195",
+    "cruise_tas_knots": 447,
+    "type": "Regional Jet"
+  },
+  "E290": {
+    "name": "Embraer E190-E2",
+    "cruise_tas_knots": 451,
+    "type": "Regional Jet"
+  },
+  "E295": {
+    "name": "Embraer E195-E2",
+    "cruise_tas_knots": 451,
+    "type": "Regional Jet"
+  },
+  "E35L": {
+    "name": "Embraer Legacy 600/650",
+    "type": "Business Jet",
+    "cruise_tas_knots": 450
+  },
+  "E390": {
+    "name": "Embraer C-390 Millennium",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 470
+  },
+  "E45X": {
+    "name": "Embraer ERJ-145XR",
+    "type": "Regional Jet",
+    "cruise_tas_knots": 450
+  },
+  "E50P": {
+    "name": "Embraer Phenom 100",
+    "cruise_tas_knots": 390,
+    "type": "Business Jet"
+  },
+  "E545": {
+    "name": "Embraer Legacy 450 / Praetor 500",
+    "cruise_tas_knots": 466,
+    "type": "Business Jet"
+  },
+  "E550": {
+    "name": "Embraer Legacy 500 / Praetor 600",
+    "cruise_tas_knots": 466,
+    "type": "Business Jet"
+  },
+  "E55P": {
+    "name": "Embraer Phenom 300",
+    "cruise_tas_knots": 453,
+    "type": "Business Jet"
+  },
+  "E75": {
+    "name": "Embraer E175",
+    "type": "Regional Jet",
+    "cruise_tas_knots": 447
+  },
+  "E75L": {
+    "name": "Embraer E175 Long Range",
+    "type": "Regional Jet",
+    "cruise_tas_knots": 447
+  },
+  "E75S": {
+    "name": "Embraer E175 Short Runway",
+    "type": "Regional Jet",
+    "cruise_tas_knots": 447
+  },
+  "EA50": {
+    "name": "Eclipse 500",
+    "type": "Business Jet",
+    "cruise_tas_knots": 370
+  },
+  "EC20": {
+    "name": "Eurocopter EC120 Colibri",
+    "type": "Helicopter",
+    "cruise_tas_knots": 120
+  },
+  "EC25": {
+    "name": "Eurocopter EC225 Super Puma",
+    "type": "Helicopter",
+    "cruise_tas_knots": 142
+  },
+  "EC30": {
+    "name": "Eurocopter EC130",
+    "type": "Helicopter",
+    "cruise_tas_knots": 130
+  },
+  "EC35": {
+    "name": "Eurocopter EC135",
+    "type": "Helicopter",
+    "cruise_tas_knots": 135
+  },
+  "EC45": {
+    "name": "Eurocopter EC145",
+    "type": "Helicopter",
+    "cruise_tas_knots": 133
+  },
+  "EC55": {
+    "name": "Eurocopter EC155",
+    "type": "Helicopter",
+    "cruise_tas_knots": 150
+  },
+  "EC75": {
+    "name": "Eurocopter EC175",
+    "type": "Helicopter",
+    "cruise_tas_knots": 150
+  },
+  "ECHO": {
+    "name": "Tecnam P92 Echo",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "EN48": {
+    "name": "Enstrom 480",
+    "type": "Helicopter",
+    "cruise_tas_knots": 115
+  },
+  "EPIC": {
+    "name": "Epic E1000",
+    "type": "Turboprop",
+    "cruise_tas_knots": 333
+  },
+  "ER4": {
+    "name": "Embraer ERJ-140",
+    "type": "Regional Jet",
+    "cruise_tas_knots": 433
+  },
+  "EUPA": {
+    "name": "Europa XS",
+    "type": "General Aviation",
+    "cruise_tas_knots": 140
+  },
+  "EV97": {
+    "name": "Evektor EV-97 EuroStar",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "EVOT": {
+    "name": "Evolution Aircraft Evolution",
+    "type": "Turboprop",
+    "cruise_tas_knots": 300
+  },
+  "EXPL": {
+    "name": "MD Helicopters MD 902 Explorer",
+    "type": "Helicopter",
+    "cruise_tas_knots": 135
+  },
+  "F100": {
+    "name": "Fokker 100",
+    "cruise_tas_knots": 416,
+    "type": "Narrowbody"
+  },
+  "F16": {
+    "name": "General Dynamics F-16 Fighting Falcon",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 800
+  },
+  "F2TH": {
+    "name": "Dassault Falcon 2000",
+    "cruise_tas_knots": 470,
+    "type": "Business Jet"
+  },
+  "F402": {
+    "name": "Cessna 402",
+    "type": "General Aviation",
+    "cruise_tas_knots": 180
+  },
+  "F406": {
+    "name": "Reims-Cessna F406 Caravan II",
+    "type": "Turboprop",
+    "cruise_tas_knots": 245
+  },
+  "F50": {
+    "name": "Fokker 50",
+    "cruise_tas_knots": 262,
+    "type": "Turboprop"
+  },
+  "F70": {
+    "name": "Fokker 70",
+    "cruise_tas_knots": 415,
+    "type": "Regional Jet"
+  },
+  "F900": {
+    "name": "Dassault Falcon 900",
+    "cruise_tas_knots": 458,
+    "type": "Business Jet"
+  },
+  "FA10": {
+    "name": "Dassault Falcon 10",
+    "type": "Business Jet",
+    "cruise_tas_knots": 470
+  },
+  "FA20": {
+    "name": "Dassault Falcon 20",
+    "type": "Business Jet",
+    "cruise_tas_knots": 460
+  },
+  "FA50": {
+    "name": "Dassault Falcon 50",
+    "cruise_tas_knots": 438,
+    "type": "Business Jet"
+  },
+  "FA6X": {
+    "name": "Dassault Falcon 6X",
+    "type": "Business Jet",
+    "cruise_tas_knots": 488
+  },
+  "FA7X": {
+    "name": "Dassault Falcon 7X",
+    "cruise_tas_knots": 488,
+    "type": "Business Jet"
+  },
+  "FA8X": {
+    "name": "Dassault Falcon 8X",
+    "cruise_tas_knots": 488,
+    "type": "Business Jet"
+  },
+  "FDCT": {
+    "name": "Flight Design CTLS",
+    "type": "General Aviation",
+    "cruise_tas_knots": 115
+  },
+  "FUSI": {
+    "name": "Freewing Fusion",
+    "type": "General Aviation",
+    "cruise_tas_knots": 100
+  },
+  "G115": {
+    "name": "Grob G 115",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "G12T": {
+    "name": "Grob G 120TP",
+    "type": "Turboprop",
+    "cruise_tas_knots": 200
+  },
+  "G150": {
+    "name": "Gulfstream G150",
+    "type": "Business Jet",
+    "cruise_tas_knots": 470
+  },
+  "G280": {
+    "name": "Gulfstream G280",
+    "cruise_tas_knots": 470,
+    "type": "Business Jet"
+  },
+  "G2CA": {
+    "name": "Guimbal Cabri G2",
+    "type": "Helicopter",
+    "cruise_tas_knots": 100
+  },
+  "G73": {
+    "name": "Grumman G-73 Mallard",
+    "type": "General Aviation",
+    "cruise_tas_knots": 160
+  },
+  "GA20": {
+    "name": "GippsAero GA200 Fatman",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "GA5C": {
+    "name": "Gulfstream American GA-7 Cougar",
+    "type": "General Aviation",
+    "cruise_tas_knots": 160
+  },
+  "GA6C": {
+    "name": "Grumman Gulfstream I",
+    "type": "Turboprop",
+    "cruise_tas_knots": 290
+  },
+  "GA7C": {
+    "name": "Grumman Gulfstream II",
+    "type": "Business Jet",
+    "cruise_tas_knots": 460
+  },
+  "GA8": {
+    "name": "GippsAero GA8 Airvan",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "GA8C": {
+    "name": "GippsAero GA8 Airvan Turboprop",
+    "type": "Turboprop",
+    "cruise_tas_knots": 140
+  },
+  "GALX": {
+    "name": "Gulfstream G200",
+    "type": "Business Jet",
+    "cruise_tas_knots": 470
+  },
+  "GB1": {
+    "name": "Game Composite GB1 GameBird",
+    "type": "General Aviation",
+    "cruise_tas_knots": 175
+  },
+  "GL5T": {
+    "name": "Bombardier Global 5000",
+    "cruise_tas_knots": 488,
+    "type": "Business Jet"
+  },
+  "GL7T": {
+    "name": "Bombardier Global 7500",
+    "cruise_tas_knots": 488,
+    "type": "Business Jet"
+  },
+  "GLAS": {
+    "name": "Glasair I / II / III",
+    "type": "General Aviation",
+    "cruise_tas_knots": 190
+  },
+  "GLEX": {
+    "name": "Bombardier Global 6000",
+    "cruise_tas_knots": 488,
+    "type": "Business Jet"
+  },
+  "GLF2": {
+    "name": "Gulfstream II",
+    "cruise_tas_knots": 460,
+    "type": "Business Jet"
+  },
+  "GLF3": {
+    "name": "Gulfstream III",
+    "cruise_tas_knots": 460,
+    "type": "Business Jet"
+  },
+  "GLF4": {
+    "name": "Gulfstream IV / G450",
+    "cruise_tas_knots": 476,
+    "type": "Business Jet"
+  },
+  "GLF5": {
+    "name": "Gulfstream V",
+    "cruise_tas_knots": 488,
+    "type": "Business Jet"
+  },
+  "GLF6": {
+    "name": "Gulfstream G650",
+    "cruise_tas_knots": 495,
+    "type": "Business Jet"
+  },
+  "GLIM": {
+    "name": "Aerotek Pitts Special / Glider",
+    "type": "General Aviation",
+    "cruise_tas_knots": 130
+  },
+  "GLST": {
+    "name": "Glasair Starlet",
+    "type": "General Aviation",
+    "cruise_tas_knots": 180
+  },
+  "H160": {
+    "name": "Airbus Helicopters H160",
+    "type": "Helicopter",
+    "cruise_tas_knots": 155
+  },
+  "H25B": {
+    "name": "Hawker 800XP",
+    "cruise_tas_knots": 447,
+    "type": "Business Jet"
+  },
+  "H25C": {
+    "name": "Hawker 1000",
+    "type": "Business Jet",
+    "cruise_tas_knots": 453
+  },
+  "H47": {
+    "name": "Boeing CH-47 Chinook",
+    "type": "Helicopter",
+    "cruise_tas_knots": 160
+  },
+  "H500": {
+    "name": "MD Helicopters MD 500",
+    "type": "Helicopter",
+    "cruise_tas_knots": 135
+  },
+  "H60": {
+    "name": "Sikorsky UH-60 Black Hawk",
+    "type": "Helicopter",
+    "cruise_tas_knots": 150
+  },
+  "H64": {
+    "name": "Boeing AH-64 Apache",
+    "type": "Helicopter",
+    "cruise_tas_knots": 150
+  },
+  "HA4T": {
+    "name": "HondaJet HA-420",
+    "cruise_tas_knots": 422,
+    "type": "Business Jet"
+  },
+  "HAWK": {
+    "name": "BAE Systems Hawk",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 450
+  },
+  "HDJT": {
+    "name": "HondaJet HA-420",
+    "type": "Business Jet",
+    "cruise_tas_knots": 422
+  },
+  "HRNT": {
+    "name": "McDonnell Douglas F/A-18 Hornet",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 700
+  },
+  "IL62": {
+    "name": "Ilyushin Il-62",
+    "cruise_tas_knots": 485,
+    "type": "Narrowbody"
+  },
+  "IL76": {
+    "name": "Ilyushin Il-76",
+    "cruise_tas_knots": 430,
+    "type": "Military / Transport"
+  },
+  "IL96": {
+    "name": "Ilyushin Il-96",
+    "cruise_tas_knots": 470,
+    "type": "Widebody"
+  },
+  "J3": {
+    "name": "Piper J-3 Cub",
+    "type": "General Aviation",
+    "cruise_tas_knots": 65
+  },
+  "J328": {
+    "name": "Fairchild-Dornier 328JET",
+    "cruise_tas_knots": 400,
+    "type": "Regional Jet"
+  },
+  "JAB2": {
+    "name": "Jabiru J230",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "JAB4": {
+    "name": "Jabiru J430",
+    "type": "General Aviation",
+    "cruise_tas_knots": 135
+  },
+  "JS31": {
+    "name": "BAe Jetstream 31",
+    "type": "Turboprop",
+    "cruise_tas_knots": 230
+  },
+  "JS32": {
+    "name": "BAe Jetstream 32",
+    "type": "Turboprop",
+    "cruise_tas_knots": 250
+  },
+  "K100": {
+    "name": "Kodiak 100",
+    "type": "Turboprop",
+    "cruise_tas_knots": 174
+  },
+  "K35E": {
+    "name": "Boeing KC-135E Stratotanker",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 460
+  },
+  "K35R": {
+    "name": "Boeing KC-135 Stratotanker",
+    "cruise_tas_knots": 460,
+    "type": "Military / Transport"
+  },
+  "KC2": {
+    "name": "Kawasaki C-2",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 480
+  },
+  "KT1": {
+    "name": "KAI KT-1 Woongbi",
+    "type": "Turboprop",
+    "cruise_tas_knots": 240
+  },
+  "L101": {
+    "name": "Lockheed L-1011 TriStar",
+    "cruise_tas_knots": 466,
+    "type": "Widebody"
+  },
+  "L410": {
+    "name": "LET L-410 Turbolet",
+    "type": "Turboprop",
+    "cruise_tas_knots": 190
+  },
+  "LGEZ": {
+    "name": "Rutan Long-EZ",
+    "type": "General Aviation",
+    "cruise_tas_knots": 160
+  },
+  "LGND": {
+    "name": "Legend Cub",
+    "type": "General Aviation",
+    "cruise_tas_knots": 90
+  },
+  "LJ25": {
+    "name": "Learjet 25",
+    "type": "Business Jet",
+    "cruise_tas_knots": 450
+  },
+  "LJ28": {
+    "name": "Learjet 28",
+    "type": "Business Jet",
+    "cruise_tas_knots": 450
+  },
+  "LJ31": {
+    "name": "Learjet 31",
+    "type": "Business Jet",
+    "cruise_tas_knots": 450
+  },
+  "LJ35": {
+    "name": "Learjet 35",
+    "cruise_tas_knots": 452,
+    "type": "Business Jet"
+  },
+  "LJ40": {
+    "name": "Learjet 40",
+    "type": "Business Jet",
+    "cruise_tas_knots": 465
+  },
+  "LJ45": {
+    "name": "Learjet 45",
+    "cruise_tas_knots": 465,
+    "type": "Business Jet"
+  },
+  "LJ55": {
+    "name": "Learjet 55",
+    "type": "Business Jet",
+    "cruise_tas_knots": 460
+  },
+  "LJ60": {
+    "name": "Learjet 60",
+    "cruise_tas_knots": 465,
+    "type": "Business Jet"
+  },
+  "LJ70": {
+    "name": "Learjet 70",
+    "type": "Business Jet",
+    "cruise_tas_knots": 465
+  },
+  "LJ75": {
+    "name": "Learjet 75",
+    "type": "Business Jet",
+    "cruise_tas_knots": 465
+  },
+  "LNC4": {
+    "name": "Lancair IV",
+    "type": "General Aviation",
+    "cruise_tas_knots": 230
+  },
+  "LNP4": {
+    "name": "Lancair Propjet",
+    "type": "Turboprop",
+    "cruise_tas_knots": 300
+  },
+  "M20P": {
+    "name": "Mooney M20P Ovation",
+    "type": "General Aviation",
+    "cruise_tas_knots": 175
+  },
+  "M20T": {
+    "name": "Mooney M20",
+    "cruise_tas_knots": 165,
+    "type": "General Aviation"
+  },
+  "M600": {
+    "name": "Piper M600",
+    "type": "Turboprop",
+    "cruise_tas_knots": 274
+  },
+  "M7": {
+    "name": "Maule M-7 Super Rocket",
+    "type": "General Aviation",
+    "cruise_tas_knots": 135
+  },
+  "M700": {
+    "name": "Piper M700 Fury",
+    "type": "Turboprop",
+    "cruise_tas_knots": 301
+  },
+  "MC01": {
+    "name": "Microleve Corsario",
+    "type": "General Aviation",
+    "cruise_tas_knots": 85
+  },
+  "MD11": {
+    "name": "McDonnell Douglas MD-11",
+    "cruise_tas_knots": 470,
+    "type": "Widebody"
+  },
+  "MD81": {
+    "name": "McDonnell Douglas MD-81",
+    "type": "Narrowbody",
+    "cruise_tas_knots": 424
+  },
+  "MD82": {
+    "name": "McDonnell Douglas MD-82",
+    "cruise_tas_knots": 424,
+    "type": "Narrowbody"
+  },
+  "MD83": {
+    "name": "McDonnell Douglas MD-83",
+    "cruise_tas_knots": 424,
+    "type": "Narrowbody"
+  },
+  "MD88": {
+    "name": "McDonnell Douglas MD-88",
+    "cruise_tas_knots": 424,
+    "type": "Narrowbody"
+  },
+  "MD90": {
+    "name": "McDonnell Douglas MD-90",
+    "cruise_tas_knots": 438,
+    "type": "Narrowbody"
+  },
+  "MI8": {
+    "name": "Mil Mi-8 / Mi-17",
+    "type": "Helicopter",
+    "cruise_tas_knots": 130
+  },
+  "MT": {
+    "name": "Micro Aviation / Trike",
+    "type": "General Aviation",
+    "cruise_tas_knots": 80
+  },
+  "MU2": {
+    "name": "Mitsubishi MU-2",
+    "type": "Turboprop",
+    "cruise_tas_knots": 300
+  },
+  "NG5": {
+    "name": "BRM Aero Bristell NG5",
+    "type": "General Aviation",
+    "cruise_tas_knots": 115
+  },
+  "P06T": {
+    "name": "Tecnam P2006T",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "P180": {
+    "name": "Piaggio P.180 Avanti",
+    "type": "Turboprop",
+    "cruise_tas_knots": 395
+  },
+  "P208": {
+    "name": "Tecnam P2008",
+    "type": "General Aviation",
+    "cruise_tas_knots": 115
+  },
+  "P210": {
+    "name": "Cessna P210 Pressurized Centurion",
+    "type": "General Aviation",
+    "cruise_tas_knots": 190
+  },
+  "P212": {
+    "name": "Tecnam P2012 Traveller",
+    "type": "General Aviation",
+    "cruise_tas_knots": 194
+  },
+  "P28A": {
+    "name": "Piper PA-28 Cherokee",
+    "cruise_tas_knots": 120,
+    "type": "General Aviation"
+  },
+  "P28B": {
+    "name": "Piper PA-28-235 Pathfinder",
+    "type": "General Aviation",
+    "cruise_tas_knots": 135
+  },
+  "P28R": {
+    "name": "Piper PA-28R Arrow",
+    "type": "General Aviation",
+    "cruise_tas_knots": 140
+  },
+  "P28T": {
+    "name": "Piper PA-28T Turbo Arrow",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "P28U": {
+    "name": "Piper PA-28-201T Turbo Arrow",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "P32R": {
+    "name": "Piper PA-32R Lance / Saratoga SP",
+    "type": "General Aviation",
+    "cruise_tas_knots": 160
+  },
+  "P32T": {
+    "name": "Piper PA-32T Turbo Saratoga",
+    "type": "General Aviation",
+    "cruise_tas_knots": 165
+  },
+  "P46T": {
+    "name": "Piper PA-46-500TP Meridian",
+    "type": "Turboprop",
+    "cruise_tas_knots": 260
+  },
+  "P68": {
+    "name": "Partenavia P.68",
+    "type": "General Aviation",
+    "cruise_tas_knots": 160
+  },
+  "P68C": {
+    "name": "Partenavia P.68C",
+    "type": "General Aviation",
+    "cruise_tas_knots": 160
+  },
+  "P68T": {
+    "name": "Partenavia P.68 Turbo",
+    "type": "General Aviation",
+    "cruise_tas_knots": 180
+  },
+  "P750": {
+    "name": "PAC P-750 XSTOL",
+    "type": "Turboprop",
+    "cruise_tas_knots": 140
+  },
+  "P8": {
+    "name": "Boeing P-8 Poseidon",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 490
+  },
+  "P92": {
+    "name": "Tecnam P92 Echo",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "PA18": {
+    "name": "Piper PA-18 Super Cub",
+    "cruise_tas_knots": 100,
+    "type": "General Aviation"
+  },
+  "PA22": {
+    "name": "Piper PA-22 Tri-Pacer",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "PA23": {
+    "name": "Piper PA-23 Aztec",
+    "cruise_tas_knots": 175,
+    "type": "General Aviation"
+  },
+  "PA24": {
+    "name": "Piper PA-24 Comanche",
+    "type": "General Aviation",
+    "cruise_tas_knots": 155
+  },
+  "PA27": {
+    "name": "Piper PA-23 Aztec",
+    "type": "General Aviation",
+    "cruise_tas_knots": 160
+  },
+  "PA30": {
+    "name": "Piper PA-30 Twin Comanche",
+    "type": "General Aviation",
+    "cruise_tas_knots": 165
+  },
+  "PA31": {
+    "name": "Piper PA-31 Navajo",
+    "cruise_tas_knots": 200,
+    "type": "General Aviation"
+  },
+  "PA32": {
+    "name": "Piper PA-32 Saratoga",
+    "cruise_tas_knots": 150,
+    "type": "General Aviation"
+  },
+  "PA34": {
+    "name": "Piper PA-34 Seneca",
+    "cruise_tas_knots": 170,
+    "type": "General Aviation"
+  },
+  "PA38": {
+    "name": "Piper PA-38 Tomahawk",
+    "cruise_tas_knots": 100,
+    "type": "General Aviation"
+  },
+  "PA44": {
+    "name": "Piper PA-44 Seminole",
+    "type": "General Aviation",
+    "cruise_tas_knots": 155
+  },
+  "PA46": {
+    "name": "Piper PA-46 Malibu / Mirage",
+    "cruise_tas_knots": 213,
+    "type": "General Aviation"
+  },
+  "PAT4": {
+    "name": "Piper PA-T4 Patrol",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "PAY1": {
+    "name": "Piper PA-31T Cheyenne I",
+    "type": "Turboprop",
+    "cruise_tas_knots": 240
+  },
+  "PAY2": {
+    "name": "Piper PA-31T Cheyenne II",
+    "type": "Turboprop",
+    "cruise_tas_knots": 260
+  },
+  "PAY3": {
+    "name": "Piper PA-42 Cheyenne III",
+    "type": "Turboprop",
+    "cruise_tas_knots": 290
+  },
+  "PAY4": {
+    "name": "Piper PA-42 Cheyenne IV",
+    "type": "Turboprop",
+    "cruise_tas_knots": 350
+  },
+  "PC12": {
+    "name": "Pilatus PC-12",
+    "cruise_tas_knots": 280,
+    "type": "Turboprop"
+  },
+  "PC21": {
+    "name": "Pilatus PC-21",
+    "type": "Turboprop",
+    "cruise_tas_knots": 320
+  },
+  "PC24": {
+    "name": "Pilatus PC-24",
+    "cruise_tas_knots": 440,
+    "type": "Business Jet"
+  },
+  "PC6T": {
+    "name": "Pilatus PC-6 Turbo-Porter",
+    "type": "Turboprop",
+    "cruise_tas_knots": 125
+  },
+  "PC7": {
+    "name": "Pilatus PC-7 Turbo Trainer",
+    "cruise_tas_knots": 220,
+    "type": "Turboprop"
+  },
+  "PIAT": {
+    "name": "Piaggio P.149",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "PIVI": {
+    "name": "Piper Viper",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "PRM1": {
+    "name": "Beechcraft Premier I",
+    "type": "Business Jet",
+    "cruise_tas_knots": 451
+  },
+  "Q4": {
+    "name": "De Havilland Dash 8-400 (Q400)",
+    "type": "Turboprop",
+    "cruise_tas_knots": 360
+  },
+  "R135": {
+    "name": "Boeing RC-135",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 470
+  },
+  "R200": {
+    "name": "Robin HR200",
+    "type": "General Aviation",
+    "cruise_tas_knots": 110
+  },
+  "R22": {
+    "name": "Robinson R22",
+    "type": "Helicopter",
+    "cruise_tas_knots": 96
+  },
+  "R44": {
+    "name": "Robinson R44",
+    "type": "Helicopter",
+    "cruise_tas_knots": 113
+  },
+  "R66": {
+    "name": "Robinson R66",
+    "type": "Helicopter",
+    "cruise_tas_knots": 120
+  },
+  "RISN": {
+    "name": "Rans S-19 Venterra",
+    "type": "General Aviation",
+    "cruise_tas_knots": 115
+  },
+  "RJ1H": {
+    "name": "Avro RJ100",
+    "cruise_tas_knots": 420,
+    "type": "Regional Jet"
+  },
+  "RJ85": {
+    "name": "Avro RJ85",
+    "cruise_tas_knots": 420,
+    "type": "Regional Jet"
+  },
+  "RV10": {
+    "name": "Vans RV-10",
+    "type": "General Aviation",
+    "cruise_tas_knots": 170
+  },
+  "RV12": {
+    "name": "Vans RV-12",
+    "type": "General Aviation",
+    "cruise_tas_knots": 115
+  },
+  "RV14": {
+    "name": "Vans RV-14",
+    "type": "General Aviation",
+    "cruise_tas_knots": 170
+  },
+  "RV4": {
+    "name": "Vans RV-4",
+    "type": "General Aviation",
+    "cruise_tas_knots": 175
+  },
+  "RV6": {
+    "name": "Vans RV-6",
+    "type": "General Aviation",
+    "cruise_tas_knots": 165
+  },
+  "RV7": {
+    "name": "Vans RV-7",
+    "type": "General Aviation",
+    "cruise_tas_knots": 170
+  },
+  "RV8": {
+    "name": "Vans RV-8",
+    "type": "General Aviation",
+    "cruise_tas_knots": 175
+  },
+  "RV9": {
+    "name": "Vans RV-9",
+    "type": "General Aviation",
+    "cruise_tas_knots": 155
+  },
+  "S22T": {
+    "name": "Cirrus SR22T",
+    "type": "General Aviation",
+    "cruise_tas_knots": 213
+  },
+  "S76": {
+    "name": "Sikorsky S-76",
+    "type": "Helicopter",
+    "cruise_tas_knots": 155
+  },
+  "S92": {
+    "name": "Sikorsky S-92",
+    "type": "Helicopter",
+    "cruise_tas_knots": 151
+  },
+  "SB20": {
+    "name": "Saab 2000",
+    "cruise_tas_knots": 355,
+    "type": "Turboprop"
+  },
+  "SBR1": {
+    "name": "Sabreliner 40/60",
+    "type": "Business Jet",
+    "cruise_tas_knots": 450
+  },
+  "SF34": {
+    "name": "Saab 340",
+    "cruise_tas_knots": 261,
+    "type": "Turboprop"
+  },
+  "SF50": {
+    "name": "Cirrus Vision SF50",
+    "cruise_tas_knots": 305,
+    "type": "Business Jet"
+  },
+  "SH33": {
+    "name": "Short 330",
+    "type": "Turboprop",
+    "cruise_tas_knots": 190
+  },
+  "SH36": {
+    "name": "Short 360",
+    "type": "Turboprop",
+    "cruise_tas_knots": 210
+  },
+  "SIRA": {
+    "name": "Fly Synthesis Storch / Sirio",
+    "type": "General Aviation",
+    "cruise_tas_knots": 105
+  },
+  "SJ30": {
+    "name": "Sino Swearingen SJ30",
+    "type": "Business Jet",
+    "cruise_tas_knots": 486
+  },
+  "SLG2": {
+    "name": "Sling Aircraft Sling 2",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "SLG4": {
+    "name": "Sling Aircraft Sling 4",
+    "type": "General Aviation",
+    "cruise_tas_knots": 130
+  },
+  "SLH4": {
+    "name": "Sling Aircraft Sling TSi / High Wing",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "SONX": {
+    "name": "Sonex Aircraft Sonex",
+    "type": "General Aviation",
+    "cruise_tas_knots": 130
+  },
+  "SR20": {
+    "name": "Cirrus SR20",
+    "cruise_tas_knots": 155,
+    "type": "General Aviation"
+  },
+  "SR22": {
+    "name": "Cirrus SR22",
+    "cruise_tas_knots": 183,
+    "type": "General Aviation"
+  },
+  "SSJ1": {
+    "name": "Sukhoi Superjet 100",
+    "cruise_tas_knots": 448,
+    "type": "Regional Jet"
+  },
+  "SSTL": {
+    "name": "Stoddard-Hamilton Starlet",
+    "type": "General Aviation",
+    "cruise_tas_knots": 170
+  },
+  "ST75": {
+    "name": "Stearman PT-17 Kaydet",
+    "type": "General Aviation",
+    "cruise_tas_knots": 95
+  },
+  "STCH": {
+    "name": "Stoddard-Hamilton Glasair",
+    "type": "General Aviation",
+    "cruise_tas_knots": 180
+  },
+  "SU95": {
+    "name": "Sukhoi Superjet 100-95",
+    "type": "Regional Jet",
+    "cruise_tas_knots": 448
+  },
+  "SVNH": {
+    "name": "ICP Savannah",
+    "type": "General Aviation",
+    "cruise_tas_knots": 95
+  },
+  "SW3": {
+    "name": "Fairchild Swearingen Merlin III",
+    "type": "Turboprop",
+    "cruise_tas_knots": 280
+  },
+  "SW4": {
+    "name": "Fairchild Swearingen Metroliner",
+    "cruise_tas_knots": 280,
+    "type": "Turboprop"
+  },
+  "T204": {
+    "name": "Tupolev Tu-204",
+    "type": "Narrowbody",
+    "cruise_tas_knots": 450
+  },
+  "T206": {
+    "name": "Cessna Turbo 206 Stationair",
+    "type": "General Aviation",
+    "cruise_tas_knots": 160
+  },
+  "T210": {
+    "name": "Cessna Turbo 210 Centurion",
+    "type": "General Aviation",
+    "cruise_tas_knots": 180
+  },
+  "T214": {
+    "name": "Cessna Turbo 310 / 400",
+    "type": "General Aviation",
+    "cruise_tas_knots": 190
+  },
+  "T34P": {
+    "name": "Beechcraft T-34 Mentor",
+    "type": "General Aviation",
+    "cruise_tas_knots": 150
+  },
+  "T38": {
+    "name": "Northrop T-38 Talon",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 550
+  },
+  "T6": {
+    "name": "North American T-6 Texan",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "TB20": {
+    "name": "Socata TB-20 Trinidad",
+    "type": "General Aviation",
+    "cruise_tas_knots": 160
+  },
+  "TB21": {
+    "name": "Socata TB-21 Trinidad TC",
+    "type": "General Aviation",
+    "cruise_tas_knots": 170
+  },
+  "TBM7": {
+    "name": "Daher TBM 700",
+    "type": "Turboprop",
+    "cruise_tas_knots": 290
+  },
+  "TBM8": {
+    "name": "Daher TBM 850",
+    "type": "Turboprop",
+    "cruise_tas_knots": 320
+  },
+  "TBM9": {
+    "name": "Daher TBM 900",
+    "cruise_tas_knots": 320,
+    "type": "Turboprop"
+  },
+  "TEX2": {
+    "name": "Beechcraft T-6 Texan II",
+    "type": "Turboprop",
+    "cruise_tas_knots": 270
+  },
+  "TIGR": {
+    "name": "Eurocopter Tiger",
+    "type": "Helicopter",
+    "cruise_tas_knots": 140
+  },
+  "TL20": {
+    "name": "TL-Ultralight TL-2000 Sting",
+    "type": "General Aviation",
+    "cruise_tas_knots": 115
+  },
+  "TOBA": {
+    "name": "Socata TB-10 Tobago",
+    "type": "General Aviation",
+    "cruise_tas_knots": 125
+  },
+  "TU154": {
+    "name": "Tupolev Tu-154",
+    "cruise_tas_knots": 460,
+    "type": "Narrowbody"
+  },
+  "TU204": {
+    "name": "Tupolev Tu-204",
+    "cruise_tas_knots": 450,
+    "type": "Narrowbody"
+  },
+  "TUCA": {
+    "name": "Embraer EMB 312 Tucano",
+    "type": "Turboprop",
+    "cruise_tas_knots": 220
+  },
+  "TWEN": {
+    "name": "Tecnam P2010",
+    "type": "General Aviation",
+    "cruise_tas_knots": 120
+  },
+  "U2": {
+    "name": "Lockheed U-2 Dragon Lady",
+    "type": "Military / Transport",
+    "cruise_tas_knots": 410
+  },
+  "VL3": {
+    "name": "JMB VL-3 Evolution",
+    "type": "General Aviation",
+    "cruise_tas_knots": 145
+  },
+  "WW24": {
+    "name": "IAI Westwind 1124",
+    "type": "Business Jet",
+    "cruise_tas_knots": 430
+  },
+  "Y12": {
+    "name": "Harbin Y-12",
+    "type": "Turboprop",
+    "cruise_tas_knots": 150
+  }
+}

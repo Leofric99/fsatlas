@@ -64,6 +64,12 @@
         .flight-sub { font-size: 11px; opacity: 0.7; margin-bottom: 5px; }
         .detail-kv { display: flex; flex-direction: column; margin-bottom: 4px; }
         .label { opacity: 0.55; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+        .info-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 11px; height: 11px; margin-left: 3px; border-radius: 50%;
+            background: rgba(255,255,255,0.2); font-size: 9px; font-style: normal;
+            line-height: 1; cursor: help; text-transform: none;
+        }
         .expand-btn {
             text-align: center; font-size: 10px; opacity: 0.6; cursor: pointer; margin-top: 6px;
             background: << card_bg >>; padding: 4px; border-radius: 6px;
@@ -577,6 +583,19 @@
             return [r.reg, r.flight, r.dep, r.arr, r.date].join('|');
         }
 
+        // hours is null when the flight's ICAO type has no known cruise speed.
+        function formatFlightTime(hours) {
+            if (hours === null || hours === undefined) return 'Unknown';
+            const totalMinutes = Math.round(hours * 60);
+            return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
+        }
+
+        // Mirrors the formula in run/import_flights.py's recompute_flight_times().
+        const FLIGHT_TIME_INFO = "Estimated as (Distance x 1.07 / Cruise Speed) + Ascent/Descent Buffer, "
+            + "where Buffer = 83.33 / Cruise Speed (time lost climbing/descending ~250nm at 75% of cruise "
+            + "speed vs. covering it at full cruise speed). Cruise speed comes from aircraft_crz_speeds.json; "
+            + "shown as Unknown when the aircraft's ICAO type isn't in that file.";
+
         fetch('/api/saved-flights')
             .then(response => response.ok ? response.json() : [])
             .then(flights => (flights || []).forEach(f => savedFlightKeys.add(flightKey(f))))
@@ -801,6 +820,7 @@
                     const arr_icao = r.arr_icao || '-';
                     const airline = r.airline || '-';
                     const date = r.date || '-';
+                    const flightTime = formatFlightTime(r.flight_time_hours);
                     const dep = r.dep;
                     const arr = r.arr;
 
@@ -826,7 +846,8 @@
                                 <div class="detail-kv"><span class="label">Type Code</span><span>${type_icao}</span></div>
                                 <div class="detail-kv"><span class="label">From</span><span>${dep} / ${dep_icao}</span></div>
                                 <div class="detail-kv"><span class="label">To</span><span>${arr} / ${arr_icao}</span></div>
-                                <div class="detail-kv" style="grid-column: span 2"><span class="label">Date Recorded</span><span>${date}</span></div>
+                                <div class="detail-kv"><span class="label">Date Recorded</span><span>${date}</span></div>
+                                <div class="detail-kv"><span class="label">Flight Time<span class="info-icon" title="${FLIGHT_TIME_INFO}">i</span></span><span>${flightTime}</span></div>
                             </div>
                             <button class="simbrief-btn" id="simbrief-${idx}" type="button">&#9992; Export to SimBrief</button>
                             <button class="save-btn" id="save-${idx}" type="button"></button>

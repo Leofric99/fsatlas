@@ -181,6 +181,9 @@ def route_records(df, source):
         "arr_icao": matches["arr_airport_icao"].astype(str),
         "airline": matches["owner"].astype(str),
         "date": matches["timestamp_read"].astype(str).str.slice(0, 10),
+        # NaN (unrecognised type_icao / no cruise speed on import) -> JSON null,
+        # not float('nan') which isn't valid JSON.
+        "flight_time_hours": matches["rough_flight_time"].astype(object).where(matches["rough_flight_time"].notna(), None),
     })
     return result.to_dict("records")
 

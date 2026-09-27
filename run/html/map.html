@@ -111,7 +111,10 @@
         .legend-root {
             display: flex;
             align-items: flex-start;
-            background: << panel_bg >>;
+            /* Same opacity as the toolbar heading bar (web_gui.py's --surface-solid) - the
+               lighter panel_bg translucency used elsewhere reads as washed-out here since the
+               legend sits directly over busy map tiles/routes instead of the app chrome. */
+            background: << legend_bg >>;
             backdrop-filter: blur(22px) saturate(160%);
             -webkit-backdrop-filter: blur(22px) saturate(160%);
             border: 1px solid << panel_border >>;

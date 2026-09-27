@@ -109,6 +109,10 @@ def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_c
         line_color = '#3fd0ff'
         marker_border = '#171b20'
         accent_soft = 'rgba(63, 208, 255, 0.12)'
+        # Matches web_gui.py's toolbar (--surface-solid) opacity - the legend sits directly
+        # over the busy map tiles/routes, so it needs to read as solid the same way the
+        # toolbar does, rather than the lighter translucency used for panel_bg elsewhere.
+        legend_bg = 'rgba(23, 27, 32, 0.9)'
     else:
         bg_color = '#D0CFD4'
         text_color = '#14181d'
@@ -121,6 +125,7 @@ def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_c
         line_color = '#0a84ff'
         marker_border = '#171b20'
         accent_soft = 'rgba(10, 132, 255, 0.10)'
+        legend_bg = 'rgba(255, 255, 255, 0.92)'
 
     return _JINJA_ENV.get_template('map.html').render(
         bg_color=bg_color,
@@ -134,6 +139,7 @@ def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_c
         line_color=line_color,
         marker_border=marker_border,
         accent_soft=accent_soft,
+        legend_bg=legend_bg,
         airports_json=airports_json,
         tile_url=tile_url,
         attr=attr,

@@ -10,6 +10,7 @@ import os
 import secrets
 import sys
 import webbrowser
+from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -29,6 +30,24 @@ SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
 DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": "", "saved_flights": []}
 
 
+def normalize_saved_flight(flight):
+    """Sanitize a saved-flight dict's `tags` (deduped, trimmed, sorted case-insensitively)
+    and ensure `saved_at` exists - called on load (for entries saved before these fields
+    existed) and again just before writing so both callers agree on the shape.
+    """
+    tags = flight.get("tags", [])
+    if not isinstance(tags, list):
+        tags = []
+    seen = {}
+    for tag in tags:
+        if isinstance(tag, str) and tag.strip():
+            seen.setdefault(tag.strip().lower(), tag.strip())
+    flight["tags"] = sorted(seen.values(), key=str.lower)
+    if not isinstance(flight.get("saved_at"), str) or not flight["saved_at"]:
+        flight["saved_at"] = datetime.now(timezone.utc).isoformat()
+    return flight
+
+
 def load_settings():
     try:
         with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
@@ -41,6 +60,7 @@ def load_settings():
         settings["simbrief_pilot_id"] = DEFAULT_SETTINGS["simbrief_pilot_id"]
     if not isinstance(settings.get("saved_flights"), list):
         settings["saved_flights"] = []
+    settings["saved_flights"] = [normalize_saved_flight(f) for f in settings["saved_flights"] if isinstance(f, dict)]
     return settings
 
 
@@ -179,11 +199,14 @@ def route_records(df, source):
         "reg": matches["reg"].astype(str),
         "dep_icao": matches["dep_airport_icao"].astype(str),
         "arr_icao": matches["arr_airport_icao"].astype(str),
+        "dep_city": matches["dep_airport_city"].astype(str),
+        "arr_city": matches["arr_airport_city"].astype(str),
         "airline": matches["owner"].astype(str),
         "date": matches["timestamp_read"].astype(str).str.slice(0, 10),
         # NaN (unrecognised type_icao / no cruise speed on import) -> JSON null,
         # not float('nan') which isn't valid JSON.
         "flight_time_hours": matches["rough_flight_time"].astype(object).where(matches["rough_flight_time"].notna(), None),
+        "distance": matches["distance"].astype(object).where(matches["distance"].notna(), None),
     })
     return result.to_dict("records")
 
@@ -402,19 +425,52 @@ def index_html(columns, settings):
     .modal-message {{ font-size: 13px; color: var(--muted); line-height: 1.5; margin: 0; }}
     .saved-list {{ display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }}
     .saved-empty {{ font-size: 13px; color: var(--muted); text-align: center; padding: 18px 4px; line-height: 1.5; }}
+    #saved-modal .modal {{ width: 460px; }}
+    .saved-toolbar {{ display: flex; justify-content: flex-end; margin-bottom: 10px; }}
+    .saved-sort-label {{ display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }}
+    .saved-sort-label select {{ font-size: 12px; padding: 6px 8px; margin-bottom: 0; }}
     .saved-row {{
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px;
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 10px; border: 1px solid var(--border); border-radius: 10px;
       background: var(--surface-solid); cursor: pointer; transition: background .15s ease;
     }}
     .saved-row:hover {{ background: var(--border); }}
-    .saved-route {{ font-weight: 600; font-size: 13px; }}
+    .saved-row-top {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }}
+    .saved-route {{ font-weight: 600; font-size: 13px; line-height: 1.35; }}
     .saved-type {{ font-size: 11px; color: var(--muted); }}
     .saved-remove {{
       width: 26px; height: 26px; padding: 0; background: transparent; color: var(--danger);
       box-shadow: none; border: none; font-size: 16px; line-height: 1; flex-shrink: 0;
     }}
     .saved-remove:hover {{ background: color-mix(in srgb, var(--danger) 18%, transparent); filter: none; transform: none; }}
+    .saved-tags {{ display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }}
+    .tag-chip {{
+      display: inline-flex; align-items: center; gap: 2px;
+      background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent);
+      border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 11px; font-weight: 500;
+    }}
+    .tag-chip button {{
+      background: none; border: none; color: inherit; cursor: pointer; box-shadow: none;
+      padding: 0 6px; font-size: 12px; line-height: 1;
+    }}
+    .tag-chip button:hover {{ opacity: 0.7; transform: none; filter: none; }}
+    .tag-add-btn {{
+      display: inline-flex; align-items: center; gap: 3px; background: transparent;
+      border: 1px dashed var(--border); color: var(--muted); border-radius: 999px;
+      padding: 3px 10px; font-size: 11px; box-shadow: none; cursor: pointer;
+    }}
+    .tag-add-btn:hover {{ border-color: var(--accent); color: var(--accent); background: transparent; transform: none; filter: none; }}
+    .tag-editor {{ display: none; flex-direction: column; gap: 6px; }}
+    .tag-editor.open {{ display: flex; }}
+    .tag-editor input {{ font-size: 12px; padding: 7px 9px; margin-bottom: 0; }}
+    .tag-suggestions {{ display: flex; flex-wrap: wrap; gap: 6px; }}
+    .tag-suggestion {{
+      font-size: 11px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); cursor: pointer; box-shadow: none;
+    }}
+    .tag-suggestion:hover {{ background: var(--border); transform: none; filter: none; }}
+    .tag-suggestion.create {{ border-style: dashed; color: var(--accent); border-color: var(--accent); }}
+    .tag-suggestion-empty {{ font-size: 11px; color: var(--muted); padding: 4px 0; }}
     #filters-wrap {{ display: grid; grid-template-rows: 1fr; min-width: 0; transition: grid-template-rows .28s ease; }}
     #filters-wrap.collapsed {{ grid-template-rows: 0fr; }}
     #filters-wrap > #filters {{ overflow: hidden; min-height: 0; }}
@@ -589,6 +645,17 @@ def index_html(columns, settings):
         <button id="saved-close" class="icon" type="button" aria-label="Close">&times;</button>
       </div>
       <div class="modal-body">
+        <div class="saved-toolbar">
+          <label class="saved-sort-label">Sort by
+            <select id="saved-sort">
+              <option value="saved-desc">Saved (Newest First)</option>
+              <option value="saved-asc">Saved (Oldest First)</option>
+              <option value="distance-asc">Distance (Shortest First)</option>
+              <option value="distance-desc">Distance (Longest First)</option>
+              <option value="tag">Tag (A-Z)</option>
+            </select>
+          </label>
+        </div>
         <div id="saved-list" class="saved-list"></div>
       </div>
     </div>
@@ -784,21 +851,79 @@ def index_html(columns, settings):
     // --- Saved Flights tab ---
     const savedModal = document.getElementById('saved-modal');
     const savedList = document.getElementById('saved-list');
+    const savedSort = document.getElementById('saved-sort');
+    let savedFlightsRaw = [];
 
-    function renderSavedFlights(flights) {{
+    function escapeHtml(str) {{
+      return String(str).replace(/[&<>"']/g, c => ({{'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}})[c]);
+    }}
+
+    function sortedSavedFlights() {{
+      const flights = [...savedFlightsRaw];
+      const dist = f => (typeof f.distance === 'number' ? f.distance : null);
+      const distCompare = (a, b, dir) => {{
+        const da = dist(a), db = dist(b);
+        if (da === null && db === null) return 0;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return dir * (da - db);
+      }};
+      const savedAt = f => f.saved_at || '';
+      const firstTag = f => (f.tags && f.tags.length ? f.tags[0].toLowerCase() : '\uffff');
+      switch (savedSort.value) {{
+        case 'distance-asc': flights.sort((a, b) => distCompare(a, b, 1)); break;
+        case 'distance-desc': flights.sort((a, b) => distCompare(a, b, -1)); break;
+        case 'saved-asc': flights.sort((a, b) => savedAt(a).localeCompare(savedAt(b))); break;
+        case 'tag': flights.sort((a, b) => firstTag(a).localeCompare(firstTag(b))); break;
+        case 'saved-desc':
+        default: flights.sort((a, b) => savedAt(b).localeCompare(savedAt(a))); break;
+      }}
+      return flights;
+    }}
+
+    async function saveFlightTags(flight, tags) {{
+      const uniqueTags = [...new Set(tags.map(t => t.trim()).filter(Boolean))];
+      try {{
+        await fsatlasFetch('/api/saved-flights', {{
+          method: 'POST', headers: {{'Content-Type': 'application/json'}},
+          body: JSON.stringify({{...flight, tags: uniqueTags}})
+        }});
+      }} catch (err) {{ /* best effort */ }}
+      loadSavedFlights();
+    }}
+
+    function renderSavedFlights() {{
+      const flights = sortedSavedFlights();
       if (!flights.length) {{
         savedList.innerHTML = '<div class="saved-empty">No saved flights yet. Use the bookmark button in a flight\\'s More Info panel to save one.</div>';
         return;
       }}
-      savedList.innerHTML = flights.map((f, i) => `
-        <div class="saved-row" data-idx="${{i}}">
-          <div>
-            <div class="saved-route">${{f.dep_icao || '?'}} &rarr; ${{f.arr_icao || '?'}}</div>
-            <div class="saved-type">${{f.type_icao || ''}}</div>
+      const allTags = [...new Set(savedFlightsRaw.flatMap(f => f.tags || []))].sort((a, b) => a.localeCompare(b));
+
+      savedList.innerHTML = flights.map((f, i) => {{
+        const depLabel = (f.dep_city ? escapeHtml(f.dep_city) + ' ' : '') + '(' + escapeHtml(f.dep_icao || f.dep || '?') + ')';
+        const arrLabel = (f.arr_city ? escapeHtml(f.arr_city) + ' ' : '') + '(' + escapeHtml(f.arr_icao || f.arr || '?') + ')';
+        const tags = f.tags || [];
+        return `
+          <div class="saved-row" data-idx="${{i}}">
+            <div class="saved-row-top">
+              <div>
+                <div class="saved-route">${{depLabel}} &rarr; ${{arrLabel}}</div>
+                <div class="saved-type">${{escapeHtml(f.type_icao || '')}}</div>
+              </div>
+              <button class="saved-remove" type="button" title="Remove" aria-label="Remove">&times;</button>
+            </div>
+            <div class="saved-tags">
+              ${{tags.map(t => `<span class="tag-chip">${{escapeHtml(t)}}<button type="button" class="tag-remove" data-tag="${{escapeHtml(t)}}" title="Remove tag" aria-label="Remove tag ${{escapeHtml(t)}}">&times;</button></span>`).join('')}}
+              <button type="button" class="tag-add-btn">+ Tag</button>
+            </div>
+            <div class="tag-editor">
+              <input type="text" class="tag-input" placeholder="Search or create a tag...">
+              <div class="tag-suggestions"></div>
+            </div>
           </div>
-          <button class="saved-remove" type="button" title="Remove" aria-label="Remove">&times;</button>
-        </div>
-      `).join('');
+        `;
+      }}).join('');
 
       [...savedList.querySelectorAll('.saved-row')].forEach((row, i) => {{
         const flight = flights[i];
@@ -813,17 +938,72 @@ def index_html(columns, settings):
           }} catch (err) {{ /* best effort */ }}
           loadSavedFlights();
         }});
+
+        [...row.querySelectorAll('.tag-remove')].forEach(btn => {{
+          btn.addEventListener('click', e => {{
+            e.stopPropagation();
+            saveFlightTags(flight, (flight.tags || []).filter(t => t !== btn.dataset.tag));
+          }});
+        }});
+
+        const addBtn = row.querySelector('.tag-add-btn');
+        const editor = row.querySelector('.tag-editor');
+        const input = editor.querySelector('.tag-input');
+        const suggestionsEl = editor.querySelector('.tag-suggestions');
+
+        function renderSuggestions() {{
+          const query = input.value.trim().toLowerCase();
+          const existing = new Set((flight.tags || []).map(t => t.toLowerCase()));
+          const matches = allTags.filter(t => !existing.has(t.toLowerCase()) && (!query || t.toLowerCase().includes(query)));
+          let html = matches.map(t => `<button type="button" class="tag-suggestion" data-tag="${{escapeHtml(t)}}">${{escapeHtml(t)}}</button>`).join('');
+          if (query && !allTags.some(t => t.toLowerCase() === query)) {{
+            html += `<button type="button" class="tag-suggestion create" data-tag="${{escapeHtml(input.value.trim())}}">+ Create "${{escapeHtml(input.value.trim())}}"</button>`;
+          }}
+          suggestionsEl.innerHTML = html || '<span class="tag-suggestion-empty">No matches</span>';
+          [...suggestionsEl.querySelectorAll('.tag-suggestion')].forEach(sBtn => {{
+            sBtn.addEventListener('click', e => {{
+              e.stopPropagation();
+              saveFlightTags(flight, [...(flight.tags || []), sBtn.dataset.tag]);
+            }});
+          }});
+        }}
+
+        addBtn.addEventListener('click', e => {{
+          e.stopPropagation();
+          const wasOpen = editor.classList.contains('open');
+          savedList.querySelectorAll('.tag-editor').forEach(el => el.classList.remove('open'));
+          if (!wasOpen) {{
+            editor.classList.add('open');
+            renderSuggestions();
+            input.focus();
+          }}
+        }});
+        input.addEventListener('click', e => e.stopPropagation());
+        input.addEventListener('input', renderSuggestions);
+        input.addEventListener('keydown', e => {{
+          if (e.key === 'Enter') {{
+            e.preventDefault();
+            const value = input.value.trim();
+            if (value) saveFlightTags(flight, [...(flight.tags || []), value]);
+          }} else if (e.key === 'Escape') {{
+            editor.classList.remove('open');
+            input.value = '';
+          }}
+        }});
       }});
     }}
 
     async function loadSavedFlights() {{
       try {{
         const response = await fsatlasFetch('/api/saved-flights');
-        renderSavedFlights(await response.json());
+        savedFlightsRaw = await response.json();
+        renderSavedFlights();
       }} catch (err) {{
         savedList.innerHTML = '<div class="saved-empty">Could not load saved flights.</div>';
       }}
     }}
+
+    savedSort.addEventListener('change', renderSavedFlights);
 
     function viewSavedFlight(flight) {{
       savedModal.classList.remove('open');
@@ -1409,6 +1589,10 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
                 return
             settings = load_settings()
             key = flight_key(flight)
+            existing = next((f for f in settings["saved_flights"] if flight_key(f) == key), None)
+            if existing:
+                flight.setdefault("saved_at", existing.get("saved_at"))
+            flight = normalize_saved_flight(flight)
             saved = [f for f in settings["saved_flights"] if flight_key(f) != key]
             saved.append(flight)
             settings["saved_flights"] = saved

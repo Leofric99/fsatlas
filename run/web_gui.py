@@ -16,16 +16,17 @@ from urllib.parse import parse_qs, urlparse
 
 import pandas as pd
 
-from run import config, data_loader, filtering, mapping
+from run import config, data_loader, filtering, mapping, simbrief_api
 from run.single_instance import SingleInstance, running_url
 
 LOGO_FILE = os.path.join(os.path.dirname(__file__), 'images', 'FSAtlas Logo.png')
 
-# Persisted UI settings (currently just the light/dark preference) - tracked in git with a
-# default value, but local writes are excluded via `git update-index --skip-worktree` so a
-# user's runtime preference never shows up as an uncommitted change.
+# Persisted UI settings (theme preference + the SimBrief Pilot ID/username used to
+# pre-fill exports) - tracked in git with default values, but local writes are excluded
+# via `git update-index --skip-worktree` so a user's runtime settings never show up as
+# an uncommitted change.
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
-DEFAULT_SETTINGS = {"theme": "dark"}
+DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": ""}
 
 
 def load_settings():
@@ -36,6 +37,8 @@ def load_settings():
         return dict(DEFAULT_SETTINGS)
     if settings.get("theme") not in ("dark", "light"):
         settings["theme"] = DEFAULT_SETTINGS["theme"]
+    if not isinstance(settings.get("simbrief_pilot_id"), str):
+        settings["simbrief_pilot_id"] = DEFAULT_SETTINGS["simbrief_pilot_id"]
     return settings
 
 
@@ -188,10 +191,12 @@ class AtlasState:
         return view_id, len(filtered_df)
 
 
-def index_html(columns, theme='dark'):
+def index_html(columns, settings):
     columns_json = json.dumps(columns)
     map_types_json = json.dumps(list(config.TILES.keys()))
+    theme = settings.get('theme', 'dark')
     theme_attr = ' data-theme="light"' if theme == 'light' else ''
+    pilot_id_json = json.dumps(settings.get('simbrief_pilot_id', ''))
     return f"""<!doctype html>
 <html lang="en"{theme_attr}>
 <head>
@@ -286,6 +291,35 @@ def index_html(columns, theme='dark'):
     }}
     #theme-toggle:hover {{ background: var(--border); transform: none; filter: none; }}
     #theme-toggle svg {{ width: 17px; height: 17px; transition: transform .3s ease; }}
+    #settings-toggle {{
+      width: 34px; height: 34px; padding: 0; background: var(--surface-solid); border: 1px solid var(--border);
+      box-shadow: none; display: flex; align-items: center; justify-content: center; color: var(--text);
+    }}
+    #settings-toggle:hover {{ background: var(--border); transform: none; filter: none; }}
+    #settings-toggle svg {{ width: 17px; height: 17px; }}
+    .modal-overlay {{
+      position: fixed; inset: 0; background: rgba(8, 10, 14, 0.45);
+      display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+    }}
+    .modal-overlay.open {{ display: flex; }}
+    .modal {{
+      background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow); width: 400px; max-width: 100%; padding: 18px 20px;
+    }}
+    .modal-header {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }}
+    .modal-header h2 {{ font-size: 15px; margin: 0; font-weight: 600; }}
+    .modal-body label {{
+      display: block; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 6px;
+    }}
+    .modal-body input {{ margin-bottom: 8px; }}
+    .modal-hint {{ font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0 0 14px; }}
+    .modal-hint a {{ color: var(--accent); }}
+    .modal-actions {{ display: flex; align-items: center; gap: 10px; }}
+    #simbrief-status {{ font-size: 12px; color: var(--muted); }}
+    .modal-footer {{ display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }}
+    button.secondary {{ background: var(--surface-solid); color: var(--text); box-shadow: none; border: 1px solid var(--border); }}
+    button.secondary:hover {{ background: var(--border); filter: none; transform: none; }}
     #filters-wrap {{ display: grid; grid-template-rows: 1fr; min-width: 0; transition: grid-template-rows .28s ease; }}
     #filters-wrap.collapsed {{ grid-template-rows: 0fr; }}
     #filters-wrap > #filters {{ overflow: hidden; min-height: 0; }}
@@ -358,6 +392,9 @@ def index_html(columns, theme='dark'):
       <button id="apply">Apply Filters</button>
       <button id="reset" class="danger" type="button" title="Reset filters" aria-label="Reset filters">Reset Filters</button>
       <button id="theme-toggle" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode"></button>
+      <button id="settings-toggle" type="button" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
       <span id="status"></span>
     </div>
     <div id="filters-wrap">
@@ -367,6 +404,30 @@ def index_html(columns, theme='dark'):
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
   </section>
+  <div id="settings-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button id="settings-close" class="icon" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label for="simbrief-pilot-id">SimBrief Pilot ID or Username</label>
+        <input id="simbrief-pilot-id" type="text" placeholder="e.g. 123456 or jdoe">
+        <p class="modal-hint">
+          Used to pre-fill the Pilot ID when exporting a flight to SimBrief. Find yours on
+          SimBrief's <a href="https://www.simbrief.com/system/profile.php#settings" target="_blank" rel="noopener">Account Settings</a> page.
+        </p>
+        <div class="modal-actions">
+          <button id="simbrief-verify" class="secondary" type="button">Verify</button>
+          <span id="simbrief-status"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="settings-cancel" class="secondary" type="button">Cancel</button>
+        <button id="settings-save" type="button">Save</button>
+      </div>
+    </div>
+  </div>
   <iframe id="map" title="Flight map"></iframe>
   <script>
     const columns = {columns_json};
@@ -412,6 +473,53 @@ def index_html(columns, theme='dark'):
 
     themeToggle.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark', true));
     applyTheme(theme, false);
+
+    // --- Settings modal (SimBrief Pilot ID) ---
+    let savedPilotId = {pilot_id_json};
+    const settingsModal = document.getElementById('settings-modal');
+    const pilotIdInput = document.getElementById('simbrief-pilot-id');
+    const simbriefStatus = document.getElementById('simbrief-status');
+
+    function openSettings() {{
+      pilotIdInput.value = savedPilotId;
+      simbriefStatus.textContent = '';
+      settingsModal.classList.add('open');
+    }}
+    function closeSettings() {{ settingsModal.classList.remove('open'); }}
+
+    document.getElementById('settings-toggle').addEventListener('click', openSettings);
+    document.getElementById('settings-close').addEventListener('click', closeSettings);
+    document.getElementById('settings-cancel').addEventListener('click', closeSettings);
+    settingsModal.addEventListener('click', e => {{ if (e.target === settingsModal) closeSettings(); }});
+
+    document.getElementById('simbrief-verify').addEventListener('click', async () => {{
+      const pilotId = pilotIdInput.value.trim();
+      simbriefStatus.style.color = 'var(--muted)';
+      simbriefStatus.textContent = 'Checking...';
+      try {{
+        const response = await fetch('/api/simbrief/verify', {{
+          method: 'POST', headers: {{'Content-Type': 'application/json'}},
+          body: JSON.stringify({{pilot_id: pilotId}})
+        }});
+        const result = await response.json();
+        simbriefStatus.textContent = result.message;
+        simbriefStatus.style.color = result.ok ? 'var(--accent)' : 'var(--danger)';
+      }} catch (err) {{
+        simbriefStatus.textContent = 'Could not reach SimBrief';
+        simbriefStatus.style.color = 'var(--danger)';
+      }}
+    }});
+
+    document.getElementById('settings-save').addEventListener('click', async () => {{
+      savedPilotId = pilotIdInput.value.trim();
+      try {{
+        await fetch('/api/settings', {{
+          method: 'POST', headers: {{'Content-Type': 'application/json'}},
+          body: JSON.stringify({{simbrief_pilot_id: savedPilotId}})
+        }});
+      }} catch (err) {{ /* best effort - the setting still applies for this session */ }}
+      closeSettings();
+    }});
 
     // --- Filter list collapse tab (protrudes from the toolbar, stays visible when hidden) ---
     const filtersTab = document.getElementById('filters-tab');
@@ -726,7 +834,7 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/":
             columns = build_columns(self.state.df)
-            self.send_html(index_html(columns, load_settings().get("theme", "dark")))
+            self.send_html(index_html(columns, load_settings()))
             return
 
         if parsed.path == "/images/logo.png":
@@ -771,14 +879,50 @@ class AtlasRequestHandler(BaseHTTPRequestHandler):
             try:
                 length = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(length))
-                theme = payload.get("theme")
-                if theme not in ("dark", "light"):
+                if not isinstance(payload, dict):
                     raise ValueError
             except (ValueError, json.JSONDecodeError):
                 self.send_json({"error": "Invalid settings payload"}, HTTPStatus.BAD_REQUEST)
                 return
-            save_settings({"theme": theme})
+            settings = load_settings()
+            if "theme" in payload:
+                if payload["theme"] not in ("dark", "light"):
+                    self.send_json({"error": "Invalid settings payload"}, HTTPStatus.BAD_REQUEST)
+                    return
+                settings["theme"] = payload["theme"]
+            if "simbrief_pilot_id" in payload:
+                pilot_id = payload["simbrief_pilot_id"]
+                if not isinstance(pilot_id, str):
+                    self.send_json({"error": "Invalid settings payload"}, HTTPStatus.BAD_REQUEST)
+                    return
+                settings["simbrief_pilot_id"] = pilot_id.strip()
+            save_settings(settings)
             self.send_json({"ok": True})
+            return
+
+        if parsed.path == "/api/simbrief/verify":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                payload = json.loads(self.rfile.read(length))
+                pilot_id = str(payload.get("pilot_id", ""))
+            except (ValueError, json.JSONDecodeError):
+                self.send_json({"error": "Invalid request"}, HTTPStatus.BAD_REQUEST)
+                return
+            ok, message = simbrief_api.verify_pilot_id(pilot_id)
+            self.send_json({"ok": ok, "message": message})
+            return
+
+        if parsed.path == "/api/simbrief/export":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                flight = json.loads(self.rfile.read(length))
+                if not isinstance(flight, dict):
+                    raise ValueError
+            except (ValueError, json.JSONDecodeError):
+                self.send_json({"error": "Invalid flight payload"}, HTTPStatus.BAD_REQUEST)
+                return
+            pilot_id = load_settings().get("simbrief_pilot_id", "")
+            self.send_json({"url": simbrief_api.build_export_url(flight, pilot_id)})
             return
 
         if parsed.path != "/api/maps":

@@ -70,6 +70,14 @@
             transition: opacity .15s ease, background .15s ease;
         }
         .expand-btn:hover { opacity: 1; background: << panel_bg >>; }
+        .simbrief-btn {
+            display: block; width: 100%; margin-top: 8px; text-align: center;
+            font-size: 11px; font-weight: 600; cursor: pointer; padding: 6px 8px; border-radius: 6px;
+            border: 1px solid << line_color >>; color: << line_color >>; background: << accent_soft >>;
+            transition: background .15s ease, opacity .15s ease;
+        }
+        .simbrief-btn:hover { background: << line_color >>; color: << marker_border >>; }
+        .simbrief-btn:disabled { opacity: 0.6; cursor: default; pointer-events: none; }
 
         /* Custom scrollbars to match the glass aesthetic */
         .panel-content::-webkit-scrollbar { width: 8px; }
@@ -510,6 +518,32 @@
             }
         }
 
+        // --- SIMBRIEF EXPORT ---
+
+        // Asks the server to build a SimBrief "New Flight" URL pre-filled with this
+        // flight's route/aircraft/callsign, then opens it in a new tab.
+        async function exportToSimbrief(route, btn) {
+            const originalLabel = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerText = 'Opening SimBrief...';
+            try {
+                const response = await fetch('/api/simbrief/export', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(route)
+                });
+                const result = await response.json();
+                if (!response.ok || !result.url) throw new Error(result.error || 'Export failed');
+                window.open(result.url, '_blank', 'noopener');
+            } catch (err) {
+                btn.innerText = 'Export failed';
+                setTimeout(() => { btn.innerHTML = originalLabel; btn.disabled = false; }, 2500);
+                return;
+            }
+            btn.innerHTML = originalLabel;
+            btn.disabled = false;
+        }
+
         // --- VISUALIZATION ---
 
         // Compute great-circle points in canonical longitude space (near src.lon).
@@ -659,6 +693,7 @@
                                 <div class="detail-kv"><span class="label">To</span><span>${arr} / ${arr_icao}</span></div>
                                 <div class="detail-kv" style="grid-column: span 2"><span class="label">Date Recorded</span><span>${date}</span></div>
                             </div>
+                            <button class="simbrief-btn" id="simbrief-${idx}" type="button">&#9992; Export to SimBrief</button>
                         </div>
 
                         <div class="expand-btn" onclick="let el = document.getElementById('${uniqueId}'); el.style.display = (el.style.display === 'none' ? 'block' : 'none'); this.innerText = (el.style.display === 'block' ? '▲ Less Info' : '▼ More Info');">
@@ -670,6 +705,11 @@
                 html += '<br><div style="text-align:center; font-size:11px; opacity:0.6; cursor:pointer;" onclick="deslectDestOnly()">Return to All Connections</div>';
 
                 document.getElementById('panel-content').innerHTML = html;
+
+                pairRoutes.forEach((r, idx) => {
+                    const btn = document.getElementById('simbrief-' + idx);
+                    if (btn) btn.addEventListener('click', () => exportToSimbrief(r, btn));
+                });
             }
         }
 

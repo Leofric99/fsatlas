@@ -17,7 +17,7 @@
 <h3 align="center">FSAtlas allows you to find inspiration for your next flight. Inspired by FlightConnections.</h3>
 
 <p align="center">
-  <img src="videos/fsatlas_demo.gif" alt="FSAtlas Demo" width="100%">
+  <img src="run/images/fsatlas_demo.gif" alt="FSAtlas Demo" width="100%">
 </p>
 
 ## What Is FSAtlas?

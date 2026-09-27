@@ -108,6 +108,7 @@ def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_c
         shadow_color = 'rgba(0, 0, 0, 0.45)'
         line_color = '#3fd0ff'
         marker_border = '#171b20'
+        accent_soft = 'rgba(63, 208, 255, 0.12)'
     else:
         bg_color = '#D0CFD4'
         text_color = '#14181d'
@@ -119,6 +120,7 @@ def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_c
         shadow_color = 'rgba(15, 23, 42, 0.16)'
         line_color = '#0a84ff'
         marker_border = '#171b20'
+        accent_soft = 'rgba(10, 132, 255, 0.10)'
 
     return _JINJA_ENV.get_template('map.html').render(
         bg_color=bg_color,
@@ -131,6 +133,7 @@ def create_map_html(df, tile_provider='Dark Mode', theme_mode='light', airport_c
         shadow_color=shadow_color,
         line_color=line_color,
         marker_border=marker_border,
+        accent_soft=accent_soft,
         airports_json=airports_json,
         tile_url=tile_url,
         attr=attr,

@@ -1,0 +1,32 @@
+run/webapp/static/app.js
+  s_75c654352122a5::t_3d1938af96656c 1042,1046-1048
+  s_75c654352122a5::t_ac9be5d5feda0c 1122-1129
+  s_75c654352122a5::t_45d4b5b65e40d9 479
+  s_75c654352122a5::t_cb8a942dac8d99 84,98,103-116
+  s_75c654352122a5::t_cd32ddbbe94b02 280,508
+  s_75c654352122a5::t_03b3c26ad93660 476-478,480-506,542
+  s_75c654352122a5::t_4a275ea364f73e 117
+run/webapp/static/app.css
+  s_75c654352122a5::t_c94e2c79bea471 460-466,468-470
+  s_75c654352122a5::t_d4bbcd2d6c41ef 246,254-262
+  s_75c654352122a5::t_b18d2aa8ee1f5a 467
+  s_75c654352122a5::t_3c827479083a5b 263-270
+AGENTS.md
+  s_75c654352122a5::t_e2f5db2b642c3a 1-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab0bdbb06cebcb346eb3bf949abdb068643f4460",
+  "prompts": {},
+  "sessions": {
+    "s_75c654352122a5": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "de4e509e-a3c1-47a0-8077-293e3ae6f891",
+        "model": "copilot/claude-sonnet-5"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

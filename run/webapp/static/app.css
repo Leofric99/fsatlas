@@ -243,7 +243,7 @@ select.logic {
 .action-label { display: inline; white-space: nowrap; }
 .filter-group {
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border)); border-radius: var(--radius-lg); padding: 12px;
-  background: var(--accent-soft); min-width: 0;
+  background: var(--accent-soft); min-width: 0; overflow: hidden;
 }
 .filter-group.first > .group-head > .logic { display: none; }
 .filter-group.first > .group-head .remove { display: none; }
@@ -251,6 +251,23 @@ select.logic {
 .group-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
 .group-head .row-actions { margin-left: auto; }
 .filter-group > .filters-list { padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, var(--border)); }
+/* Deliberately NOT tinted like the rest of the group's box - this button adds a sibling
+   filter after the group ends, not another condition inside it, so it's pulled out to the
+   group's outer edge with a plain/neutral background and a dashed seam above it, rather
+   than sitting inside the group's own header where it would look like a group action. */
+.group-append {
+  margin: 10px -12px -12px; padding: 8px 12px;
+  border-top: 1px dashed color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: var(--surface); display: flex; justify-content: flex-end;
+}
+.group-append .icon {
+  width: auto; height: 28px; min-height: 0; padding: 0 10px; gap: 5px;
+  display: inline-flex; align-items: center;
+  border: 1px solid var(--border); background: var(--card-bg); box-shadow: none;
+  border-radius: var(--radius-pill); color: var(--text-dim); font-size: 11px; font-weight: 600;
+}
+.group-append .icon svg { width: 13px; height: 13px; flex-shrink: 0; }
+.group-append .icon:hover { background: var(--surface-hover); color: var(--text); }
 
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(6, 8, 11, 0.55);
@@ -439,6 +456,17 @@ select.logic {
   box-shadow: var(--shadow-md) !important;
 }
 .atlas-tooltip.leaflet-tooltip::before { display: none; }
+
+/* Plane icon marking the midpoint of a fully-selected (both ends) route - colored with
+   the route's own --line-color rather than a separate icon color, rotated in JS to face
+   from source toward destination. */
+.route-plane-icon { pointer-events: none; }
+.route-plane-badge {
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  color: var(--line-color);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
+.route-plane-badge svg { width: 20px; height: 20px; }
 
 /* Mobile: sidebar becomes a near-full-width drawer with a scrim behind it (identical
    markup/JS to desktop - only the CSS default open/closed state and width differ). The

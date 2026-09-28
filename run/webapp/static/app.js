@@ -81,6 +81,7 @@
   // Bottom-right, collapsible into a slim pull tab that stays docked to the edge.
   const legendTemplate = document.getElementById('legend-template');
   const legend = L.control({ position: 'bottomright' });
+  let legendEl = null;
   legend.onAdd = () => {
     const container = L.DomUtil.create('div', 'legend-root');
     container.appendChild(legendTemplate.content.cloneNode(true));
@@ -94,9 +95,25 @@
       container.classList.toggle('collapsed');
     });
     L.DomEvent.disableClickPropagation(container);
+    legendEl = container;
     return container;
   };
   legend.addTo(map);
+
+  // Auto-collapses the legend the moment the flight-details panel would visually overlap
+  // it, then leaves it alone - never force-expands it back, even if the panel later
+  // closes/shrinks, so a manual re-open (the pull tab) or a page refresh are the only ways
+  // to see it again. Edge-triggered (only acts the instant overlap begins) so re-opening
+  // the legend while the panel still happens to overlap doesn't immediately re-collapse it.
+  let legendWasOverlapping = false;
+  function checkLegendOverlap() {
+    if (!legendEl || !infoPanel.classList.contains('open')) { legendWasOverlapping = false; return; }
+    const a = infoPanel.getBoundingClientRect();
+    const b = legendEl.getBoundingClientRect();
+    const overlapping = a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    if (overlapping && !legendWasOverlapping) legendEl.classList.add('collapsed');
+    legendWasOverlapping = overlapping;
+  }
 
   // Layers
   const routeLayer = L.layerGroup().addTo(map);
@@ -260,6 +277,7 @@
     highlightedFlightKey = null;
     routeLayer.clearLayers();
     infoPanel.classList.remove('open');
+    checkLegendOverlap();
 
     if (deselectMarker) { map.removeLayer(deselectMarker); deselectMarker = null; }
     if (deselectDestMarker) { map.removeLayer(deselectDestMarker); deselectDestMarker = null; }
@@ -455,7 +473,39 @@
     L.polyline(shifted, options).addTo(layer);
   }
 
+  // Small filled plane silhouette (matches the reference image) - colored with the same
+  // --line-color as the route itself rather than a separate icon color, and rotated to
+  // face from source toward destination.
+  const PLANE_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="#000" stroke-width="1" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-4.5l8 2.5z"></path></svg>';
+
+  // Marks the midpoint of a complete (both-ends-selected) route with a plane icon,
+  // oriented along the direction of travel. Direction is computed in screen-pixel space
+  // (not raw lat/lon bearing) so it stays visually correct regardless of map projection
+  // or which world copy the route is drawn on.
+  function drawRouteMidpointPlane(src, dest, offset, layer) {
+    const pts = computeGeodesicPoints(src.lat, src.lon, dest.lat, dest.lon);
+    const mid = Math.floor(pts.length / 2);
+    const before = pts[Math.max(0, mid - 1)];
+    const after = pts[Math.min(pts.length - 1, mid + 1)];
+    const midPoint = pts[mid];
+    const p1 = map.latLngToLayerPoint([before[0], before[1] + offset]);
+    const p2 = map.latLngToLayerPoint([after[0], after[1] + offset]);
+    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI + 90;
+
+    L.marker([midPoint[0], midPoint[1] + offset], {
+      icon: L.divIcon({
+        className: 'route-plane-icon',
+        html: `<div class="route-plane-badge" style="transform: rotate(${angle}deg)">${PLANE_ICON}</div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      }),
+      interactive: false,
+      pane: 'routesPane'
+    }).addTo(layer);
+  }
+
   function renderMapState() {
+    checkLegendOverlap();
     routeLayer.clearLayers();
     if (!currentRoutes || currentRoutes.length === 0) return;
 
@@ -489,6 +539,7 @@
       const srcAp = airports[selectedSource];
       if (srcAp && destAp && !isSelfLoop) {
         drawRouteAtCenter(srcAp, destAp, { color: lineColor, weight: 2, opacity: 1, pane: 'routesPane' }, routeLayer, selectedSourceOffset);
+        drawRouteMidpointPlane(srcAp, destAp, selectedSourceOffset, routeLayer);
       }
 
       let html = '<div><strong>' + pairRoutes.length + ' Flights</strong></div><br>';
@@ -988,9 +1039,13 @@
         isMobile ? closeSidebar() : openSidebar();
         rebuildAirportMarkers(); // marker radius depends on isMobile
       }
+      checkLegendOverlap();
     });
   }
   window.addEventListener('resize', scheduleResizeCheck);
+  // The info panel is user-resizable (CSS `resize: both`) - dragging it larger can newly
+  // overlap the legend without any of the other triggers above firing.
+  new ResizeObserver(checkLegendOverlap).observe(infoPanel);
 
   // --- Filter tree (nested AND/OR groups) ---
   function markFirst(list) { [...list.children].forEach((node, index) => node.classList.toggle('first', index === 0)); }
@@ -1062,10 +1117,16 @@
       '<select class="logic"><option>AND</option><option>OR</option></select>' +
       '<span class="group-label">Group</span>' +
       '<div class="row-actions">' +
-      '<button class="icon insert" title="Add a filter below this group" aria-label="Add a filter below this group">' + ICON_PLUS + '<span class="action-label">Add</span></button>' +
       '<button class="icon ungroup" title="Ungroup" aria-label="Ungroup">' + ICON_UNGROUP + '<span class="action-label">Ungroup</span></button>' +
       '<button class="icon remove" title="Remove this group" aria-label="Remove this group">' + ICON_X + '<span class="action-label">Remove Group</span></button>' +
-      '</div></div><div class="filters-list"></div>';
+      '</div></div><div class="filters-list"></div>' +
+      // Deliberately styled/placed OUTSIDE the group's tinted box (see .group-append in
+      // app.css) and labelled accordingly - this button does NOT add to this group's own
+      // conditions, it adds a new sibling filter after the group ends, so it must not look
+      // like it belongs to the group's contents the way the Ungroup/Remove buttons above do.
+      '<div class="group-append">' +
+      '<button class="icon insert" title="Add a new filter after this group (not inside it)" aria-label="Add a new filter after this group (not inside it)">' + ICON_PLUS + '<span class="action-label">Add After Group</span></button>' +
+      '</div>';
     group.querySelector('.insert').addEventListener('click', () => { group.after(createConditionRow()); refreshRows(); });
     group.querySelector('.ungroup').addEventListener('click', () => ungroup(group));
     group.querySelector('.remove').addEventListener('click', () => removeNode(group));

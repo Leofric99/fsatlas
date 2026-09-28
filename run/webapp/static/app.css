@@ -1,0 +1,474 @@
+/* Design system: flat surfaces (no blur/glassmorphism), a single teal accent, and a
+   fixed top bar + slide-out sidebar layout instead of a floating toolbar over the map -
+   one token set drives both themes so dark/light share the same shape language. */
+:root {
+  color-scheme: dark;
+  --bg: #0a0b0e;
+  --surface: #111318;
+  --surface-2: #171a21;
+  --surface-hover: #1d2129;
+  --border: #23262e;
+  --border-strong: #2e323c;
+  --text: #eef0f3;
+  --text-dim: #9aa0ab;
+  --muted: #6d7280;
+  --accent: #2dd4bf;
+  --accent-strong: #14b8a6;
+  --accent-contrast: #052e2a;
+  --danger: #f2555a;
+  --danger-strong: #d63f45;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.5);
+  --topbar-h: 60px;
+  --sidebar-w: 380px;
+  --map-bg: #14161b;
+  --panel-bg: var(--surface);
+  --card-bg: var(--surface-2);
+  --card-border: var(--border);
+  --line-color: var(--accent);
+  --marker-border: #05070a;
+  --accent-soft: rgba(45, 212, 191, 0.14);
+  --legend-bg: var(--surface);
+  /* Destination-count bands, theme-independent (same on dark/light): red, gold, blue, dark
+     blue - kept as CSS vars so colorForRank() in app.js is the single place both the marker
+     fill and the legend swatches read the color from. */
+  --rank-0: #ef5b4a;
+  --rank-1: #f8c20b;
+  --rank-2: #0784ed;
+  --rank-3: #0b4fa3;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #f2f3f6;
+  --surface-hover: #e9ebef;
+  --border: #e3e5ea;
+  --border-strong: #d2d5dc;
+  --text: #14161a;
+  --text-dim: #5c6270;
+  --muted: #8a8f99;
+  --accent: #0d9488;
+  --accent-strong: #0f766e;
+  --accent-contrast: #ffffff;
+  --danger: #e0313d;
+  --danger-strong: #c31e2a;
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 10px 24px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 24px 56px rgba(15, 23, 42, 0.16);
+  --map-bg: #dde1e6;
+  --panel-bg: var(--surface);
+  --card-bg: var(--surface-2);
+  --card-border: var(--border);
+  --line-color: var(--accent);
+  --marker-border: #14161a;
+  --accent-soft: rgba(13, 148, 136, 0.1);
+  --legend-bg: var(--surface);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; }
+body {
+  margin: 0; overflow: hidden; background: var(--bg); color: var(--text);
+  transition: background .2s ease, color .2s ease;
+}
+
+/* The map fills the whole viewport - the top bar and sidebar float opaquely on top of it
+   (a conventional maps-app layout, e.g. Google Maps' search panel), rather than the map
+   living inside a document that scrolls around a floating toolbar. */
+#map { position: fixed; inset: 0; background: var(--map-bg); z-index: 1; }
+.leaflet-container { background: var(--map-bg); }
+
+/* --- Top bar: slim, solid, always full-width, never moves --- */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-h); z-index: 40;
+  display: flex; align-items: center; gap: 10px; padding: 0 16px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo { height: 30px; width: auto; display: block; }
+.topbar-spacer { flex: 1 1 auto; }
+.topbar-actions { display: flex; align-items: center; gap: 4px; }
+.map-type { display: none; }
+
+button, select, input {
+  font: inherit; color: inherit; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); min-height: 36px; box-sizing: border-box;
+  transition: border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+select, input { padding: 6px 10px; width: 100%; }
+select:focus, input:focus, button:focus-visible {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+select:disabled { opacity: 0.55; cursor: not-allowed; }
+button { cursor: pointer; padding: 7px 14px; font-weight: 600; white-space: nowrap; }
+button:active { transform: translateY(1px); }
+
+.topbar-icon-btn {
+  width: 38px; height: 38px; padding: 0; border-radius: var(--radius-md);
+  background: transparent; border: 1px solid transparent; color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center;
+}
+.topbar-icon-btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border); }
+.topbar-icon-btn svg { width: 18px; height: 18px; }
+.topbar-icon-btn.active { color: var(--accent); background: var(--accent-soft); }
+
+/* --- Popover (map style menu) --- */
+.fab-wrap { display: flex; position: relative; flex-shrink: 0; }
+.popover-menu {
+  display: none; position: absolute; top: calc(100% + 8px); right: 0; min-width: 160px;
+  padding: 6px; border-radius: var(--radius-md); background: var(--surface-2);
+  border: 1px solid var(--border); box-shadow: var(--shadow-md); z-index: 45;
+}
+.popover-menu.open { display: block; }
+.map-type-menu-item {
+  display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text); border: none; box-shadow: none; font-size: 13px; font-weight: 500;
+}
+.map-type-menu-item:hover { background: var(--surface-hover); }
+.map-type-menu-item.active { color: var(--accent); font-weight: 700; }
+
+/* --- Buttons: flat solid primary, plain ghost secondary, small icon button --- */
+.btn-primary {
+  background: var(--accent); color: var(--accent-contrast); border: 1px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+.btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.btn-icon {
+  width: 38px; min-height: 38px; padding: 0; flex-shrink: 0;
+  background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-icon:hover { color: var(--text); background: var(--surface-hover); }
+.btn-icon svg { width: 16px; height: 16px; }
+button.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+button.secondary:hover { background: var(--surface-hover); }
+button.icon {
+  width: 30px; height: 30px; padding: 0; background: transparent; color: var(--text-dim);
+  border: 1px solid transparent; font-size: 16px; line-height: 1;
+}
+button.icon:hover { background: var(--surface-hover); color: var(--text); }
+
+/* --- Sidebar: slide-over panel, always overlays the map (never resizes it) --- */
+#sidebar-scrim {
+  position: fixed; inset: 0; background: rgba(6, 8, 11, 0.5); z-index: 25;
+  opacity: 0; pointer-events: none; transition: opacity .2s ease;
+}
+@media (max-width: 760px) {
+  body.sidebar-open #sidebar-scrim { opacity: 1; pointer-events: auto; }
+}
+.sidebar {
+  position: fixed; top: var(--topbar-h); left: 0; bottom: 0; width: var(--sidebar-w); max-width: 88vw;
+  z-index: 30; background: var(--surface); border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column;
+  transform: translateX(-100%); transition: transform .26s cubic-bezier(.4, 0, .2, 1);
+}
+.sidebar.open { transform: translateX(0); }
+.sidebar-head {
+  flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-title { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+.filters-count-badge {
+  font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-pill);
+  background: var(--accent-soft); color: var(--accent);
+}
+.filters-count-badge.zero { background: var(--surface-2); color: var(--muted); }
+.sidebar-close { margin-left: auto; width: 30px; height: 30px; }
+.sidebar-close svg { width: 14px; height: 14px; }
+.sidebar-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 18px; }
+.sidebar-foot { flex-shrink: 0; border-top: 1px solid var(--border); padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.sidebar-result { font-size: 12px; color: var(--text-dim); font-weight: 600; min-height: 16px; }
+.sidebar-foot-actions { display: flex; gap: 8px; }
+.sidebar-foot-actions .btn-ghost, .sidebar-foot-actions .btn-primary { flex: 1 1 0; }
+
+/* Sidebar sits to the left of the map content, so the floating info panel (bottom-left by
+   default) shifts right to clear it once the sidebar is open on a wide-enough viewport. */
+@media (min-width: 761px) {
+  body.sidebar-open .info-panel { left: calc(var(--sidebar-w) + 16px); }
+}
+
+#filters, .filters-list { display: grid; gap: 10px; min-width: 0; }
+/* Each condition is a self-contained stacked card (not a single dense row) - reads far
+   more clearly in a ~360px-wide panel than cramming logic/column/operator/value side by
+   side, and means desktop and mobile can finally share one identical layout. Logic and
+   actions each get their own full-width row (rather than splitting one row 50/50 with
+   them) since the action buttons now carry real text labels ("Add", "Remove Filter", ...)
+   and need more room than a shared half-width column would allow. */
+.filter-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-width: 0;
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-md);
+  padding: 10px; grid-template-areas: "logic logic" "actions actions" "column column" "operator value";
+}
+.filter-row.first { grid-template-areas: "actions actions" "column column" "operator value"; }
+.filter-row > .logic { grid-area: logic; justify-self: start; }
+.filter-row > .row-actions { grid-area: actions; justify-self: end; }
+.filter-row > .column { grid-area: column; }
+.filter-row > .operator { grid-area: operator; }
+.filter-row > .value { grid-area: value; }
+.filter-row.first > .logic { display: none; }
+.filter-row.first .remove { display: none; }
+/* AND/OR reads as a small colored connector chip rather than a plain form field. */
+select.logic {
+  width: auto; text-align: center; text-align-last: center; font-weight: 700; font-size: 11px; letter-spacing: .03em;
+  padding: 3px 8px; min-height: 24px;
+  background: var(--accent-soft); color: var(--accent); border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+}
+/* Add/Group/Remove read as one cohesive segmented control, each with a text label (not
+   an icon-only symbol) - "Group" swaps to "Ungroup" and "Remove Filter" only appears
+   once there's more than one condition (see .first rules above), rather than being
+   separate always-visible buttons. */
+.row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; align-items: center; }
+.row-actions .icon {
+  width: auto; height: 28px; min-height: 0; padding: 0 10px; gap: 5px;
+  border: 1px solid var(--border); background: var(--surface); box-shadow: none;
+  border-radius: var(--radius-pill); color: var(--text-dim); font-size: 11px; font-weight: 600;
+  display: inline-flex; align-items: center;
+}
+.row-actions .icon svg { width: 13px; height: 13px; flex-shrink: 0; }
+.row-actions .icon:hover { background: var(--surface-hover); color: var(--text); }
+.row-actions .remove { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, var(--border)); }
+.row-actions .remove:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+.action-label { display: inline; white-space: nowrap; }
+.filter-group {
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border)); border-radius: var(--radius-lg); padding: 12px;
+  background: var(--accent-soft); min-width: 0;
+}
+.filter-group.first > .group-head > .logic { display: none; }
+.filter-group.first > .group-head .remove { display: none; }
+.group-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin-bottom: 10px; }
+.group-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.group-head .row-actions { margin-left: auto; }
+.filter-group > .filters-list { padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, var(--border)); }
+
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(6, 8, 11, 0.55);
+  display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); width: 420px; max-width: 100%; padding: 20px 22px;
+}
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.modal-header h2 { font-size: 16px; margin: 0; font-weight: 700; }
+.modal-body label {
+  display: block; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 6px;
+}
+.modal-body input { margin-bottom: 8px; }
+.modal-hint { font-size: 12px; color: var(--text-dim); line-height: 1.5; margin: 0 0 14px; }
+.modal-hint a { color: var(--accent); }
+.modal-actions { display: flex; align-items: center; gap: 10px; }
+#simbrief-status { font-size: 12px; color: var(--text-dim); }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.connection-modal .modal-body { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding-top: 4px; }
+.connection-modal svg { width: 40px; height: 40px; color: var(--danger); flex-shrink: 0; }
+.modal-message { font-size: 13px; color: var(--text-dim); line-height: 1.5; margin: 0; }
+
+.saved-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+.saved-empty { font-size: 13px; color: var(--text-dim); text-align: center; padding: 18px 4px; line-height: 1.5; }
+#saved-modal .modal { width: 480px; }
+.saved-section { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.saved-section + .saved-section { margin-top: 10px; }
+.saved-section-toggle {
+  width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  background: var(--surface-2); border: none; border-radius: 0; box-shadow: none;
+  color: var(--text); font-weight: 600; font-size: 13px; justify-content: flex-start;
+}
+.saved-section-toggle:hover { background: var(--surface-hover); }
+.saved-section-chevron { width: 14px; height: 14px; flex-shrink: 0; transition: transform .2s ease; }
+.saved-section-toggle.collapsed .saved-section-chevron { transform: rotate(-90deg); }
+.saved-section-count { margin-left: auto; font-size: 11px; color: var(--text-dim); font-weight: 500; }
+.saved-section-wrap.collapsed { display: none; }
+.saved-section-inner { padding: 12px; }
+.saved-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.saved-sort-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+.saved-sort-label select { font-size: 12px; padding: 6px 8px; margin-bottom: 0; }
+.saved-row {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface-2); cursor: pointer; transition: background .15s ease;
+}
+.saved-row:hover { background: var(--surface-hover); }
+.saved-row-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.saved-route { font-weight: 600; font-size: 13px; line-height: 1.35; }
+.saved-type { font-size: 11px; color: var(--text-dim); }
+.saved-remove {
+  width: 26px; height: 26px; padding: 0; background: transparent; color: var(--danger);
+  box-shadow: none; border: none; font-size: 16px; line-height: 1; flex-shrink: 0;
+}
+.saved-remove:hover { background: color-mix(in srgb, var(--danger) 18%, transparent); }
+.saved-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: var(--accent-soft); color: var(--accent);
+  border-radius: var(--radius-pill); padding: 3px 4px 3px 10px; font-size: 11px; font-weight: 500;
+}
+.tag-chip button { background: none; border: none; color: inherit; cursor: pointer; box-shadow: none; padding: 0 6px; font-size: 12px; line-height: 1; }
+.tag-chip button:hover { opacity: 0.7; }
+.tag-add-btn {
+  display: inline-flex; align-items: center; gap: 3px; background: transparent;
+  border: 1px dashed var(--border); color: var(--text-dim); border-radius: var(--radius-pill);
+  padding: 3px 10px; font-size: 11px; box-shadow: none; cursor: pointer;
+}
+.tag-add-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
+.tag-editor { display: none; flex-direction: column; gap: 6px; }
+.tag-editor.open { display: flex; }
+.tag-editor input { font-size: 12px; padding: 7px 9px; margin-bottom: 0; }
+.tag-suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-suggestion {
+  font-size: 11px; padding: 4px 10px; border-radius: var(--radius-pill); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer; box-shadow: none;
+}
+.tag-suggestion:hover { background: var(--surface-hover); }
+.tag-suggestion.create { border-style: dashed; color: var(--accent); border-color: var(--accent); }
+.tag-suggestion-empty { font-size: 11px; color: var(--text-dim); padding: 4px 0; }
+
+/* --- Floating info panel (flight details for a selected airport/pair) --- */
+.info-panel {
+  position: fixed; bottom: 20px; left: 16px; width: 320px; max-height: 55%;
+  display: none; flex-direction: column;
+  background: var(--panel-bg); border: 1px solid var(--border);
+  padding: 16px 18px; border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 20; resize: both; overflow: auto; min-width: 220px; min-height: 120px;
+  transition: left .26s ease;
+}
+.info-panel.open { display: flex; }
+.panel-header {
+  font-weight: 700; font-size: 15px; margin-bottom: 10px;
+  border-bottom: 1px solid var(--card-border); padding-bottom: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-content { overflow-y: auto; flex: 1; font-size: 13px; }
+.close-btn {
+  cursor: pointer; opacity: 0.55; font-size: 15px; line-height: 1;
+  width: 22px; height: 22px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .15s ease, background .15s ease;
+}
+.close-btn:hover { opacity: 1; background: var(--card-bg); }
+.flight-card {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-left: 3px solid var(--line-color); margin-bottom: 8px; border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.flight-card:hover { background: var(--surface-hover); }
+.flight-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: 600; }
+.flight-sub { font-size: 11px; opacity: 0.7; margin-bottom: 5px; }
+.detail-kv { display: flex; flex-direction: column; margin-bottom: 4px; }
+.label { opacity: 0.55; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.info-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 11px; height: 11px; margin-left: 3px; border-radius: 50%;
+  background: var(--surface-hover); font-size: 9px; font-style: normal;
+  line-height: 1; cursor: help; text-transform: none;
+}
+.expand-btn {
+  text-align: center; font-size: 10px; opacity: 0.7; cursor: pointer; margin-top: 6px;
+  background: var(--card-bg); padding: 5px; border-radius: var(--radius-sm);
+  transition: opacity .15s ease, background .15s ease;
+}
+.expand-btn:hover { opacity: 1; background: var(--surface-hover); }
+.simbrief-btn {
+  display: block; width: 100%; margin-top: 8px; text-align: center;
+  font-size: 11px; font-weight: 600; cursor: pointer; padding: 7px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-color); color: var(--line-color); background: var(--accent-soft);
+}
+.simbrief-btn:hover { background: var(--line-color); color: var(--accent-contrast); }
+.simbrief-btn:disabled { opacity: 0.6; cursor: default; pointer-events: none; }
+.save-btn {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  width: 100%; margin-top: 6px; text-align: center;
+  font-size: 11px; font-weight: 600; cursor: pointer; padding: 7px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-color); color: var(--line-color); background: var(--accent-soft);
+}
+.save-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
+.save-btn:hover { background: var(--line-color); color: var(--accent-contrast); }
+.save-btn.saved { background: var(--line-color); color: var(--accent-contrast); }
+.save-btn:disabled { opacity: 0.6; cursor: default; pointer-events: none; }
+.flight-card.highlighted { border-left-color: var(--line-color); background: var(--accent-soft); }
+.panel-content::-webkit-scrollbar { width: 8px; }
+.panel-content::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 8px; }
+.panel-content::-webkit-scrollbar-track { background: transparent; }
+
+/* --- Map legend, bottom right, collapsible into a pull tab --- */
+.legend-root {
+  display: flex; align-items: flex-start;
+  background: var(--legend-bg); border: 1px solid var(--border); border-right: none;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden; color: var(--text); margin-right: 0 !important;
+}
+.leaflet-right .legend-root { margin-right: 0 !important; }
+.legend-panel { box-sizing: border-box; flex: 0 0 210px; width: 210px; height: 152px; padding: 14px 4px 14px 18px; font-size: 13px; line-height: 1.6; white-space: normal; }
+.legend-root.collapsed .legend-panel { display: none; }
+.legend-title { display: block; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.legend-row { display: flex; align-items: center; gap: 10px; white-space: nowrap; padding: 2px 0; }
+.legend-dot { width: 14px; height: 14px; border: 1px solid var(--card-border); border-radius: 50%; box-sizing: border-box; flex-shrink: 0; }
+.legend-tab {
+  box-sizing: border-box; flex: 0 0 34px; width: 34px; height: 152px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  font-size: 13px; user-select: none; color: var(--text-dim);
+  transition: color .15s ease, background .15s ease;
+}
+.legend-tab:hover { color: var(--text); background: var(--surface-hover); }
+.legend-tab svg { width: 14px; height: 14px; transition: transform .28s ease; flex-shrink: 0; }
+.legend-root.collapsed .legend-tab svg { transform: rotate(180deg); }
+.legend-tab-label { display: none; }
+
+/* Tooltip to match the airport node styling */
+.atlas-tooltip.leaflet-tooltip {
+  background: var(--panel-bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text) !important;
+  font-size: 12px; font-weight: 600; padding: 4px 9px;
+  box-shadow: var(--shadow-md) !important;
+}
+.atlas-tooltip.leaflet-tooltip::before { display: none; }
+
+/* Mobile: sidebar becomes a near-full-width drawer with a scrim behind it (identical
+   markup/JS to desktop - only the CSS default open/closed state and width differ). The
+   floating info card becomes a full-width bottom sheet instead of a small draggable panel. */
+@media (max-width: 760px) {
+  .topbar { padding: 0 10px; gap: 6px; }
+  .logo { height: 24px; }
+  .sidebar { width: min(360px, 88vw); }
+  button, select, input { min-height: 42px; }
+  .topbar-icon-btn { width: 40px; height: 40px; }
+  .btn-icon { width: 42px; min-height: 42px; }
+  .row-actions .icon { height: 38px; padding: 0 12px; font-size: 12px; }
+  .row-actions .icon svg { width: 15px; height: 15px; }
+
+  .info-panel {
+    left: 0; right: 0; bottom: 0; width: 100%; max-height: 72vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0; border-left: none; border-right: none; border-bottom: none;
+    resize: none; padding: 14px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .panel-header { font-size: 15px; }
+  .close-btn { width: 30px; height: 30px; font-size: 18px; }
+  .flight-card { padding: 12px 14px; }
+  .expand-btn, .simbrief-btn, .save-btn { min-height: 42px; display: flex; align-items: center; justify-content: center; }
+  .leaflet-control-attribution { font-size: 9px !important; }
+  /* Collapsed-by-default (see legend init in app.js) - a plain chevron alone doesn't say
+     what it toggles; rotate the label vertically rather than widening the tab (which
+     would stick out too far past the screen edge). */
+  .legend-root.collapsed .legend-tab { flex-direction: column; gap: 6px; padding: 10px 0; }
+  .legend-root.collapsed .legend-tab-label {
+    display: inline; writing-mode: vertical-rl; text-orientation: mixed;
+    font-size: 11px; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
+  }
+}

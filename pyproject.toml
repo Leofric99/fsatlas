@@ -10,6 +10,7 @@ dependencies = [
     "country_converter",
     "pystray",
     "Pillow",
+    "Flask",
 ]
 
 [project.scripts]
@@ -27,6 +28,8 @@ include = [
     "run/database/*.csv",
     "run/html/*.html",
     "run/images/*.png",
+    "run/webapp/templates/*.html",
+    "run/webapp/static/**/*",
 ]
 
 # settings.json matches a .gitignore pattern (see comment there), so `include` above would

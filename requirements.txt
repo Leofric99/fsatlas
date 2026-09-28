@@ -3,3 +3,4 @@ jinja2
 country_converter
 pystray
 Pillow
+Flask

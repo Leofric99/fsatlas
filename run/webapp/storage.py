@@ -1,0 +1,117 @@
+"""Owns persistence of user settings and saved items (bookmarked flights/searches) in
+two small JSON files. Ported as-is from run/web_gui.py so both the old and new
+frontends share the same on-disk files/format during the migration.
+"""
+import json
+import os
+import secrets
+from datetime import datetime, timezone
+
+# Defaults to run/ (one level up from run/webapp/) so a plain checkout keeps settings
+# where the original http.server app already puts them; FSATLAS_DATA_DIR overrides both.
+DATA_DIR = os.environ.get("FSATLAS_DATA_DIR") or os.path.dirname(os.path.dirname(__file__))
+
+SETTINGS_FILE = os.path.join(DATA_DIR, 'settings.json')
+DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": ""}
+
+SAVED_ITEMS_FILE = os.path.join(DATA_DIR, 'saved_items.json')
+DEFAULT_SAVED_ITEMS = {"saved_flights": [], "saved_searches": []}
+
+
+def normalize_saved_flight(flight):
+    """Sanitize a saved-flight dict's `tags` (deduped, trimmed, sorted case-insensitively)
+    and ensure `saved_at` exists.
+    """
+    tags = flight.get("tags", [])
+    if not isinstance(tags, list):
+        tags = []
+    seen = {}
+    for tag in tags:
+        if isinstance(tag, str) and tag.strip():
+            seen.setdefault(tag.strip().lower(), tag.strip())
+    flight["tags"] = sorted(seen.values(), key=str.lower)
+    if not isinstance(flight.get("saved_at"), str) or not flight["saved_at"]:
+        flight["saved_at"] = datetime.now(timezone.utc).isoformat()
+    return flight
+
+
+def normalize_saved_search(search):
+    """Ensure a saved-search dict has an id/description/filters/saved_at."""
+    if not isinstance(search.get("id"), str) or not search["id"]:
+        search["id"] = secrets.token_urlsafe(8)
+    if not isinstance(search.get("description"), str):
+        search["description"] = ""
+    search["description"] = search["description"].strip()
+    if not isinstance(search.get("filters"), (dict, list)):
+        search["filters"] = {"kind": "group", "logic": "AND", "children": []}
+    if not isinstance(search.get("saved_at"), str) or not search["saved_at"]:
+        search["saved_at"] = datetime.now(timezone.utc).isoformat()
+    return search
+
+
+def load_settings():
+    try:
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            settings = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        settings = {}
+    if settings.get("theme") not in ("dark", "light"):
+        settings["theme"] = DEFAULT_SETTINGS["theme"]
+    if not isinstance(settings.get("simbrief_pilot_id"), str):
+        settings["simbrief_pilot_id"] = DEFAULT_SETTINGS["simbrief_pilot_id"]
+    return settings
+
+
+def save_settings(settings):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(settings, f)
+
+
+def load_saved_items():
+    try:
+        with open(SAVED_ITEMS_FILE, "r", encoding="utf-8") as f:
+            items = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        items = {}
+    if not isinstance(items.get("saved_flights"), list):
+        items["saved_flights"] = []
+    if not isinstance(items.get("saved_searches"), list):
+        items["saved_searches"] = []
+    items["saved_flights"] = [normalize_saved_flight(f) for f in items["saved_flights"] if isinstance(f, dict)]
+    items["saved_searches"] = [normalize_saved_search(s) for s in items["saved_searches"] if isinstance(s, dict)]
+    return items
+
+
+def save_saved_items(items):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(SAVED_ITEMS_FILE, "w", encoding="utf-8") as f:
+        json.dump(items, f)
+
+
+def ensure_data_files():
+    """Create settings.json / saved_items.json with defaults on first run. Migrates a
+    legacy 'saved_flights' list out of settings.json into the new file, if found.
+    """
+    os.makedirs(DATA_DIR, exist_ok=True)
+    if not os.path.exists(SETTINGS_FILE):
+        save_settings(dict(DEFAULT_SETTINGS))
+    if not os.path.exists(SAVED_ITEMS_FILE):
+        legacy_flights = []
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                raw_settings = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            raw_settings = {}
+        if isinstance(raw_settings.get("saved_flights"), list):
+            legacy_flights = raw_settings.pop("saved_flights")
+            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+                json.dump(raw_settings, f)
+        save_saved_items({"saved_flights": legacy_flights, "saved_searches": []})
+
+
+def flight_key(flight):
+    """Stable identity for a route record - shared with the client-side `flightKey` in
+    app.js so save/unsave requests and the "already saved" check agree on duplicates.
+    """
+    return "|".join(str(flight.get(field, "")) for field in ("reg", "flight", "dep", "arr", "date"))

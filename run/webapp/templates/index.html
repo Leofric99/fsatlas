@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flightsim Atlas</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <div id="map"></div>
+
+  <header class="topbar">
+    <button id="sidebar-toggle" class="topbar-icon-btn" type="button" title="Toggle filters" aria-label="Toggle filters">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line><circle cx="9" cy="7" r="2" fill="currentColor" stroke="none"></circle><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="11" cy="17" r="2" fill="currentColor" stroke="none"></circle></svg>
+    </button>
+    <div class="brand">
+      <img class="logo" src="{{ url_for('static', filename='images/fsatlas-logo.png') }}" alt="FSAtlas" width="1377" height="768">
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <div id="map-type-fab-wrap" class="fab-wrap">
+        <button id="map-type-fab" class="topbar-icon-btn" type="button" title="Map style" aria-label="Map style">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        </button>
+        <div id="map-type-menu" class="popover-menu"></div>
+      </div>
+      <button id="theme-toggle" class="topbar-icon-btn" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode"></button>
+      <button id="saved-toggle" class="topbar-icon-btn" type="button" title="Saved Items" aria-label="Saved Items">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      </button>
+      <button id="settings-toggle" class="topbar-icon-btn" type="button" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
+    </div>
+    <label class="map-type"><select id="map-type"></select></label>
+  </header>
+
+  <div id="sidebar-scrim"></div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-head">
+      <span class="sidebar-title">Filters</span>
+      <span id="filters-count-badge" class="filters-count-badge zero">none active</span>
+      <button id="sidebar-close" class="topbar-icon-btn sidebar-close" type="button" aria-label="Close filters">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div id="filters-wrap" class="sidebar-body">
+      <div id="filters"></div>
+    </div>
+    <div class="sidebar-foot">
+      <div id="flights-count" class="sidebar-result"></div>
+      <div class="sidebar-foot-actions">
+        <button id="save-search-btn" class="btn-icon" type="button" title="Save the current filters as a search" aria-label="Save the current filters as a search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        </button>
+        <button id="reset" class="btn-ghost" type="button" title="Reset filters" aria-label="Reset filters">Reset</button>
+        <button id="apply" class="btn-primary" type="button">Apply</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="info" class="info-panel">
+    <div class="panel-header">Flights <span class="close-btn" id="info-close">&times;</span></div>
+    <div id="title-loc" style="margin-bottom:10px; opacity:0.8;"></div>
+    <div id="panel-content" class="panel-content">Select an airport...</div>
+  </div>
+
+  <template id="legend-template">
+    <div class="legend-panel">
+      <span class="legend-title">Map Legend</span>
+      <div class="legend-row"><span class="legend-dot" data-rank="3"></span>&gt; 100 non-stop destinations</div>
+      <div class="legend-row"><span class="legend-dot" data-rank="2"></span>&gt; 30 non-stop destinations</div>
+      <div class="legend-row"><span class="legend-dot" data-rank="1"></span>&gt; 7 non-stop destinations</div>
+      <div class="legend-row"><span class="legend-dot" data-rank="0"></span>&lt; 7 non-stop destinations</div>
+    </div>
+    <div class="legend-tab" title="Toggle map legend" aria-label="Toggle map legend">
+      <span class="legend-tab-label">Map Legend</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </div>
+  </template>
+
+  <div id="saved-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Saved Items</h2>
+        <button id="saved-close" class="icon" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="saved-section">
+          <button class="saved-section-toggle collapsed" type="button" aria-expanded="false">
+            <svg class="saved-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <span>Saved Routes</span>
+            <span id="saved-routes-count" class="saved-section-count"></span>
+          </button>
+          <div class="saved-section-wrap collapsed">
+            <div class="saved-section-inner">
+              <div class="saved-toolbar">
+                <label class="saved-sort-label">Sort by
+                  <select id="saved-sort">
+                    <option value="saved-desc">Saved (Newest First)</option>
+                    <option value="saved-asc">Saved (Oldest First)</option>
+                    <option value="distance-asc">Distance (Shortest First)</option>
+                    <option value="distance-desc">Distance (Longest First)</option>
+                    <option value="tag">Tag (A-Z)</option>
+                  </select>
+                </label>
+              </div>
+              <div id="saved-list" class="saved-list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="saved-section">
+          <button class="saved-section-toggle collapsed" type="button" aria-expanded="false">
+            <svg class="saved-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <span>Saved Searches</span>
+            <span id="saved-searches-count" class="saved-section-count"></span>
+          </button>
+          <div class="saved-section-wrap collapsed">
+            <div class="saved-section-inner">
+              <div id="saved-searches-list" class="saved-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button id="settings-close" class="icon" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label for="simbrief-pilot-id">SimBrief Pilot ID or Username</label>
+        <input id="simbrief-pilot-id" type="text" placeholder="e.g. 123456 or jdoe">
+        <p class="modal-hint">
+          Used to pre-fill the Pilot ID when exporting a flight to SimBrief. Find yours on
+          SimBrief's <a href="https://www.simbrief.com/system/profile.php#settings" target="_blank" rel="noopener">Account Settings</a> page.
+        </p>
+        <div class="modal-actions">
+          <button id="simbrief-verify" class="secondary" type="button">Verify</button>
+          <span id="simbrief-status"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="settings-cancel" class="secondary" type="button">Cancel</button>
+        <button id="settings-save" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="save-search-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Save Search</h2>
+        <button id="save-search-close" class="icon" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label for="save-search-description">Brief Description</label>
+        <input id="save-search-description" type="text" placeholder="e.g. Long-haul United flights" maxlength="120">
+      </div>
+      <div class="modal-footer">
+        <button id="save-search-cancel" class="secondary" type="button">Cancel</button>
+        <button id="save-search-confirm" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="connection-modal" class="modal-overlay">
+    <div class="modal connection-modal">
+      <div class="modal-header">
+        <h2>Connection Lost</h2>
+        <button id="connection-close" class="icon" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86l-8.18 14.18A2 2 0 0 0 3.82 21h16.36a2 2 0 0 0 1.71-2.96L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+        <p class="modal-message">Lost connection to the FSAtlas server. Make sure it is still running, then try again.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

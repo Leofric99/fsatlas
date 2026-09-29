@@ -1,0 +1,14 @@
+README.md
+  h_2fb16336b691a1 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa97104b4814df665148abce4e6a8fb18be2fc6f",
+  "prompts": {},
+  "humans": {
+    "h_2fb16336b691a1": {
+      "author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

@@ -4,7 +4,7 @@
 [![Source Code](https://img.shields.io/badge/source-GitHub-181717?logo=github)](https://github.com/Leofric99/fsatlas)
 
 <p align="center">
-  <img src="images/FSAtlas%20Logo.png" alt="FSAtlas logo" width="180">
+  <img src="run/images/FSAtlas%20Logo.png" alt="FSAtlas logo" width="180">
 </p>
 
 <p align="center">

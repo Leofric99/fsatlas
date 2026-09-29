@@ -2,6 +2,8 @@
 and exposes plain functions for column metadata, filtering and aggregation. No new
 data pipeline - this wraps the existing run.data_loader/run.filtering/run.config.
 """
+from math import asin, cos, radians, sin, sqrt
+
 import pandas as pd
 
 from run import config, data_loader, filtering
@@ -18,12 +20,18 @@ OTHER_COLUMNS = {"distance", "rough_flight_time"}
 # list, keyed by the name they're exposed under in the resulting airport record.
 _AIRPORT_FIELDS = {
     'airport_iata': 'iata',
+    'airport_icao': 'icao',
     'airport': 'name',
     'airport_city': 'city',
     'airport_country': 'country',
     'airport_lat': 'lat',
     'airport_lon': 'lon',
 }
+
+# Match radius used to cross-reference an imported scenery location's (rough) coordinates
+# against a known airport's official lat/lon (see match_scenery below).
+_SCENERY_MATCH_RADIUS_MILES = 1.0
+_EARTH_RADIUS_MILES = 3958.8
 
 _DEFAULT_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 _DEFAULT_TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -168,6 +176,32 @@ def _filtered_df(filters):
     return filtering.apply_filters(df, filters)
 
 
+def _unique_airports_df(df):
+    """Dedup dep_/arr_ airport columns down to one row per IATA code (iata/icao/name/
+    city/country/lat/lon) - the shared basis for both get_airports (ranked, filtered) and
+    get_airport_directory (unfiltered, used for scenery cross-referencing).
+    """
+    frames = []
+    for prefix in ('dep', 'arr'):
+        rename = {f'{prefix}_{suffix}': target for suffix, target in _AIRPORT_FIELDS.items()}
+        if not set(rename).issubset(df.columns):
+            continue
+        frames.append(df[list(rename)].rename(columns=rename))
+
+    if not frames:
+        return pd.DataFrame(columns=list(_AIRPORT_FIELDS.values()))
+
+    combined = pd.concat(frames, ignore_index=True)
+    combined['iata'] = combined['iata'].astype(str).str.strip()
+    combined = combined[(combined['iata'] != '') & (combined['iata'] != 'nan')]
+    combined['icao'] = combined['icao'].astype(str).str.strip().str.upper()
+    combined['lat'] = pd.to_numeric(combined['lat'], errors='coerce')
+    combined['lon'] = pd.to_numeric(combined['lon'], errors='coerce')
+    combined.dropna(subset=['lat', 'lon'], inplace=True)
+    combined = combined[~((combined['lat'] == 0) & (combined['lon'] == 0))]  # Null island check
+    return combined.drop_duplicates(subset='iata', keep='first')
+
+
 def get_airports(filters):
     """Unique airports appearing in the filtered dataset, ranked by *global* (unfiltered)
     destination count so colors reflect overall network connectivity regardless of the
@@ -179,35 +213,22 @@ def get_airports(filters):
     airports = {}
 
     if not df.empty:
-        frames = []
-        for prefix in ('dep', 'arr'):
-            rename = {f'{prefix}_{suffix}': target for suffix, target in _AIRPORT_FIELDS.items()}
-            if not set(rename).issubset(df.columns):
-                continue
-            frames.append(df[list(rename)].rename(columns=rename))
+        combined = _unique_airports_df(df)
 
-        if frames:
-            combined = pd.concat(frames, ignore_index=True)
-            combined['iata'] = combined['iata'].astype(str).str.strip()
-            combined = combined[(combined['iata'] != '') & (combined['iata'] != 'nan')]
-            combined['lat'] = pd.to_numeric(combined['lat'], errors='coerce')
-            combined['lon'] = pd.to_numeric(combined['lon'], errors='coerce')
-            combined.dropna(subset=['lat', 'lon'], inplace=True)
-            combined = combined[~((combined['lat'] == 0) & (combined['lon'] == 0))]  # Null island check
-            combined = combined.drop_duplicates(subset='iata', keep='first')
-
+        if not combined.empty:
             counts = combined['iata'].map(airport_counts).fillna(0)
             rank = pd.Series(0, index=combined.index)
             rank[counts > 7] = 1
             rank[counts > 30] = 2
             rank[counts > 100] = 3
 
-            for iata, name, city, country, lat, lon, rk in zip(
-                combined['iata'], combined['name'], combined['city'], combined['country'],
-                combined['lat'], combined['lon'], rank,
+            for iata, icao, name, city, country, lat, lon, rk in zip(
+                combined['iata'], combined['icao'], combined['name'], combined['city'],
+                combined['country'], combined['lat'], combined['lon'], rank,
             ):
                 airports[iata] = {
                     "iata": iata,
+                    "icao": icao,
                     "name": str(name),
                     "city": str(city),
                     "country": str(country),
@@ -219,6 +240,66 @@ def get_airports(filters):
     # Draw larger, better-connected airports on top of smaller airports.
     sorted_airports = sorted(airports.values(), key=lambda x: x['rank'])
     return sorted_airports, len(df)
+
+
+def get_airport_directory():
+    """Every known airport (iata/icao/name/city/lat/lon), unfiltered - cached once, used
+    to cross-reference imported flight-sim scenery locations against real airports.
+    """
+    if 'airport_directory' not in _state:
+        combined = _unique_airports_df(load()['df'])
+        _state['airport_directory'] = [
+            {
+                "iata": row.iata, "icao": row.icao, "name": str(row.name_),
+                "city": str(row.city), "lat": float(row.lat), "lon": float(row.lon),
+            }
+            for row in combined.rename(columns={'name': 'name_'}).itertuples()
+        ]
+    return _state['airport_directory']
+
+
+def _haversine_miles(lat1, lon1, lat2, lon2):
+    p1, p2 = radians(lat1), radians(lat2)
+    dphi = radians(lat2 - lat1)
+    dlambda = radians(lon2 - lon1)
+    a = sin(dphi / 2) ** 2 + cos(p1) * cos(p2) * sin(dlambda / 2) ** 2
+    return 2 * _EARTH_RADIUS_MILES * asin(sqrt(a))
+
+
+def match_scenery(candidates):
+    """Cross-reference client-scanned scenery candidates (`{icao, lat, lon, source}`,
+    lat/lon and icao both optional) against the real airport directory: an exact ICAO
+    match wins outright (using the airport's official lat/lon instead of whatever rough
+    coordinate the scan produced); failing that, a candidate with coordinates is matched
+    to the nearest known airport within `_SCENERY_MATCH_RADIUS_MILES`. Returns
+    (matched_airports, unmatched_source_labels).
+    """
+    directory = get_airport_directory()
+    by_icao = {a['icao']: a for a in directory if a['icao']}
+
+    matched = {}
+    unmatched = []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        icao = str(candidate.get('icao') or '').strip().upper()
+        lat, lon = candidate.get('lat'), candidate.get('lon')
+
+        airport = by_icao.get(icao) if icao else None
+        if airport is None and isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+            best, best_dist = None, _SCENERY_MATCH_RADIUS_MILES
+            for a in directory:
+                dist = _haversine_miles(lat, lon, a['lat'], a['lon'])
+                if dist <= best_dist:
+                    best, best_dist = a, dist
+            airport = best
+
+        if airport:
+            matched[airport['icao'] or airport['iata']] = airport
+        else:
+            unmatched.append(str(candidate.get('source') or icao or 'unknown'))
+
+    return list(matched.values()), unmatched
 
 
 def get_flights(iata, filters):

@@ -144,10 +144,45 @@
           <button id="simbrief-verify" class="secondary" type="button">Verify</button>
           <span id="simbrief-status"></span>
         </div>
+
+        <hr class="modal-divider">
+
+        <label>Flight Sim Scenery</label>
+        <p class="modal-hint">
+          Import your installed scenery add-ons (MSFS Community packages, X-Plane Custom
+          Scenery, etc.) to show them as star markers on the map. Works from any browser
+          on the machine where your scenery is installed, even if FSAtlas itself is
+          running elsewhere (e.g. in Docker) - the folder is read locally by your browser,
+          never uploaded.
+        </p>
+        <div class="modal-actions">
+          <button id="scenery-import-btn" class="secondary" type="button">Import Scenery Folder&hellip;</button>
+          <span id="scenery-status"></span>
+        </div>
+        <input id="scenery-folder-input" type="file" webkitdirectory directory multiple hidden>
       </div>
       <div class="modal-footer">
         <button id="settings-cancel" class="secondary" type="button">Cancel</button>
         <button id="settings-save" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scenery-warning-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Replace Imported Scenery?</h2>
+        <button id="scenery-warning-close" class="icon" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-message" id="scenery-warning-message">
+          Importing a new scenery folder will overwrite your previously imported scenery
+          list. This cannot be undone. Continue?
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button id="scenery-warning-cancel" class="secondary" type="button">Cancel</button>
+        <button id="scenery-warning-continue" class="danger" type="button">Overwrite &amp; Import</button>
       </div>
     </div>
   </div>

@@ -12,10 +12,13 @@ from datetime import datetime, timezone
 DATA_DIR = os.environ.get("FSATLAS_DATA_DIR") or os.path.dirname(os.path.dirname(__file__))
 
 SETTINGS_FILE = os.path.join(DATA_DIR, 'settings.json')
-DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": ""}
+DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": "", "scenery_overlay": False}
 
 SAVED_ITEMS_FILE = os.path.join(DATA_DIR, 'saved_items.json')
 DEFAULT_SAVED_ITEMS = {"saved_flights": [], "saved_searches": []}
+
+SCENERY_FILE = os.path.join(DATA_DIR, 'installed_scenery.json')
+DEFAULT_SCENERY = {"sceneries": [], "imported_at": None, "unmatched_count": 0}
 
 
 def normalize_saved_flight(flight):
@@ -59,6 +62,8 @@ def load_settings():
         settings["theme"] = DEFAULT_SETTINGS["theme"]
     if not isinstance(settings.get("simbrief_pilot_id"), str):
         settings["simbrief_pilot_id"] = DEFAULT_SETTINGS["simbrief_pilot_id"]
+    if not isinstance(settings.get("scenery_overlay"), bool):
+        settings["scenery_overlay"] = DEFAULT_SETTINGS["scenery_overlay"]
     return settings
 
 
@@ -89,13 +94,37 @@ def save_saved_items(items):
         json.dump(items, f)
 
 
+def load_scenery():
+    try:
+        with open(SCENERY_FILE, "r", encoding="utf-8") as f:
+            scenery = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        scenery = {}
+    if not isinstance(scenery.get("sceneries"), list):
+        scenery["sceneries"] = []
+    if not isinstance(scenery.get("imported_at"), str):
+        scenery["imported_at"] = None
+    if not isinstance(scenery.get("unmatched_count"), int):
+        scenery["unmatched_count"] = 0
+    return scenery
+
+
+def save_scenery(scenery):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(SCENERY_FILE, "w", encoding="utf-8") as f:
+        json.dump(scenery, f)
+
+
 def ensure_data_files():
-    """Create settings.json / saved_items.json with defaults on first run. Migrates a
-    legacy 'saved_flights' list out of settings.json into the new file, if found.
+    """Create settings.json / saved_items.json / installed_scenery.json with defaults on
+    first run. Migrates a legacy 'saved_flights' list out of settings.json into the new
+    file, if found.
     """
     os.makedirs(DATA_DIR, exist_ok=True)
     if not os.path.exists(SETTINGS_FILE):
         save_settings(dict(DEFAULT_SETTINGS))
+    if not os.path.exists(SCENERY_FILE):
+        save_scenery(dict(DEFAULT_SCENERY))
     if not os.path.exists(SAVED_ITEMS_FILE):
         legacy_flights = []
         try:

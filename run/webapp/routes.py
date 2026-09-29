@@ -3,6 +3,7 @@ lives in storage.py. Expected "not found"/"invalid input" cases return (payload,
 tuples rather than being caught with try/except.
 """
 import json
+from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, render_template, request
 
@@ -39,6 +40,7 @@ def meta():
         "map_types": data.get_map_types(),
         "theme": settings["theme"],
         "simbrief_pilot_id": settings["simbrief_pilot_id"],
+        "scenery_overlay": settings["scenery_overlay"],
     })
 
 
@@ -76,6 +78,11 @@ def post_settings():
         if not isinstance(pilot_id, str):
             return {"error": "Invalid settings payload"}, 400
         settings["simbrief_pilot_id"] = pilot_id.strip()
+    if "scenery_overlay" in payload:
+        overlay = payload["scenery_overlay"]
+        if not isinstance(overlay, bool):
+            return {"error": "Invalid settings payload"}, 400
+        settings["scenery_overlay"] = overlay
     storage.save_settings(settings)
     return jsonify({"ok": True})
 
@@ -164,3 +171,28 @@ def simbrief_export():
         return {"error": "Invalid flight payload"}, 400
     pilot_id = storage.load_settings().get("simbrief_pilot_id", "")
     return jsonify({"url": simbrief_api.build_export_url(flight, pilot_id)})
+
+
+@bp.get('/api/scenery')
+def get_scenery():
+    return jsonify(storage.load_scenery())
+
+
+@bp.post('/api/scenery/import')
+def import_scenery():
+    """Body: {candidates: [{icao?, lat?, lon?, source}]} - raw scenery locations already
+    scanned client-side (see app.js scanSceneryFiles), matched here against the real
+    airport directory and written to installed_scenery.json, REPLACING any previous
+    import wholesale (the client is expected to warn the user about this before calling).
+    """
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get("candidates"), list):
+        return {"error": "Invalid scenery import payload"}, 400
+    matched, unmatched = data.match_scenery(payload["candidates"])
+    scenery = {
+        "sceneries": matched,
+        "imported_at": datetime.now(timezone.utc).isoformat(),
+        "unmatched_count": len(unmatched),
+    }
+    storage.save_scenery(scenery)
+    return jsonify({"ok": True, "matched": len(matched), "unmatched": len(unmatched), "sceneries": matched})

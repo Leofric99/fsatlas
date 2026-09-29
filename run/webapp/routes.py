@@ -184,6 +184,12 @@ def get_scenery():
     return jsonify(storage.load_scenery())
 
 
+@bp.get('/api/scenery/airports')
+def get_scenery_airports():
+    airports = sorted(data.get_airport_directory(), key=lambda airport: (airport['city'], airport['name']))
+    return jsonify(airports)
+
+
 @bp.post('/api/scenery/import')
 def import_scenery():
     """Body: {candidates: [{icao?, lat?, lon?, source}]} - raw scenery locations already
@@ -220,3 +226,38 @@ def import_scenery():
         "ok": True, "matched": len(matched), "unmatched": len(match_errors),
         "sceneries": matched, "errors": errors,
     })
+
+
+@bp.post('/api/scenery/resolve')
+def resolve_scenery_error():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return {"error": "Invalid scenery resolution payload"}, 400
+    source = payload.get("source")
+    airport_id = str(payload.get("airport_id") or "").strip().upper()
+    if not isinstance(source, str) or not source or not airport_id:
+        return {"error": "A scenery package and airport are required"}, 400
+
+    scenery = storage.load_scenery()
+    errors = scenery.get("errors", [])
+    if not any(error.get("source") == source and error.get("stage") == "airport_match" for error in errors):
+        return {"error": "That scenery package is not awaiting airport resolution"}, 404
+
+    airport = next((
+        airport for airport in data.get_airport_directory()
+        if airport_id in (str(airport.get("icao") or "").upper(), str(airport.get("iata") or "").upper())
+    ), None)
+    if airport is None:
+        return {"error": "Selected airport was not found in the loaded flight data"}, 404
+
+    sceneries = {item.get("icao") or item.get("iata"): item for item in scenery.get("sceneries", [])}
+    sceneries[airport.get("icao") or airport["iata"]] = airport
+    scenery["sceneries"] = list(sceneries.values())
+    scenery["errors"] = [
+        error for error in errors
+        if not (error.get("source") == source and error.get("stage") == "airport_match")
+    ]
+    scenery["unmatched_count"] = sum(error.get("stage") == "airport_match" for error in scenery["errors"])
+    scenery["imported_at"] = datetime.now(timezone.utc).isoformat()
+    storage.save_scenery(scenery)
+    return jsonify({"ok": True, **scenery})

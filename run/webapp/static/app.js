@@ -1010,7 +1010,10 @@
   const sceneryErrorsEl = document.getElementById('scenery-errors');
   const sceneryErrorsSummary = document.getElementById('scenery-errors-summary');
   const sceneryErrorsCode = document.getElementById('scenery-errors-code');
+  const sceneryErrorResolutions = document.getElementById('scenery-error-resolutions');
   const sceneryWarningModal = document.getElementById('scenery-warning-modal');
+  let sceneryAirportOptions = null;
+  let sceneryErrorsRenderId = 0;
 
   function updateSceneryErrors(errors) {
     sceneryImportErrors = Array.isArray(errors) ? errors : [];
@@ -1018,6 +1021,85 @@
     sceneryErrorsEl.removeAttribute('open');
     sceneryErrorsSummary.textContent = `Import details (${sceneryImportErrors.length})`;
     sceneryErrorsCode.textContent = JSON.stringify(sceneryImportErrors, null, 2);
+    renderSceneryErrorResolutions(sceneryImportErrors);
+  }
+
+  async function renderSceneryErrorResolutions(errors) {
+    const renderId = ++sceneryErrorsRenderId;
+    const unresolved = errors.filter(error => error.stage === 'airport_match' && error.source);
+    sceneryErrorResolutions.replaceChildren();
+    if (!unresolved.length) return;
+
+    if (!sceneryAirportOptions) {
+      try {
+        const response = await fsatlasFetch('/api/scenery/airports');
+        if (!response.ok) throw new Error('Could not load known airports');
+        sceneryAirportOptions = await response.json();
+      } catch (err) {
+        if (renderId === sceneryErrorsRenderId) {
+          const message = document.createElement('p');
+          message.className = 'modal-hint';
+          message.textContent = 'Airport choices could not be loaded. Reload Settings to try again.';
+          sceneryErrorResolutions.append(message);
+        }
+        return;
+      }
+    }
+    if (renderId !== sceneryErrorsRenderId) return;
+
+    unresolved.forEach(error => {
+      const row = document.createElement('div');
+      row.className = 'scenery-error-resolution';
+      const packageName = document.createElement('span');
+      packageName.className = 'scenery-error-package';
+      packageName.textContent = error.source;
+
+      const select = document.createElement('select');
+      select.setAttribute('aria-label', `Airport for scenery package ${error.source}`);
+      const placeholder = new Option('Select airport...', '');
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      select.add(placeholder);
+      sceneryAirportOptions.forEach(airport => {
+        const code = airport.icao || airport.iata;
+        const codes = [airport.icao, airport.iata].filter(Boolean).join(' / ');
+        select.add(new Option(`${codes} - ${airport.name} (${airport.city})`, code));
+      });
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'secondary';
+      button.textContent = 'Assign';
+      button.disabled = true;
+      select.addEventListener('change', () => { button.disabled = !select.value; });
+      button.addEventListener('click', () => resolveSceneryAirport(error.source, select.value, button));
+
+      row.append(packageName, select, button);
+      sceneryErrorResolutions.append(row);
+    });
+  }
+
+  async function resolveSceneryAirport(source, airportId, button) {
+    button.disabled = true;
+    button.textContent = 'Saving...';
+    try {
+      const response = await fsatlasFetch('/api/scenery/resolve', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source, airport_id: airportId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Airport assignment failed');
+      sceneryData = result.sceneries || [];
+      updateSceneryErrors(result.errors || []);
+      if (sceneryOverlayEnabled) rebuildSceneryMarkers();
+      sceneryStatusEl.style.color = 'var(--accent)';
+      sceneryStatusEl.textContent = `Assigned ${source} to ${airportId}.`;
+    } catch (err) {
+      button.disabled = false;
+      button.textContent = 'Retry';
+      sceneryStatusEl.style.color = 'var(--danger)';
+      sceneryStatusEl.textContent = err.message || 'Airport assignment failed.';
+    }
   }
 
   function setSceneryProgress(active, message = '') {

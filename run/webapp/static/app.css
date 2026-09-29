@@ -325,11 +325,24 @@ select.logic {
 .scenery-errors { display: none; margin-top: 12px; font-size: 12px; }
 .scenery-errors.visible { display: block; }
 .scenery-errors summary { color: var(--danger); cursor: pointer; font-weight: 600; }
+.scenery-error-resolutions { display: grid; gap: 8px; margin-top: 10px; }
+.scenery-error-resolution {
+  display: grid; grid-template-columns: minmax(100px, 1fr) minmax(180px, 2fr) auto;
+  align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface-2);
+}
+.scenery-error-package { min-width: 0; overflow-wrap: anywhere; color: var(--text); font-weight: 600; }
+.scenery-error-resolution select { min-width: 0; width: 100%; margin: 0; }
+.scenery-error-resolution button { white-space: nowrap; }
 .scenery-error-block {
   max-height: 240px; overflow: auto; margin: 8px 0 0; padding: 10px;
   border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
   color: var(--text); font: 11px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
   white-space: pre-wrap; overflow-wrap: anywhere;
+}
+@media (max-width: 520px) {
+  .scenery-error-resolution { grid-template-columns: minmax(0, 1fr) auto; }
+  .scenery-error-package { grid-column: 1 / -1; }
 }
 @keyframes scenery-spin { to { transform: rotate(360deg); } }
 @keyframes scenery-progress {

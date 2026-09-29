@@ -275,7 +275,7 @@ def match_scenery(candidates):
     (matched_airports, structured_import_errors).
     """
     directory = get_airport_directory()
-    by_icao = {a['icao']: a for a in directory if a['icao']}
+    by_icao = {str(a['icao']).strip().upper(): a for a in directory if a['icao']}
 
     matched = {}
     errors = []

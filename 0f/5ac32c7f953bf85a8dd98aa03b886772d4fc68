@@ -1,0 +1,41 @@
+run/webapp/static/app.js
+  s_56698eadba18e4::t_4761752abd8750 1389
+  s_56698eadba18e4::t_f3cac5e36c461f 1414-1415
+  s_56698eadba18e4::t_1aaa4476299ed8 210
+  s_56698eadba18e4::t_e789c01777f8c8 1105-1120
+  s_56698eadba18e4::t_5bf366eaea6bfb 952
+  s_56698eadba18e4::t_1780138dbc8527 62-64
+  s_56698eadba18e4::t_0d7cfbeb6c8a84 125-165
+  s_56698eadba18e4::t_d5ca8f14ab2773 989-1084
+run/webapp/data.py
+  s_56698eadba18e4::t_7fbb79c11e9901 5-6,23,31-35,179-204,216,218,225-227,231,245-288,290-302
+  s_56698eadba18e4::t_390a90455dd01a 289
+  s_56698eadba18e4::t_3a526eed394508 303-304
+run/webapp/templates/index.html
+  s_56698eadba18e4::t_3c4912f30b9da6 147-162,171-186
+  s_56698eadba18e4::t_895c6c3b503e6d 187-189
+run/webapp/storage.py
+  s_56698eadba18e4::t_d9e966c887a7d2 15,20-22,65-66,97-117,119-121,126-127
+run/webapp/static/app.css
+  s_56698eadba18e4::t_d5a6d4ea4b883e 137-155,309,311,313-314,322-326
+run/webapp/routes.py
+  s_56698eadba18e4::t_11f3cc93b3e2e0 6,43,81-85,174-198
+run/installed_scenery.json
+  s_56698eadba18e4::t_7b7e98e81ed6aa 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f5ac32c7f953bf85a8dd98aa03b886772d4fc68",
+  "prompts": {},
+  "sessions": {
+    "s_56698eadba18e4": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "70f5201f-90f5-45f2-8f7a-f89331640236",
+        "model": "copilot/claude-sonnet-5"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

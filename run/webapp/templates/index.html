@@ -149,17 +149,14 @@
 
         <label>Flight Sim Scenery</label>
         <p class="modal-hint">
-          Import your installed scenery add-ons (MSFS Community packages, X-Plane Custom
-          Scenery, etc.) to show them as star markers on the map. Works from any browser
-          on the machine where your scenery is installed, even if FSAtlas itself is
-          running elsewhere (e.g. in Docker) - the folder is read locally by your browser,
-          never uploaded.
+          Choose your MSFS Community or X-Plane Custom Scenery folder. Your browser checks
+          package names and small manifests locally; scenery files are never uploaded.
+          For Docker on this PC, open FSAtlas at http://localhost:8777 in Chrome or Edge.
         </p>
         <div class="modal-actions">
           <button id="scenery-import-btn" class="secondary" type="button">Import Scenery Folder&hellip;</button>
           <span id="scenery-status"></span>
         </div>
-        <input id="scenery-folder-input" type="file" webkitdirectory directory multiple hidden>
       </div>
       <div class="modal-footer">
         <button id="settings-cancel" class="secondary" type="button">Cancel</button>

@@ -986,19 +986,14 @@
     closeSettings();
   });
 
-  // --- Scenery import: folder contents are scanned entirely client-side (webkitdirectory
-  // gives the browser File objects with relative paths, never an absolute filesystem
-  // path) - this is what makes it work regardless of where FSAtlas itself is hosted
-  // (e.g. Docker on another machine): only the browser needs local access to the folder,
-  // the server never sees a path, just the scan results. ---
+  // --- Scenery import: scan package directories client-side and read only manifests. ---
   const sceneryImportBtn = document.getElementById('scenery-import-btn');
-  const sceneryFolderInput = document.getElementById('scenery-folder-input');
   const sceneryStatusEl = document.getElementById('scenery-status');
   const sceneryWarningModal = document.getElementById('scenery-warning-modal');
 
   sceneryImportBtn.addEventListener('click', () => {
     if (sceneryData.length > 0) sceneryWarningModal.classList.add('open');
-    else sceneryFolderInput.click();
+    else chooseSceneryFolder();
   });
   function closeSceneryWarning() { sceneryWarningModal.classList.remove('open'); }
   document.getElementById('scenery-warning-cancel').addEventListener('click', closeSceneryWarning);
@@ -1006,7 +1001,7 @@
   sceneryWarningModal.addEventListener('click', e => { if (e.target === sceneryWarningModal) closeSceneryWarning(); });
   document.getElementById('scenery-warning-continue').addEventListener('click', () => {
     closeSceneryWarning();
-    sceneryFolderInput.click();
+    chooseSceneryFolder();
   });
 
   function extractIcao(text) {
@@ -1019,37 +1014,31 @@
   // server's within-a-mile cross-reference against the real airport). Deliberately does
   // NOT attempt to parse compiled .bgl scenery binaries - there's no reliably documented
   // public format for that, so a folder-name/manifest ICAO guess is used there instead.
-  async function scanSceneryFiles(fileList) {
-    const topFolders = new Map();
-    [...fileList].forEach(f => {
-      const path = f.webkitRelativePath || f.name;
-      const top = path.split('/')[0];
-      if (!topFolders.has(top)) topFolders.set(top, []);
-      topFolders.get(top).push(f);
-    });
-
+  async function scanSceneryDirectory(directoryHandle) {
     const candidates = [];
-    for (const [folderName, folderFiles] of topFolders) {
+    for await (const [folderName, packageHandle] of directoryHandle.entries()) {
+      if (packageHandle.kind !== 'directory') continue;
       let icao = null, lat = null, lon = null;
 
-      const manifestFile = folderFiles.find(f => /(^|\/)manifest\.json$/i.test(f.webkitRelativePath || f.name));
-      if (manifestFile) {
-        try {
-          const manifest = JSON.parse(await manifestFile.text());
-          icao = extractIcao(manifest.title);
-        } catch (err) { /* not valid JSON - fall through to a folder-name guess below */ }
-      }
+      try {
+        const manifestHandle = await packageHandle.getFileHandle('manifest.json');
+        const manifestFile = await manifestHandle.getFile();
+        const manifest = JSON.parse(await manifestFile.text());
+        icao = extractIcao(manifest.title);
+      } catch (err) { /* absent or invalid manifest - use the folder name as a fallback */ }
 
-      const earthNavFile = folderFiles.find(f => /(^|\/)Earth nav data\//i.test(f.webkitRelativePath || f.name));
-      if (earthNavFile) {
-        const path = earthNavFile.webkitRelativePath || earthNavFile.name;
-        const gridMatch = path.match(/Earth nav data\/([+-]\d+)([+-]\d+)/i);
-        if (gridMatch) {
+      try {
+        const earthNavHandle = await packageHandle.getDirectoryHandle('Earth nav data');
+        for await (const [gridName, gridHandle] of earthNavHandle.entries()) {
+          if (gridHandle.kind !== 'directory') continue;
+          const gridMatch = gridName.match(/^([+-]\d+)([+-]\d+)$/);
+          if (!gridMatch) continue;
           const gLat = parseInt(gridMatch[1], 10), gLon = parseInt(gridMatch[2], 10);
           lat = gLat + (gLat >= 0 ? 0.5 : -0.5);
           lon = gLon + (gLon >= 0 ? 0.5 : -0.5);
+          break;
         }
-      }
+      } catch (err) { /* no X-Plane Earth nav data directory */ }
 
       if (!icao) icao = extractIcao(folderName);
       if (icao || (lat !== null && lon !== null)) candidates.push({ icao, lat, lon, source: folderName });
@@ -1057,13 +1046,27 @@
     return candidates;
   }
 
-  sceneryFolderInput.addEventListener('change', async () => {
-    const fileList = sceneryFolderInput.files;
-    if (!fileList || !fileList.length) return;
-    sceneryStatusEl.style.color = 'var(--muted)';
-    sceneryStatusEl.textContent = 'Scanning folder...';
+  async function chooseSceneryFolder() {
+    if (typeof window.showDirectoryPicker !== 'function') {
+      sceneryStatusEl.style.color = 'var(--danger)';
+      sceneryStatusEl.textContent = 'Folder scanning needs Chrome or Edge at http://localhost:8777, or an HTTPS address.';
+      return;
+    }
+
+    let directoryHandle;
     try {
-      const candidates = await scanSceneryFiles(fileList);
+      directoryHandle = await window.showDirectoryPicker({ mode: 'read' });
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      sceneryStatusEl.style.color = 'var(--danger)';
+      sceneryStatusEl.textContent = 'Could not open that folder.';
+      return;
+    }
+
+    sceneryStatusEl.style.color = 'var(--muted)';
+    sceneryStatusEl.textContent = 'Scanning scenery packages...';
+    try {
+      const candidates = await scanSceneryDirectory(directoryHandle);
       sceneryStatusEl.textContent = 'Matching against known airports...';
       const response = await fsatlasFetch('/api/scenery/import', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidates })
@@ -1079,8 +1082,7 @@
       sceneryStatusEl.style.color = 'var(--danger)';
       sceneryStatusEl.textContent = 'Import failed.';
     }
-    sceneryFolderInput.value = '';
-  });
+  }
 
   // --- Map type popover (FAB button + small menu, drives the hidden native <select>) ---
   const mapTypeFabWrap = document.getElementById('map-type-fab-wrap');

@@ -121,8 +121,6 @@ Run FSAtlas in a container using [Docker](https://docs.docker.com/get-docker/). 
 
 #### Build and run
 
-From the project root, place your flight data in `run/database/flights.csv` as described in [Flight Data](#flight-data), then build and start the container:
-
 ```bash
 docker build -t fsatlas .
 docker run -d --name fsatlas -p 8777:8000 fsatlas

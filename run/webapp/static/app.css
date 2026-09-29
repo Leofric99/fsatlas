@@ -309,7 +309,12 @@ select.logic {
 .modal-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0 14px; }
 .modal-actions { display: flex; align-items: center; gap: 10px; }
 #simbrief-status, #scenery-status { font-size: 12px; color: var(--text-dim); }
-#settings-modal .modal { max-height: calc(100vh - 40px); overflow-y: auto; }
+#settings-modal .modal {
+  display: flex; flex-direction: column; box-sizing: border-box;
+  max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow: hidden;
+}
+#settings-modal .modal-header, #settings-modal .modal-footer { flex: 0 0 auto; }
+#settings-modal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .scenery-progress { display: none; align-items: center; gap: 10px; margin-top: 12px; color: var(--text-dim); font-size: 12px; }
 .scenery-progress.active { display: flex; }
 .scenery-spinner {

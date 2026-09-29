@@ -110,6 +110,12 @@ running dev server:
 - **Toggling visibility**: use a dedicated class (`.foo.open { display: ... }`, base rule
   `display:none`) rather than the `hidden` attribute — an unconditional author `display:flex`
   rule elsewhere silently beats the `[hidden]` UA rule.
+- **Long settings dialogs**: cap the dialog height and scroll its `.modal-body`, not the
+  entire dialog, so the header and footer actions remain reachable on short viewports.
+- **Scenery import**: `run/webapp/` scans local folder metadata and persists matched airports
+  plus per-package errors. Unmatched packages can be assigned via `/api/scenery/resolve`;
+  airport choices and ICAO coordinate fallback come from the unfiltered `flights.csv`
+  airport directory. Successful imports/assignments enable the scenery overlay.
 - **Don't bound a Leaflet map view to just two route endpoints** (`fitBounds([[src],[dest]])`)
   — a geodesic curve between distant airports can bulge far outside that simple bounding box.
   Build bounds from the actual computed curve points instead.

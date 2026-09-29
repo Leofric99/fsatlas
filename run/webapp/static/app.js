@@ -167,6 +167,14 @@
     if (enabled) { rebuildSceneryMarkers(); sceneryLayer.addTo(map); } else { map.removeLayer(sceneryLayer); }
   }
 
+  function showImportedScenery() {
+    if (!sceneryData.length) return;
+    setSceneryOverlayEnabled(true);
+    fsatlasFetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenery_overlay: true })
+    }).catch(() => {});
+  }
+
   async function loadSceneryData() {
     try {
       const response = await fsatlasFetch('/api/scenery');
@@ -998,6 +1006,8 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ simbrief_pilot_id: savedPilotId })
       });
     } catch (err) { /* best effort - the setting still applies for this session */ }
+    await loadSceneryData();
+    showImportedScenery();
     closeSettings();
   });
 
@@ -1115,7 +1125,7 @@
       if (!response.ok) throw new Error(result.error || 'Airport assignment failed');
       sceneryData = result.sceneries || [];
       updateSceneryErrors(result.errors || []);
-      if (sceneryOverlayEnabled) rebuildSceneryMarkers();
+      showImportedScenery();
       sceneryStatusEl.style.color = 'var(--accent)';
       sceneryStatusEl.textContent = `Assigned ${source} to ${airportId}.`;
     } catch (err) {
@@ -1248,7 +1258,7 @@
     if (!response.ok) throw new Error(result.error || 'Import failed');
     sceneryData = result.sceneries || [];
     updateSceneryErrors(result.errors || []);
-    if (sceneryOverlayEnabled) rebuildSceneryMarkers();
+    showImportedScenery();
     sceneryStatusEl.style.color = 'var(--accent)';
     sceneryStatusEl.textContent = `Imported ${result.matched} scenery location${result.matched === 1 ? '' : 's'}`
       + (result.unmatched ? ` (${result.unmatched} not recognized)` : '') + '.';

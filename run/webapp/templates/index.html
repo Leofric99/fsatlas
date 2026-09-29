@@ -157,6 +157,19 @@
           <button id="scenery-import-btn" class="secondary" type="button">Import Scenery Folder&hellip;</button>
           <span id="scenery-status"></span>
         </div>
+        <div id="scenery-progress" class="scenery-progress" role="status" aria-live="polite" aria-hidden="true">
+          <span class="scenery-spinner" aria-hidden="true"></span>
+          <div class="scenery-progress-content">
+            <span id="scenery-progress-text"></span>
+            <div class="scenery-progress-track" role="progressbar" aria-label="Scenery import progress">
+              <span></span>
+            </div>
+          </div>
+        </div>
+        <details id="scenery-errors" class="scenery-errors">
+          <summary id="scenery-errors-summary">Import details (0)</summary>
+          <pre class="scenery-error-block"><code id="scenery-errors-code"></code></pre>
+        </details>
         <input id="scenery-folder-input" type="file" webkitdirectory directory multiple hidden>
       </div>
       <div class="modal-footer">

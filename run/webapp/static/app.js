@@ -121,6 +121,18 @@
   // Layers
   const routeLayer = L.layerGroup().addTo(map);
   const airportLayer = L.layerGroup().addTo(map);
+  let airportsOverlayEnabled = true;
+
+  function setAirportsOverlayEnabled(enabled) {
+    airportsOverlayEnabled = enabled;
+    if (enabled) {
+      routeLayer.addTo(map);
+      airportLayer.addTo(map);
+    } else {
+      map.removeLayer(routeLayer);
+      map.removeLayer(airportLayer);
+    }
+  }
 
   // --- Scenery overlay: star markers for the user's imported flight-sim scenery
   // locations (see /api/scenery), drawn in a pane below the airport dots and never
@@ -128,6 +140,7 @@
   // always fall through to whatever's underneath). Only added to the map while enabled. ---
   let sceneryOverlayEnabled = false;
   let sceneryData = []; // [{iata, icao, name, city, lat, lon}, ...]
+  let sceneryImportErrors = [];
   const sceneryLayer = L.layerGroup();
   const sceneryOffsetsBuilt = new Set();
   const STAR_ICON_SVG = '<svg viewBox="0 0 24 24" fill="#ffd447" stroke="#8a6d00" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 14.9 8.6 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9.1 8.6"></polygon></svg>';
@@ -159,6 +172,8 @@
       const response = await fsatlasFetch('/api/scenery');
       const result = await response.json();
       sceneryData = result.sceneries || [];
+      sceneryImportErrors = result.errors || [];
+      updateSceneryErrors(sceneryImportErrors);
     } catch (err) { sceneryData = []; }
     if (sceneryOverlayEnabled) rebuildSceneryMarkers();
   }
@@ -258,7 +273,7 @@
       selectedDestOffset = offset;
       infoPanel.classList.add('open');
 
-      if (deselectDestMarker) map.removeLayer(deselectDestMarker);
+      if (deselectDestMarker) airportLayer.removeLayer(deselectDestMarker);
       const destAp = airports[code];
       if (destAp) {
         deselectDestMarker = L.marker([destAp.lat, destAp.lon + offset], {
@@ -267,7 +282,7 @@
             html: '<div style="background:rgba(30,30,30,0.85); color:white; border-radius:4px; width:16px; height:16px; text-align:center; line-height:14px; font-weight:bold; font-size:12px; border: 1px solid #555; cursor: pointer;">\u00d7</div>',
             iconSize: [16, 16], iconAnchor: [-10, 10]
           })
-        }).addTo(map);
+        }).addTo(airportLayer);
         deselectDestMarker.on('click', (e) => { L.DomEvent.stopPropagation(e); deslectDestOnly(); });
       }
       renderMapState();
@@ -284,9 +299,9 @@
     currentRoutes = [];
     routeLayer.clearLayers();
 
-    if (deselectDestMarker) { map.removeLayer(deselectDestMarker); deselectDestMarker = null; }
+    if (deselectDestMarker) { airportLayer.removeLayer(deselectDestMarker); deselectDestMarker = null; }
 
-    if (deselectMarker) map.removeLayer(deselectMarker);
+    if (deselectMarker) airportLayer.removeLayer(deselectMarker);
     if (ap) {
       deselectMarker = L.marker([ap.lat, ap.lon + selectedSourceOffset], {
         icon: L.divIcon({
@@ -294,7 +309,7 @@
           html: '<div style="background:rgba(30,30,30,0.85); color:white; border-radius:4px; width:16px; height:16px; text-align:center; line-height:14px; font-weight:bold; font-size:12px; border: 1px solid #555; cursor: pointer;">\u00d7</div>',
           iconSize: [16, 16], iconAnchor: [-10, 10]
         })
-      }).addTo(map);
+      }).addTo(airportLayer);
       deselectMarker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         if (selectedDest !== null && selectedDest !== selectedSource) {
@@ -324,8 +339,8 @@
     infoPanel.classList.remove('open');
     checkLegendOverlap();
 
-    if (deselectMarker) { map.removeLayer(deselectMarker); deselectMarker = null; }
-    if (deselectDestMarker) { map.removeLayer(deselectDestMarker); deselectDestMarker = null; }
+    if (deselectMarker) { airportLayer.removeLayer(deselectMarker); deselectMarker = null; }
+    if (deselectDestMarker) { airportLayer.removeLayer(deselectDestMarker); deselectDestMarker = null; }
 
     visibleFilter = null;
     Object.keys(airports).forEach(iata => showAirport(iata));
@@ -334,7 +349,7 @@
   function deslectDestOnly() {
     selectedDest = null;
     infoPanel.classList.remove('open');
-    if (deselectDestMarker) { map.removeLayer(deselectDestMarker); deselectDestMarker = null; }
+    if (deselectDestMarker) { airportLayer.removeLayer(deselectDestMarker); deselectDestMarker = null; }
     renderMapState();
   }
 
@@ -990,7 +1005,27 @@
   const sceneryImportBtn = document.getElementById('scenery-import-btn');
   const sceneryFolderInput = document.getElementById('scenery-folder-input');
   const sceneryStatusEl = document.getElementById('scenery-status');
+  const sceneryProgressEl = document.getElementById('scenery-progress');
+  const sceneryProgressText = document.getElementById('scenery-progress-text');
+  const sceneryErrorsEl = document.getElementById('scenery-errors');
+  const sceneryErrorsSummary = document.getElementById('scenery-errors-summary');
+  const sceneryErrorsCode = document.getElementById('scenery-errors-code');
   const sceneryWarningModal = document.getElementById('scenery-warning-modal');
+
+  function updateSceneryErrors(errors) {
+    sceneryImportErrors = Array.isArray(errors) ? errors : [];
+    sceneryErrorsEl.classList.toggle('visible', sceneryImportErrors.length > 0);
+    sceneryErrorsEl.removeAttribute('open');
+    sceneryErrorsSummary.textContent = `Import details (${sceneryImportErrors.length})`;
+    sceneryErrorsCode.textContent = JSON.stringify(sceneryImportErrors, null, 2);
+  }
+
+  function setSceneryProgress(active, message = '') {
+    sceneryProgressEl.classList.toggle('active', active);
+    sceneryProgressEl.setAttribute('aria-hidden', String(!active));
+    sceneryProgressText.textContent = message;
+    sceneryImportBtn.disabled = active;
+  }
 
   sceneryImportBtn.addEventListener('click', () => {
     if (sceneryData.length > 0) sceneryWarningModal.classList.add('open');
@@ -1015,7 +1050,7 @@
   // server's within-a-mile cross-reference against the real airport). Deliberately does
   // NOT attempt to parse compiled .bgl scenery binaries - there's no reliably documented
   // public format for that, so a folder-name/manifest ICAO guess is used there instead.
-  async function scanSceneryDirectory(directoryHandle) {
+  async function scanSceneryDirectory(directoryHandle, scanErrors) {
     const candidates = [];
     for await (const [folderName, packageHandle] of directoryHandle.entries()) {
       if (packageHandle.kind !== 'directory') continue;
@@ -1026,7 +1061,14 @@
         const manifestFile = await manifestHandle.getFile();
         const manifest = JSON.parse(await manifestFile.text());
         icao = extractIcao(manifest.title);
-      } catch (err) { /* absent or invalid manifest - use the folder name as a fallback */ }
+      } catch (err) {
+        if (err.name !== 'NotFoundError') {
+          scanErrors.push({
+            severity: 'warning', stage: 'manifest_read', source: folderName,
+            message: 'Could not read or parse manifest.json.', details: `${err.name}: ${err.message}`,
+          });
+        }
+      }
 
       try {
         const earthNavHandle = await packageHandle.getDirectoryHandle('Earth nav data');
@@ -1042,14 +1084,20 @@
       } catch (err) { /* no X-Plane Earth nav data directory */ }
 
       if (!icao) icao = extractIcao(folderName);
-      if (icao || (lat !== null && lon !== null)) candidates.push({ icao, lat, lon, source: folderName });
+      candidates.push({ icao, lat, lon, source: folderName });
     }
     return candidates;
   }
 
-  async function scanSceneryFiles(fileList) {
+  async function scanSceneryFiles(fileList, scanErrors) {
     const packages = new Map();
+    let scannedFiles = 0;
     for (const file of fileList) {
+      scannedFiles++;
+      if (scannedFiles % 1000 === 0) {
+        setSceneryProgress(true, `Scanning filenames (${scannedFiles.toLocaleString()} of ${fileList.length.toLocaleString()})...`);
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
       const pathParts = (file.webkitRelativePath || file.name).split('/');
       if (pathParts.length < 3) continue;
       const folderName = pathParts[1];
@@ -1063,7 +1111,12 @@
         try {
           const manifest = JSON.parse(await file.text());
           candidate.icao = extractIcao(manifest.title) || candidate.icao;
-        } catch (err) { /* invalid manifest - keep the folder-name guess */ }
+        } catch (err) {
+          scanErrors.push({
+            severity: 'warning', stage: 'manifest_read', source: folderName,
+            message: 'Could not parse manifest.json.', details: `${err.name}: ${err.message}`,
+          });
+        }
       }
 
       const earthNavIndex = pathParts.findIndex((part, index) => index > 1 && /^Earth nav data$/i.test(part));
@@ -1076,17 +1129,19 @@
         }
       }
     }
-    return [...packages.values()].filter(candidate => candidate.icao || candidate.lat !== null);
+    return [...packages.values()];
   }
 
-  async function importSceneryCandidates(candidates) {
+  async function importSceneryCandidates(candidates, scanErrors) {
+    setSceneryProgress(true, 'Matching scenery against known airports...');
     sceneryStatusEl.textContent = 'Matching against known airports...';
     const response = await fsatlasFetch('/api/scenery/import', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidates })
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidates, scan_errors: scanErrors })
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Import failed');
     sceneryData = result.sceneries || [];
+    updateSceneryErrors(result.errors || []);
     if (sceneryOverlayEnabled) rebuildSceneryMarkers();
     sceneryStatusEl.style.color = 'var(--accent)';
     sceneryStatusEl.textContent = `Imported ${result.matched} scenery location${result.matched === 1 ? '' : 's'}`
@@ -1094,6 +1149,7 @@
   }
 
   async function chooseSceneryFolder() {
+    setSceneryProgress(true, 'Choose the scenery folder...');
     if (typeof window.showDirectoryPicker !== 'function') {
       sceneryFolderInput.click();
       return;
@@ -1103,34 +1159,54 @@
     try {
       directoryHandle = await window.showDirectoryPicker({ mode: 'read' });
     } catch (err) {
-      if (err.name === 'AbortError') return;
+      if (err.name === 'AbortError') { setSceneryProgress(false); return; }
       sceneryFolderInput.click();
       return;
     }
 
     sceneryStatusEl.style.color = 'var(--muted)';
     sceneryStatusEl.textContent = 'Scanning scenery packages...';
+    setSceneryProgress(true, 'Scanning scenery packages...');
+    const scanErrors = [];
     try {
-      const candidates = await scanSceneryDirectory(directoryHandle);
-      await importSceneryCandidates(candidates);
+      const candidates = await scanSceneryDirectory(directoryHandle, scanErrors);
+      await importSceneryCandidates(candidates, scanErrors);
     } catch (err) {
       sceneryStatusEl.style.color = 'var(--danger)';
       sceneryStatusEl.textContent = 'Import failed.';
+      updateSceneryErrors(scanErrors.concat({
+        severity: 'error', stage: 'import', source: directoryHandle.name,
+        message: 'The scenery folder could not be scanned or imported.', details: `${err.name}: ${err.message}`,
+      }));
+    } finally {
+      setSceneryProgress(false);
     }
   }
 
+  sceneryFolderInput.addEventListener('cancel', () => setSceneryProgress(false));
   sceneryFolderInput.addEventListener('change', async () => {
-    if (!sceneryFolderInput.files || !sceneryFolderInput.files.length) return;
+    if (!sceneryFolderInput.files || !sceneryFolderInput.files.length) {
+      setSceneryProgress(false);
+      return;
+    }
     sceneryStatusEl.style.color = 'var(--muted)';
     sceneryStatusEl.textContent = 'Scanning scenery package names and manifests...';
+    setSceneryProgress(true, 'Scanning package names and manifests...');
+    const scanErrors = [];
     try {
-      const candidates = await scanSceneryFiles(sceneryFolderInput.files);
-      await importSceneryCandidates(candidates);
+      const candidates = await scanSceneryFiles(sceneryFolderInput.files, scanErrors);
+      await importSceneryCandidates(candidates, scanErrors);
     } catch (err) {
       sceneryStatusEl.style.color = 'var(--danger)';
       sceneryStatusEl.textContent = 'Import failed.';
+      updateSceneryErrors(scanErrors.concat({
+        severity: 'error', stage: 'import', source: 'Selected folder',
+        message: 'The scenery folder could not be scanned or imported.', details: `${err.name}: ${err.message}`,
+      }));
+    } finally {
+      setSceneryProgress(false);
+      sceneryFolderInput.value = '';
     }
-    sceneryFolderInput.value = '';
   });
 
   // --- Map type popover (FAB button + small menu, drives the hidden native <select>) ---
@@ -1154,16 +1230,32 @@
       mapTypeMenu.append(item);
     });
 
-    // Scenery overlay: its own section, set off by a subtle divider rather than mixed
-    // in with the tile-style choices above.
+    // Keep overlays together beneath the map-style choices.
     mapTypeMenu.append(Object.assign(document.createElement('hr'), { className: 'popover-divider' }));
+    const airportsToggle = document.createElement('button');
+    airportsToggle.type = 'button';
+    airportsToggle.className = 'map-type-menu-toggle' + (airportsOverlayEnabled ? ' on' : '');
+    airportsToggle.setAttribute('aria-pressed', String(airportsOverlayEnabled));
+    airportsToggle.innerHTML = '<span>Airports Overlay</span><span class="switch"></span>';
+    airportsToggle.addEventListener('click', () => {
+      setAirportsOverlayEnabled(!airportsOverlayEnabled);
+      airportsToggle.classList.toggle('on', airportsOverlayEnabled);
+      airportsToggle.setAttribute('aria-pressed', String(airportsOverlayEnabled));
+      fsatlasFetch('/api/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ airports_overlay: airportsOverlayEnabled })
+      }).catch(() => {});
+    });
+    mapTypeMenu.append(airportsToggle);
+
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'map-type-menu-toggle' + (sceneryOverlayEnabled ? ' on' : '');
+    toggle.setAttribute('aria-pressed', String(sceneryOverlayEnabled));
     toggle.innerHTML = '<span>Scenery Overlay</span><span class="switch"></span>';
     toggle.addEventListener('click', () => {
       setSceneryOverlayEnabled(!sceneryOverlayEnabled);
       toggle.classList.toggle('on', sceneryOverlayEnabled);
+      toggle.setAttribute('aria-pressed', String(sceneryOverlayEnabled));
       fsatlasFetch('/api/settings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenery_overlay: sceneryOverlayEnabled })
       }).catch(() => {});
@@ -1437,7 +1529,9 @@
     columns = meta.columns;
     mapTypes = meta.map_types;
     savedPilotId = meta.simbrief_pilot_id || '';
+    airportsOverlayEnabled = meta.airports_overlay !== false;
     sceneryOverlayEnabled = !!meta.scenery_overlay;
+    setAirportsOverlayEnabled(airportsOverlayEnabled);
 
     mapTypeSelect.add(new Option('Use Theme', USE_THEME_VALUE, true, true));
     Object.keys(mapTypes).forEach(name => mapTypeSelect.add(new Option(name, name, false, false)));

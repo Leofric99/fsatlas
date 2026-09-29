@@ -309,6 +309,37 @@ select.logic {
 .modal-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0 14px; }
 .modal-actions { display: flex; align-items: center; gap: 10px; }
 #simbrief-status, #scenery-status { font-size: 12px; color: var(--text-dim); }
+#settings-modal .modal { max-height: calc(100vh - 40px); overflow-y: auto; }
+.scenery-progress { display: none; align-items: center; gap: 10px; margin-top: 12px; color: var(--text-dim); font-size: 12px; }
+.scenery-progress.active { display: flex; }
+.scenery-spinner {
+  width: 17px; height: 17px; flex: 0 0 17px; border: 2px solid var(--border-strong);
+  border-top-color: var(--accent); border-radius: 50%; animation: scenery-spin .75s linear infinite;
+}
+.scenery-progress-content { min-width: 0; flex: 1; }
+.scenery-progress-track { height: 4px; margin-top: 6px; overflow: hidden; border-radius: 2px; background: var(--surface-hover); }
+.scenery-progress-track span {
+  display: block; width: 32%; height: 100%; border-radius: inherit; background: var(--accent);
+  animation: scenery-progress 1.35s ease-in-out infinite;
+}
+.scenery-errors { display: none; margin-top: 12px; font-size: 12px; }
+.scenery-errors.visible { display: block; }
+.scenery-errors summary { color: var(--danger); cursor: pointer; font-weight: 600; }
+.scenery-error-block {
+  max-height: 240px; overflow: auto; margin: 8px 0 0; padding: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
+  color: var(--text); font: 11px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+@keyframes scenery-spin { to { transform: rotate(360deg); } }
+@keyframes scenery-progress {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(340%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scenery-spinner { animation: none; }
+  .scenery-progress-track span { width: 100%; animation: none; }
+}
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 button.danger { background: var(--danger); color: #fff; border: 1px solid var(--danger); }
 button.danger:hover { background: var(--danger-strong); border-color: var(--danger-strong); }

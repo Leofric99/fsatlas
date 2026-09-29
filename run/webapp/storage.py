@@ -12,13 +12,13 @@ from datetime import datetime, timezone
 DATA_DIR = os.environ.get("FSATLAS_DATA_DIR") or os.path.dirname(os.path.dirname(__file__))
 
 SETTINGS_FILE = os.path.join(DATA_DIR, 'settings.json')
-DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": "", "scenery_overlay": False}
+DEFAULT_SETTINGS = {"theme": "dark", "simbrief_pilot_id": "", "scenery_overlay": False, "airports_overlay": True}
 
 SAVED_ITEMS_FILE = os.path.join(DATA_DIR, 'saved_items.json')
 DEFAULT_SAVED_ITEMS = {"saved_flights": [], "saved_searches": []}
 
 SCENERY_FILE = os.path.join(DATA_DIR, 'installed_scenery.json')
-DEFAULT_SCENERY = {"sceneries": [], "imported_at": None, "unmatched_count": 0}
+DEFAULT_SCENERY = {"sceneries": [], "imported_at": None, "unmatched_count": 0, "errors": []}
 
 
 def normalize_saved_flight(flight):
@@ -64,6 +64,8 @@ def load_settings():
         settings["simbrief_pilot_id"] = DEFAULT_SETTINGS["simbrief_pilot_id"]
     if not isinstance(settings.get("scenery_overlay"), bool):
         settings["scenery_overlay"] = DEFAULT_SETTINGS["scenery_overlay"]
+    if not isinstance(settings.get("airports_overlay"), bool):
+        settings["airports_overlay"] = DEFAULT_SETTINGS["airports_overlay"]
     return settings
 
 
@@ -106,6 +108,8 @@ def load_scenery():
         scenery["imported_at"] = None
     if not isinstance(scenery.get("unmatched_count"), int):
         scenery["unmatched_count"] = 0
+    if not isinstance(scenery.get("errors"), list):
+        scenery["errors"] = []
     return scenery
 
 

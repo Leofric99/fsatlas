@@ -41,6 +41,7 @@ def meta():
         "theme": settings["theme"],
         "simbrief_pilot_id": settings["simbrief_pilot_id"],
         "scenery_overlay": settings["scenery_overlay"],
+        "airports_overlay": settings["airports_overlay"],
     })
 
 
@@ -83,6 +84,11 @@ def post_settings():
         if not isinstance(overlay, bool):
             return {"error": "Invalid settings payload"}, 400
         settings["scenery_overlay"] = overlay
+    if "airports_overlay" in payload:
+        overlay = payload["airports_overlay"]
+        if not isinstance(overlay, bool):
+            return {"error": "Invalid settings payload"}, 400
+        settings["airports_overlay"] = overlay
     storage.save_settings(settings)
     return jsonify({"ok": True})
 
@@ -188,11 +194,29 @@ def import_scenery():
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict) or not isinstance(payload.get("candidates"), list):
         return {"error": "Invalid scenery import payload"}, 400
-    matched, unmatched = data.match_scenery(payload["candidates"])
+    matched, match_errors = data.match_scenery(payload["candidates"])
+    scan_errors = payload.get("scan_errors", [])
+    if not isinstance(scan_errors, list):
+        return {"error": "Invalid scenery scan errors"}, 400
+    scan_errors = [
+        {
+            "severity": "warning",
+            "stage": str(error.get("stage") or "scan")[:80],
+            "source": str(error.get("source") or "Unknown package")[:300],
+            "message": str(error.get("message") or "A scenery scan issue occurred.")[:500],
+            "details": str(error.get("details") or "")[:2000],
+        }
+        for error in scan_errors if isinstance(error, dict)
+    ]
+    errors = scan_errors + match_errors
     scenery = {
         "sceneries": matched,
         "imported_at": datetime.now(timezone.utc).isoformat(),
-        "unmatched_count": len(unmatched),
+        "unmatched_count": len(match_errors),
+        "errors": errors,
     }
     storage.save_scenery(scenery)
-    return jsonify({"ok": True, "matched": len(matched), "unmatched": len(unmatched), "sceneries": matched})
+    return jsonify({
+        "ok": True, "matched": len(matched), "unmatched": len(match_errors),
+        "sceneries": matched, "errors": errors,
+    })

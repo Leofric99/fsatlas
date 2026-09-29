@@ -2,7 +2,7 @@
 and exposes plain functions for column metadata, filtering and aggregation. No new
 data pipeline - this wraps the existing run.data_loader/run.filtering/run.config.
 """
-from math import asin, cos, radians, sin, sqrt
+from math import asin, cos, isfinite, radians, sin, sqrt
 
 import pandas as pd
 
@@ -272,34 +272,73 @@ def match_scenery(candidates):
     match wins outright (using the airport's official lat/lon instead of whatever rough
     coordinate the scan produced); failing that, a candidate with coordinates is matched
     to the nearest known airport within `_SCENERY_MATCH_RADIUS_MILES`. Returns
-    (matched_airports, unmatched_source_labels).
+    (matched_airports, structured_import_errors).
     """
     directory = get_airport_directory()
     by_icao = {a['icao']: a for a in directory if a['icao']}
 
     matched = {}
-    unmatched = []
-    for candidate in candidates:
+    errors = []
+    for index, candidate in enumerate(candidates, start=1):
         if not isinstance(candidate, dict):
+            errors.append({
+                "severity": "error", "stage": "airport_match", "source": f"Candidate {index}",
+                "message": "The browser returned an invalid scenery candidate.",
+                "details": f"Expected an object, received {type(candidate).__name__}.",
+            })
             continue
         icao = str(candidate.get('icao') or '').strip().upper()
         lat, lon = candidate.get('lat'), candidate.get('lon')
+        has_coordinates = (
+            isinstance(lat, (int, float)) and isinstance(lon, (int, float))
+            and isfinite(lat) and isfinite(lon)
+            and -90 <= lat <= 90 and -180 <= lon <= 180
+        )
 
         airport = by_icao.get(icao) if icao else None
-        if airport is None and isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
-            best, best_dist = None, _SCENERY_MATCH_RADIUS_MILES
+        nearest, nearest_dist = None, None
+        if has_coordinates:
             for a in directory:
                 dist = _haversine_miles(lat, lon, a['lat'], a['lon'])
-                if dist <= best_dist:
-                    best, best_dist = a, dist
-            airport = best
+                if nearest_dist is None or dist < nearest_dist:
+                    nearest, nearest_dist = a, dist
+            if airport is None and nearest_dist is not None and nearest_dist <= _SCENERY_MATCH_RADIUS_MILES:
+                airport = nearest
 
         if airport:
             matched[airport['icao'] or airport['iata']] = airport
         else:
-            unmatched.append(str(candidate.get('source') or icao or 'unknown'))
+            details = []
+            if icao and icao not in by_icao:
+                details.append(f"ICAO {icao} is not present in the loaded airport directory.")
+            if has_coordinates:
+                if nearest:
+                    details.append(
+                        f"Nearest known airport is {nearest['icao'] or nearest['iata']} "
+                        f"({nearest['name']}, {nearest['city']}), {nearest_dist:.2f} miles away; "
+                        f"the allowed match radius is {_SCENERY_MATCH_RADIUS_MILES:.1f} mile."
+                    )
+                else:
+                    details.append("No known airports are available for coordinate matching.")
+            elif lat is not None or lon is not None:
+                details.append("Detected coordinates are invalid or outside latitude/longitude bounds.")
+            else:
+                details.append("No ICAO code or usable coordinates were detected for this package.")
+            errors.append({
+                "severity": "error", "stage": "airport_match",
+                "source": str(candidate.get('source') or icao or f"Candidate {index}"),
+                "message": "No known airport could be matched to this scenery package.",
+                "icao": icao or None,
+                "coordinates": {"lat": lat, "lon": lon} if has_coordinates else None,
+                "nearest_airport": {
+                    "icao": nearest['icao'], "iata": nearest['iata'], "name": nearest['name'],
+                    "city": nearest['city'], "distance_miles": round(nearest_dist, 2),
+                } if nearest else None,
+                "match_radius_miles": _SCENERY_MATCH_RADIUS_MILES,
+                "details": " ".join(details),
+            })
 
-    return list(matched.values()), unmatched
+    return list(matched.values()), errors
 
 
 def get_flights(iata, filters):

@@ -988,6 +988,7 @@
 
   // --- Scenery import: scan package directories client-side and read only manifests. ---
   const sceneryImportBtn = document.getElementById('scenery-import-btn');
+  const sceneryFolderInput = document.getElementById('scenery-folder-input');
   const sceneryStatusEl = document.getElementById('scenery-status');
   const sceneryWarningModal = document.getElementById('scenery-warning-modal');
 
@@ -1046,10 +1047,55 @@
     return candidates;
   }
 
+  async function scanSceneryFiles(fileList) {
+    const packages = new Map();
+    for (const file of fileList) {
+      const pathParts = (file.webkitRelativePath || file.name).split('/');
+      if (pathParts.length < 3) continue;
+      const folderName = pathParts[1];
+      let candidate = packages.get(folderName);
+      if (!candidate) {
+        candidate = { icao: extractIcao(folderName), lat: null, lon: null, source: folderName };
+        packages.set(folderName, candidate);
+      }
+
+      if (pathParts[pathParts.length - 1].toLowerCase() === 'manifest.json') {
+        try {
+          const manifest = JSON.parse(await file.text());
+          candidate.icao = extractIcao(manifest.title) || candidate.icao;
+        } catch (err) { /* invalid manifest - keep the folder-name guess */ }
+      }
+
+      const earthNavIndex = pathParts.findIndex((part, index) => index > 1 && /^Earth nav data$/i.test(part));
+      if (earthNavIndex >= 0 && pathParts[earthNavIndex + 1]) {
+        const gridMatch = pathParts[earthNavIndex + 1].match(/^([+-]\d+)([+-]\d+)$/);
+        if (gridMatch && candidate.lat === null) {
+          const gLat = parseInt(gridMatch[1], 10), gLon = parseInt(gridMatch[2], 10);
+          candidate.lat = gLat + (gLat >= 0 ? 0.5 : -0.5);
+          candidate.lon = gLon + (gLon >= 0 ? 0.5 : -0.5);
+        }
+      }
+    }
+    return [...packages.values()].filter(candidate => candidate.icao || candidate.lat !== null);
+  }
+
+  async function importSceneryCandidates(candidates) {
+    sceneryStatusEl.textContent = 'Matching against known airports...';
+    const response = await fsatlasFetch('/api/scenery/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidates })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Import failed');
+    sceneryData = result.sceneries || [];
+    if (sceneryOverlayEnabled) rebuildSceneryMarkers();
+    sceneryStatusEl.style.color = 'var(--accent)';
+    sceneryStatusEl.textContent = `Imported ${result.matched} scenery location${result.matched === 1 ? '' : 's'}`
+      + (result.unmatched ? ` (${result.unmatched} not recognized)` : '') + '.';
+  }
+
   async function chooseSceneryFolder() {
     if (typeof window.showDirectoryPicker !== 'function') {
-      sceneryStatusEl.style.color = 'var(--danger)';
-      sceneryStatusEl.textContent = 'Folder scanning needs Chrome or Edge at http://localhost:8777, or an HTTPS address.';
+      sceneryFolderInput.click();
       return;
     }
 
@@ -1058,8 +1104,7 @@
       directoryHandle = await window.showDirectoryPicker({ mode: 'read' });
     } catch (err) {
       if (err.name === 'AbortError') return;
-      sceneryStatusEl.style.color = 'var(--danger)';
-      sceneryStatusEl.textContent = 'Could not open that folder.';
+      sceneryFolderInput.click();
       return;
     }
 
@@ -1067,22 +1112,26 @@
     sceneryStatusEl.textContent = 'Scanning scenery packages...';
     try {
       const candidates = await scanSceneryDirectory(directoryHandle);
-      sceneryStatusEl.textContent = 'Matching against known airports...';
-      const response = await fsatlasFetch('/api/scenery/import', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidates })
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Import failed');
-      sceneryData = result.sceneries || [];
-      if (sceneryOverlayEnabled) rebuildSceneryMarkers();
-      sceneryStatusEl.style.color = 'var(--accent)';
-      sceneryStatusEl.textContent = `Imported ${result.matched} scenery location${result.matched === 1 ? '' : 's'}`
-        + (result.unmatched ? ` (${result.unmatched} not recognized)` : '') + '.';
+      await importSceneryCandidates(candidates);
     } catch (err) {
       sceneryStatusEl.style.color = 'var(--danger)';
       sceneryStatusEl.textContent = 'Import failed.';
     }
   }
+
+  sceneryFolderInput.addEventListener('change', async () => {
+    if (!sceneryFolderInput.files || !sceneryFolderInput.files.length) return;
+    sceneryStatusEl.style.color = 'var(--muted)';
+    sceneryStatusEl.textContent = 'Scanning scenery package names and manifests...';
+    try {
+      const candidates = await scanSceneryFiles(sceneryFolderInput.files);
+      await importSceneryCandidates(candidates);
+    } catch (err) {
+      sceneryStatusEl.style.color = 'var(--danger)';
+      sceneryStatusEl.textContent = 'Import failed.';
+    }
+    sceneryFolderInput.value = '';
+  });
 
   // --- Map type popover (FAB button + small menu, drives the hidden native <select>) ---
   const mapTypeFabWrap = document.getElementById('map-type-fab-wrap');

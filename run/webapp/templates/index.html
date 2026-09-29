@@ -149,14 +149,15 @@
 
         <label>Flight Sim Scenery</label>
         <p class="modal-hint">
-          Choose your MSFS Community or X-Plane Custom Scenery folder. Your browser checks
-          package names and small manifests locally; scenery files are never uploaded.
-          For Docker on this PC, open FSAtlas at http://localhost:8777 in Chrome or Edge.
+          Choose your MSFS Community or X-Plane Custom Scenery folder. Package names and
+          small manifests are checked locally; scenery files are never uploaded. Firefox
+          may take time to list filenames in a very large folder.
         </p>
         <div class="modal-actions">
           <button id="scenery-import-btn" class="secondary" type="button">Import Scenery Folder&hellip;</button>
           <span id="scenery-status"></span>
         </div>
+        <input id="scenery-folder-input" type="file" webkitdirectory directory multiple hidden>
       </div>
       <div class="modal-footer">
         <button id="settings-cancel" class="secondary" type="button">Cancel</button>

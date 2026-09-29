@@ -1054,17 +1054,40 @@
       packageName.className = 'scenery-error-package';
       packageName.textContent = error.source;
 
+      const search = document.createElement('input');
+      search.type = 'search';
+      search.maxLength = 4;
+      search.autocomplete = 'off';
+      search.spellcheck = false;
+      search.placeholder = 'Type ICAO prefix (e.g. EG)';
+      search.setAttribute('aria-label', `Filter airports by ICAO prefix for ${error.source}`);
+
       const select = document.createElement('select');
       select.setAttribute('aria-label', `Airport for scenery package ${error.source}`);
-      const placeholder = new Option('Select airport...', '');
-      placeholder.disabled = true;
-      placeholder.selected = true;
-      select.add(placeholder);
-      sceneryAirportOptions.forEach(airport => {
-        const code = airport.icao || airport.iata;
-        const codes = [airport.icao, airport.iata].filter(Boolean).join(' / ');
-        select.add(new Option(`${codes} - ${airport.name} (${airport.city})`, code));
-      });
+      select.disabled = true;
+
+      const updateAirportOptions = () => {
+        const prefix = search.value.trim().toUpperCase();
+        select.replaceChildren();
+        select.add(new Option(
+          prefix ? `Airports starting with ${prefix}...` : 'Type an ICAO prefix first...', ''
+        ));
+        select.options[0].disabled = true;
+        select.options[0].selected = true;
+        const matches = prefix
+          ? sceneryAirportOptions.filter(airport => String(airport.icao || '').toUpperCase().startsWith(prefix))
+          : [];
+        matches.forEach(airport => {
+          const code = airport.icao || airport.iata;
+          const codes = [airport.icao, airport.iata].filter(Boolean).join(' / ');
+          select.add(new Option(`${codes} - ${airport.name} (${airport.city})`, code));
+        });
+        if (prefix && !matches.length) {
+          select.options[0].textContent = `No ICAO codes start with ${prefix}`;
+        }
+        select.disabled = matches.length === 0;
+        button.disabled = true;
+      };
 
       const button = document.createElement('button');
       button.type = 'button';
@@ -1073,8 +1096,9 @@
       button.disabled = true;
       select.addEventListener('change', () => { button.disabled = !select.value; });
       button.addEventListener('click', () => resolveSceneryAirport(error.source, select.value, button));
+      search.addEventListener('input', updateAirportOptions);
 
-      row.append(packageName, select, button);
+      row.append(packageName, search, select, button);
       sceneryErrorResolutions.append(row);
     });
   }

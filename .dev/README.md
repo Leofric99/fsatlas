@@ -18,17 +18,21 @@ Python 3 and the Windows Python launcher (`py`) must be installed. Internet acce
 
 ## Docker release
 
-`docker-release.sh` builds the Docker image, pushes it to Docker Hub, then tears the
-local deployment back down and removes what the run just created.
+`docker-release.sh` takes down any running FSAtlas deployment on this machine, builds
+the Docker image, pushes it to Docker Hub, then removes what the run just created.
 
 ```bash
-.dev/docker-release.sh              # build, tag latest + the pyproject.toml version, push, clean up
+.dev/docker-release.sh              # take down, build, tag latest + the pyproject.toml version, push, clean up
 .dev/docker-release.sh --tag 1.2.0  # push a specific version tag instead
 .dev/docker-release.sh --dry-run    # print the docker commands without running them
 ```
 
 Requires Docker to already be installed and logged in (`docker login`) on the host. It
 stops/removes the `fsatlas` container (however it was started - `docker compose` or a
-plain `docker run`), then removes the two image tags it just built and any dangling
-build layers. The `./data` bind mount (settings/saved items) is a plain host directory,
-not a Docker-managed volume, so it is left untouched.
+plain `docker run`) *before* building, then removes the two image tags it just built and
+any dangling build layers. The `./data` bind mount (settings/saved items/installed
+scenery) is a plain host directory, not a Docker-managed volume, so it is left untouched.
+If the running container's `installed_scenery.json` only lives in its writable layer
+(e.g. it was started without the `./data` volume - see the plain `docker run` example
+above), the script copies it onto `./data` first so it isn't lost when the container is
+removed.

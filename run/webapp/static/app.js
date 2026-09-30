@@ -81,6 +81,12 @@
     return getComputedStyle(document.documentElement).getPropertyValue(RANK_VARS[rank] || RANK_VARS[0]).trim();
   }
 
+  // Shared star shape (used both for the scenery map markers and the legend swatches),
+  // parameterized on fill color so it can match whichever rank color it stands in for.
+  function starSvgMarkup(color) {
+    return '<svg viewBox="0 0 24 24" fill="' + color + '" stroke="#00000055" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 14.9 8.6 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9.1 8.6"></polygon></svg>';
+  }
+
   // Bottom-right, collapsible into a slim pull tab that stays docked to the edge.
   const legendTemplate = document.getElementById('legend-template');
   const legend = L.control({ position: 'bottomright' });
@@ -90,6 +96,9 @@
     container.appendChild(legendTemplate.content.cloneNode(true));
     container.querySelectorAll('.legend-dot').forEach(dot => {
       dot.style.background = colorForRank(Number(dot.dataset.rank));
+    });
+    container.querySelectorAll('.legend-star').forEach(star => {
+      star.innerHTML = starSvgMarkup(colorForRank(Number(star.dataset.rank)));
     });
     // Starts collapsed on mobile - the small pull tab stays reachable but doesn't eat into
     // the limited map area the way the full legend card would.
@@ -108,6 +117,12 @@
   // closes/shrinks, so a manual re-open (the pull tab) or a page refresh are the only ways
   // to see it again. Edge-triggered (only acts the instant overlap begins) so re-opening
   // the legend while the panel still happens to overlap doesn't immediately re-collapse it.
+  // Shown/hidden as one extra legend line only while the scenery overlay is enabled -
+  // see the scenery-overlay block below for what actually toggles sceneryOverlayEnabled.
+  function updateLegendSceneryRow() {
+    if (legendEl) legendEl.classList.toggle('scenery-legend', sceneryOverlayEnabled);
+  }
+
   let legendWasOverlapping = false;
   function checkLegendOverlap() {
     if (!legendEl || !infoPanel.classList.contains('open')) { legendWasOverlapping = false; return; }
@@ -140,17 +155,37 @@
   // always fall through to whatever's underneath). Only added to the map while enabled. ---
   let sceneryOverlayEnabled = false;
   let sceneryData = []; // [{iata, icao, name, city, lat, lon}, ...]
+  let sceneryIatas = new Set(); // iata codes with imported scenery - drives dot-hiding below
   let sceneryImportErrors = [];
   const sceneryLayer = L.layerGroup();
   const sceneryOffsetsBuilt = new Set();
-  const STAR_ICON_SVG = '<svg viewBox="0 0 24 24" fill="#ffd447" stroke="#8a6d00" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 14.9 8.6 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9.1 8.6"></polygon></svg>';
-  const sceneryIcon = L.divIcon({ className: 'scenery-star-icon', html: STAR_ICON_SVG, iconSize: [14, 14], iconAnchor: [7, 7] });
+  const sceneryIconsByRank = {}; // rank -> cached L.divIcon, colored to match that rank's dot
+
+  function refreshSceneryIatas() {
+    sceneryIatas = new Set(sceneryData.map(s => s.iata).filter(Boolean));
+  }
+
+  // True while the scenery overlay should take over an airport's dot entirely (only when
+  // the overlay is switched on - otherwise scenery-covered airports render normally).
+  function sceneryHidesAirportDot(iata) {
+    return sceneryOverlayEnabled && sceneryIatas.has(iata);
+  }
+
+  function sceneryIconForRank(rank) {
+    if (!sceneryIconsByRank[rank]) {
+      sceneryIconsByRank[rank] = L.divIcon({
+        className: 'scenery-star-icon', html: starSvgMarkup(colorForRank(rank)), iconSize: [14, 14], iconAnchor: [7, 7]
+      });
+    }
+    return sceneryIconsByRank[rank];
+  }
 
   function createSceneryForOffset(offset) {
     if (sceneryOffsetsBuilt.has(offset)) return;
     sceneryOffsetsBuilt.add(offset);
     sceneryData.forEach(s => {
-      L.marker([s.lat, s.lon + offset], { icon: sceneryIcon, interactive: false, keyboard: false, pane: 'sceneryPane' })
+      const ap = airports[s.iata];
+      L.marker([s.lat, s.lon + offset], { icon: sceneryIconForRank(ap ? ap.rank : 0), interactive: false, keyboard: false, pane: 'sceneryPane' })
         .bindTooltip((s.icao || s.iata) + ' - ' + s.name, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' })
         .addTo(sceneryLayer);
     });
@@ -165,6 +200,8 @@
   function setSceneryOverlayEnabled(enabled) {
     sceneryOverlayEnabled = enabled;
     if (enabled) { rebuildSceneryMarkers(); sceneryLayer.addTo(map); } else { map.removeLayer(sceneryLayer); }
+    rebuildAirportMarkers(); // scenery-covered dots need to hide/reappear immediately
+    updateLegendSceneryRow();
   }
 
   function showImportedScenery() {
@@ -183,7 +220,12 @@
       sceneryImportErrors = result.errors || [];
       updateSceneryErrors(sceneryImportErrors);
     } catch (err) { sceneryData = []; }
-    if (sceneryOverlayEnabled) rebuildSceneryMarkers();
+    refreshSceneryIatas();
+    if (sceneryOverlayEnabled) {
+      rebuildSceneryMarkers();
+      if (!map.hasLayer(sceneryLayer)) sceneryLayer.addTo(map);
+      rebuildAirportMarkers();
+    }
   }
 
   // Render everything at whichever 360deg-wide "world copies" the viewport currently
@@ -215,6 +257,7 @@
   }
 
   function showAirport(iata) {
+    if (sceneryHidesAirportDot(iata)) return;
     Object.values(airportMarkers[iata] || {}).forEach(m => { if (!airportLayer.hasLayer(m)) airportLayer.addLayer(m); });
   }
   function hideAirport(iata) {
@@ -246,7 +289,7 @@
       if (!airportMarkers[ap.iata]) airportMarkers[ap.iata] = {};
       airportMarkers[ap.iata][offset] = marker;
 
-      if (!visibleFilter || visibleFilter.has(ap.iata)) airportLayer.addLayer(marker);
+      if (!sceneryHidesAirportDot(ap.iata) && (!visibleFilter || visibleFilter.has(ap.iata))) airportLayer.addLayer(marker);
     });
   }
 
@@ -1124,6 +1167,7 @@
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Airport assignment failed');
       sceneryData = result.sceneries || [];
+      refreshSceneryIatas();
       updateSceneryErrors(result.errors || []);
       showImportedScenery();
       sceneryStatusEl.style.color = 'var(--accent)';
@@ -1257,6 +1301,7 @@
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Import failed');
     sceneryData = result.sceneries || [];
+    refreshSceneryIatas();
     updateSceneryErrors(result.errors || []);
     showImportedScenery();
     sceneryStatusEl.style.color = 'var(--accent)';
@@ -1648,6 +1693,7 @@
     airportsOverlayEnabled = meta.airports_overlay !== false;
     sceneryOverlayEnabled = !!meta.scenery_overlay;
     setAirportsOverlayEnabled(airportsOverlayEnabled);
+    updateLegendSceneryRow();
 
     mapTypeSelect.add(new Option('Use Theme', USE_THEME_VALUE, true, true));
     Object.keys(mapTypes).forEach(name => mapTypeSelect.add(new Option(name, name, false, false)));

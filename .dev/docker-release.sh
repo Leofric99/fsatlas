@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Builds the FSAtlas Docker image, pushes it to Docker Hub, then tears the local
-# deployment back down and removes what this script created (container, its volumes,
-# and the images it just built) - leaving the host clean, with the new image published.
+# Takes down any running FSAtlas deployment on this machine (preserving its
+# installed_scenery.json onto the host bind mount first, in case that container wasn't
+# started with the ./data volume - see README's plain `docker run` example), builds the
+# Docker image, pushes it to Docker Hub, then removes what this script itself built
+# (images) - leaving the host clean, with the new image published.
 #
 # Usage:
-#   .dev/docker-release.sh              # build, tag latest + current version, push, clean up
+#   .dev/docker-release.sh              # take down, build, tag latest + current version, push, clean up
 #   .dev/docker-release.sh --tag 1.2.0  # override the version tag (default: read from pyproject.toml)
 #   .dev/docker-release.sh --dry-run    # print the commands without running them
 #
@@ -56,16 +58,35 @@ if [[ "$DRY_RUN" -eq 0 ]] && ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "--- Building ---"
-run docker build -t "$IMAGE:latest" -t "$IMAGE:$VERSION" "$REPO_ROOT"
+echo "--- Checking for a running '$CONTAINER_NAME' deployment ---"
+CONTAINER_RUNNING=0
+if [[ "$DRY_RUN" -eq 0 ]]; then
+  if [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null || true)" == "true" ]]; then
+    CONTAINER_RUNNING=1
+  fi
+else
+  echo "(dry run - skipping the actual check for a running '$CONTAINER_NAME' container)"
+fi
+
+if [[ "$CONTAINER_RUNNING" -eq 1 ]]; then
+  echo "Found a running '$CONTAINER_NAME' container."
+  # installed_scenery.json always lives at /data inside the container (FSATLAS_DATA_DIR,
+  # set in the Dockerfile) regardless of whether that container was started with the
+  # ./data bind mount (docker-compose.yml) or a plain `docker run` with no volume at all
+  # (see README's manual instructions) - in the latter case the file only exists in the
+  # container's writable layer and `docker rm` below would destroy it. Copying it onto the
+  # host's bind-mount source directory first means it's picked up automatically the next
+  # time the container is (re)started with the volume mounted, preserving it across
+  # image updates either way.
+  run mkdir -p "$REPO_ROOT/data"
+  if docker exec "$CONTAINER_NAME" test -f /data/installed_scenery.json 2>/dev/null; then
+    echo "Preserving its installed_scenery.json onto the host bind mount before taking it down."
+    run docker cp "$CONTAINER_NAME:/data/installed_scenery.json" "$REPO_ROOT/data/installed_scenery.json"
+  fi
+fi
 
 echo
-echo "--- Pushing to Docker Hub ---"
-run docker push "$IMAGE:latest"
-run docker push "$IMAGE:$VERSION"
-
-echo
-echo "--- Bringing the running deployment down ---"
+echo "--- Bringing any running deployment down ---"
 # Handles both a docker-compose based deployment and one started with a plain
 # `docker run --name fsatlas ...` (see README's manual Docker instructions) - whichever
 # is actually running, the other command below is a harmless no-op.
@@ -78,6 +99,15 @@ fi
 run docker rm -f "$CONTAINER_NAME" || true
 
 echo
+echo "--- Building ---"
+run docker build -t "$IMAGE:latest" -t "$IMAGE:$VERSION" "$REPO_ROOT"
+
+echo
+echo "--- Pushing to Docker Hub ---"
+run docker push "$IMAGE:latest"
+run docker push "$IMAGE:$VERSION"
+
+echo
 echo "--- Removing images built by this run ---"
 run docker rmi -f "$IMAGE:latest" "$IMAGE:$VERSION" || true
 # Dangling intermediate build layers left behind by the build above (not other unrelated
@@ -85,5 +115,6 @@ run docker rmi -f "$IMAGE:latest" "$IMAGE:$VERSION" || true
 run docker image prune -f || true
 
 echo
-echo "Done. $IMAGE:latest and $IMAGE:$VERSION are on Docker Hub; local container, its"
-echo "compose-managed volumes/networks, and the images just built have been removed."
+echo "Done. $IMAGE:latest and $IMAGE:$VERSION are on Docker Hub; the local deployment"
+echo "that was running before this script started, and the images it just built, have"
+echo "been removed."

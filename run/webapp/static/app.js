@@ -168,11 +168,16 @@
   }
 
   // --- Scenery overlay: star markers for the user's imported flight-sim scenery
-  // locations (see /api/scenery), drawn in a pane below the airport dots. Selectable
-  // exactly like the airport dot they stand in for - same click behavior, same size for
-  // their rank - except when the airport overlay is off, or the airport has no flights in
-  // the current dataset to show (not present in `airports`), in which case they're just a
-  // non-interactive marker (no click handler attached, so clicks fall through to the map). ---
+  // locations (see /api/scenery), drawn in a pane above the airport dots (see the pane
+  // z-index note above for why). Two distinct modes depending on the airport overlay:
+  // - Airport overlay ON: a star only exists for an airport that also has a dot (i.e. has
+  //   flights matching the current filters) - same click behavior/size/rank-color as the
+  //   dot it stands in for. An airport whose scenery is installed but has no matching
+  //   flights right now shows no star at all (not a stray rank-0/red one).
+  // - Airport overlay OFF: every installed-scenery airport shows regardless of filters,
+  //   in a uniform accent-colored/sized star (no per-rank dots exist to match), and
+  //   clicking just opens an identifying popup bubble instead of the dot's normal
+  //   route-selection behavior (there's no dot/route layer to select into anyway). ---
   let sceneryOverlayEnabled = false;
   let sceneryData = []; // [{iata, icao, name, city, lat, lon}, ...]
   let sceneryIatas = new Set(); // iata codes with imported scenery - drives dot-hiding below
@@ -180,6 +185,7 @@
   const sceneryLayer = L.layerGroup();
   const sceneryOffsetsBuilt = new Set();
   const sceneryIconsByRank = {}; // "rank-size" -> cached L.divIcon, colored/sized to match that rank's dot
+  let sceneryUniformIconCached = null; // single accent-colored icon reused while the airport overlay is off
 
   function refreshSceneryIatas() {
     sceneryIatas = new Set(sceneryData.map(s => s.iata).filter(Boolean));
@@ -205,17 +211,51 @@
     return sceneryIconsByRank[key];
   }
 
+  // Uniform accent-colored icon used only while the airport overlay is off (see below) -
+  // rank/color is meaningless there since dots aren't shown at all, so every scenery
+  // airport gets the same size (rank 1's, as a representative mid-size) and the app's own
+  // highlight color instead of a rank color.
+  function sceneryUniformIcon() {
+    const size = markerRadius(1) * STAR_SIZE_SCALE;
+    if (!sceneryUniformIconCached || sceneryUniformIconCached.__size !== size) {
+      sceneryUniformIconCached = L.divIcon({
+        className: 'scenery-star-icon', html: starSvgMarkup(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()),
+        iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+      });
+      sceneryUniformIconCached.__size = size;
+    }
+    return sceneryUniformIconCached;
+  }
+
   function createSceneryForOffset(offset) {
     if (sceneryOffsetsBuilt.has(offset)) return;
     sceneryOffsetsBuilt.add(offset);
     sceneryData.forEach(s => {
-      const ap = airports[s.iata];
-      const clickable = airportsOverlayEnabled && !!ap;
-      const marker = L.marker([s.lat, s.lon + offset], {
-        icon: sceneryIconForRank(ap ? ap.rank : 0), interactive: clickable, keyboard: clickable, pane: 'sceneryPane'
-      }).bindTooltip((s.icao || s.iata) + ' - ' + s.name, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' });
-      if (clickable) marker.on('click', (e) => { L.DomEvent.stopPropagation(e); handleAirportClick(s.iata, offset); });
-      marker.addTo(sceneryLayer);
+      if (airportsOverlayEnabled) {
+        // Matches the airport dots' own filtering: an airport with no flights in the
+        // current filtered dataset has no dot to show either, so hide its star too
+        // instead of falling back to a meaningless rank-0/red color.
+        const ap = airports[s.iata];
+        if (!ap) return;
+        L.marker([s.lat, s.lon + offset], {
+          icon: sceneryIconForRank(ap.rank), interactive: true, keyboard: true, pane: 'sceneryPane'
+        })
+          .bindTooltip((s.icao || s.iata) + ' - ' + s.name, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' })
+          .on('click', (e) => { L.DomEvent.stopPropagation(e); handleAirportClick(s.iata, offset); })
+          .addTo(sceneryLayer);
+      } else {
+        // Airport overlay off: every installed-scenery airport shows regardless of
+        // filters/flight matches (there's no dot layer to stay consistent with), and a
+        // click just identifies the airport via a popup bubble - no dot/route layer
+        // exists right now to select into.
+        const label = (s.icao || s.iata) + ' - ' + s.name;
+        L.marker([s.lat, s.lon + offset], {
+          icon: sceneryUniformIcon(), interactive: true, keyboard: true, pane: 'sceneryPane'
+        })
+          .bindPopup(label, { className: 'atlas-popup', closeButton: false })
+          .on('click', (e) => { L.DomEvent.stopPropagation(e); e.target.openPopup(); })
+          .addTo(sceneryLayer);
+      }
     });
   }
 

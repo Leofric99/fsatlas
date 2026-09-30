@@ -573,6 +573,22 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
 }
 .atlas-tooltip.leaflet-tooltip::before { display: none; }
 
+/* Popup bubble for a scenery star's airport-identifier click (airport overlay off) -
+   themed to match the tooltip/panel styling above instead of Leaflet's plain default
+   white popup, and trimmed down to a small label rather than a full-size callout. */
+.atlas-popup .leaflet-popup-content-wrapper {
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); box-shadow: var(--shadow-md);
+}
+.atlas-popup .leaflet-popup-content {
+  margin: 3px 8px; font-size: 11px; font-weight: 600; line-height: 1.4; white-space: nowrap;
+}
+.atlas-popup .leaflet-popup-tip-container { width: 24px; height: 10px; margin-left: -12px; }
+.atlas-popup .leaflet-popup-tip {
+  width: 10px; height: 10px; padding: 0; margin: -5px auto 0;
+  background: var(--panel-bg); border: 1px solid var(--border); box-shadow: none;
+}
+
 /* Plane icon marking the midpoint of a fully-selected (both ends) route - colored with
    the route's own --line-color rather than a separate icon color, rotated in JS to face
    from source toward destination. */

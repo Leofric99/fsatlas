@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Flightsim Atlas</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v={{ asset_version }}">
 </head>
 <body>
   <div id="map"></div>
@@ -81,7 +81,7 @@
           <span class="legend-star" data-rank="2"></span>
           <span class="legend-star" data-rank="3"></span>
         </span>
-        Simulator Scenery Installed
+        Scenery Installed
       </div>
     </div>
     <div class="legend-tab" title="Toggle map legend" aria-label="Toggle map legend">
@@ -239,6 +239,6 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version }}"></script>
 </body>
 </html>

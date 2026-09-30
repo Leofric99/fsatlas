@@ -3,14 +3,29 @@ lives in storage.py. Expected "not found"/"invalid input" cases return (payload,
 tuples rather than being caught with try/except.
 """
 import json
+import os
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request
 
 from run import simbrief_api
 from run.webapp import data, storage
 
 bp = Blueprint('main', __name__)
+
+
+def _static_asset_version():
+    """Latest mtime of app.js/app.css, used to cache-bust their URLs - a fresh Docker
+    build resets COPY'd files' mtimes, so this changes automatically on every deploy
+    without needing a manually-bumped version string.
+    """
+    static_folder = current_app.static_folder or ''
+    mtimes = [
+        os.path.getmtime(path)
+        for path in (os.path.join(static_folder, name) for name in ('app.js', 'app.css'))
+        if os.path.exists(path)
+    ]
+    return int(max(mtimes)) if mtimes else 0
 
 
 def _parse_filters():
@@ -29,7 +44,7 @@ def _parse_filters():
 
 @bp.get('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', asset_version=_static_asset_version())
 
 
 @bp.get('/api/meta')

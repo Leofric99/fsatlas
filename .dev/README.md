@@ -35,4 +35,7 @@ scenery) is a plain host directory, not a Docker-managed volume, so it is left u
 If the running container's `installed_scenery.json` only lives in its writable layer
 (e.g. it was started without the `./data` volume - see the plain `docker run` example
 above), the script copies it onto `./data` first so it isn't lost when the container is
-removed.
+removed. The build always runs with `--no-cache`, so a release can never accidentally
+ship stale layers - if `docker push` reports every layer as "Layer already exists", your
+checkout genuinely has no code changes since the last release (check `git status`/
+`git log` before re-running).

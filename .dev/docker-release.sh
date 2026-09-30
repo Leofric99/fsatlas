@@ -100,7 +100,12 @@ run docker rm -f "$CONTAINER_NAME" || true
 
 echo
 echo "--- Building ---"
-run docker build -t "$IMAGE:latest" -t "$IMAGE:$VERSION" "$REPO_ROOT"
+# --no-cache: guarantees every layer is rebuilt from the current working tree. Without
+# it, a COPY step can occasionally get reused from Docker's build cache even when you
+# meant to ship new code (e.g. if you build again before actually committing/pulling
+# the intended changes) - "docker push" then reports every layer as "Layer already
+# exists" and the deployed container silently keeps running the old code.
+run docker build --no-cache -t "$IMAGE:latest" -t "$IMAGE:$VERSION" "$REPO_ROOT"
 
 echo
 echo "--- Pushing to Docker Hub ---"

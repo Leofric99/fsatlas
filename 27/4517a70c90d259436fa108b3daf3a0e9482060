@@ -1,0 +1,39 @@
+run/webapp/static/app.js
+  s_5114eae8874fe7::t_a6fba15fa7e710 1304
+  h_2fb16336b691a1 84-89,100-101,120-125,158,162-166,168-181,187-188,203-204,223-228,260,292,1170,1696
+  s_5114eae8874fe7::t_4aa43f02e17e29 102,167
+run/webapp/templates/index.html
+  s_5114eae8874fe7::t_fb77f6ee9c97ca 77-85
+run/installed_scenery.json
+  s_5114eae8874fe7::t_d6c5c48ca1813b 1
+.dev/docker-release.sh
+  s_5114eae8874fe7::t_8ea15fce822648 61-69,71-86,89,101-109,118-120
+  s_5114eae8874fe7::t_1163175362db9f 2-6,9
+run/webapp/static/app.css
+  s_5114eae8874fe7::t_b4d8ba19d1659b 520
+  s_5114eae8874fe7::t_6104b083d6b60a 521-527
+  s_5114eae8874fe7::t_bc3845445768d3 516-519,528-529
+.dev/README.md
+  s_5114eae8874fe7::t_72daf0f639b48a 21-22,25,32-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "274517a70c90d259436fa108b3daf3a0e9482060",
+  "prompts": {},
+  "humans": {
+    "h_2fb16336b691a1": {
+      "author": "chrhodge <chrhodge@cisco.com>"
+    }
+  },
+  "sessions": {
+    "s_5114eae8874fe7": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "5ec413c5-03de-40b8-a312-968e79f75180",
+        "model": "copilot/claude-sonnet-5"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

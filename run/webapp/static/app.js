@@ -184,6 +184,7 @@
   let sceneryImportErrors = [];
   const sceneryLayer = L.layerGroup();
   const sceneryOffsetsBuilt = new Set();
+  let sceneryMarkers = {}; // iata -> {offset -> marker} - mirrors airportMarkers, drives connectivity show/hide
   const sceneryIconsByRank = {}; // "rank-size" -> cached L.divIcon, colored/sized to match that rank's dot
   let sceneryUniformIconCached = null; // single accent-colored icon reused while the airport overlay is off
 
@@ -237,30 +238,43 @@
         // instead of falling back to a meaningless rank-0/red color.
         const ap = airports[s.iata];
         if (!ap) return;
-        L.marker([s.lat, s.lon + offset], {
+        const marker = L.marker([s.lat, s.lon + offset], {
           icon: sceneryIconForRank(ap.rank), interactive: true, keyboard: true, pane: 'sceneryPane'
         })
           .bindTooltip((s.icao || s.iata) + ' - ' + s.name, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' })
-          .on('click', (e) => { L.DomEvent.stopPropagation(e); handleAirportClick(s.iata, offset); })
-          .addTo(sceneryLayer);
+          .on('click', (e) => { L.DomEvent.stopPropagation(e); handleAirportClick(s.iata, offset); });
+        if (!sceneryMarkers[s.iata]) sceneryMarkers[s.iata] = {};
+        sceneryMarkers[s.iata][offset] = marker;
+        // Same connectivity filter as the dots (see loadRoutes/deselect) - a star built
+        // lazily for a newly-panned-to world copy while a source is already selected
+        // must respect that selection immediately, not just future show/hide calls.
+        if (!visibleFilter || visibleFilter.has(s.iata)) marker.addTo(sceneryLayer);
       } else {
         // Airport overlay off: every installed-scenery airport shows regardless of
-        // filters/flight matches (there's no dot layer to stay consistent with), and a
-        // click just identifies the airport via a popup bubble - no dot/route layer
+        // filters/flight matches (there's no dot layer to stay consistent with), and
+        // hovering just identifies the airport via a small bubble - no dot/route layer
         // exists right now to select into.
         const label = (s.icao || s.iata) + ' - ' + s.name;
-        L.marker([s.lat, s.lon + offset], {
+        const marker = L.marker([s.lat, s.lon + offset], {
           icon: sceneryUniformIcon(), interactive: true, keyboard: true, pane: 'sceneryPane'
-        })
-          .bindPopup(label, { className: 'atlas-popup', closeButton: false })
-          .on('click', (e) => { L.DomEvent.stopPropagation(e); e.target.openPopup(); })
-          .addTo(sceneryLayer);
+        }).bindTooltip(label, { direction: 'top', offset: [0, -2], className: 'atlas-star-tooltip' });
+        if (!sceneryMarkers[s.iata]) sceneryMarkers[s.iata] = {};
+        sceneryMarkers[s.iata][offset] = marker;
+        marker.addTo(sceneryLayer);
       }
     });
   }
 
+  function showSceneryStar(iata) {
+    Object.values(sceneryMarkers[iata] || {}).forEach(m => { if (!sceneryLayer.hasLayer(m)) sceneryLayer.addLayer(m); });
+  }
+  function hideSceneryStar(iata) {
+    Object.values(sceneryMarkers[iata] || {}).forEach(m => { if (sceneryLayer.hasLayer(m)) sceneryLayer.removeLayer(m); });
+  }
+
   function rebuildSceneryMarkers() {
     sceneryLayer.clearLayers();
+    sceneryMarkers = {};
     sceneryOffsetsBuilt.clear();
     [...renderedOffsets].forEach(offset => createSceneryForOffset(offset));
   }
@@ -463,6 +477,7 @@
 
     visibleFilter = null;
     Object.keys(airports).forEach(iata => showAirport(iata));
+    Object.keys(sceneryMarkers).forEach(iata => showSceneryStar(iata));
   }
 
   function deslectDestOnly() {
@@ -483,6 +498,7 @@
       visibleFilter = connectedIatas;
 
       Object.keys(airports).forEach(iata => { connectedIatas.has(iata) ? showAirport(iata) : hideAirport(iata); });
+      Object.keys(sceneryMarkers).forEach(iata => { connectedIatas.has(iata) ? showSceneryStar(iata) : hideSceneryStar(iata); });
 
       if (pendingSavedFlight && pendingSavedFlight.dep === selectedSource) {
         const wantedArr = pendingSavedFlight.arr;

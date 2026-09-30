@@ -573,20 +573,19 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
 }
 .atlas-tooltip.leaflet-tooltip::before { display: none; }
 
-/* Popup bubble for a scenery star's airport-identifier click (airport overlay off) -
-   themed to match the tooltip/panel styling above instead of Leaflet's plain default
-   white popup, and trimmed down to a small label rather than a full-size callout. */
-.atlas-popup .leaflet-popup-content-wrapper {
-  background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
-  color: var(--text); box-shadow: var(--shadow-md);
+/* Hover bubble for a scenery star's airport-identifier tooltip (airport overlay off) -
+   same themed look as .atlas-tooltip above, but keeps its pointer arrow (scaled down)
+   instead of hiding it, so the bubble visibly points down at the star it belongs to. */
+.atlas-star-tooltip.leaflet-tooltip {
+  background: var(--panel-bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text) !important;
+  font-size: 11px; font-weight: 600; padding: 3px 8px;
+  box-shadow: var(--shadow-md) !important;
 }
-.atlas-popup .leaflet-popup-content {
-  margin: 3px 8px; font-size: 11px; font-weight: 600; line-height: 1.4; white-space: nowrap;
-}
-.atlas-popup .leaflet-popup-tip-container { width: 24px; height: 10px; margin-left: -12px; }
-.atlas-popup .leaflet-popup-tip {
-  width: 10px; height: 10px; padding: 0; margin: -5px auto 0;
-  background: var(--panel-bg); border: 1px solid var(--border); box-shadow: none;
+.atlas-star-tooltip.leaflet-tooltip-top:before {
+  border-width: 5px; margin-bottom: -10px; border-top-color: var(--panel-bg) !important;
 }
 
 /* Plane icon marking the midpoint of a fully-selected (both ends) route - colored with

@@ -1009,6 +1009,7 @@
 
   // --- Settings modal (SimBrief Pilot ID) ---
   const settingsModal = document.getElementById('settings-modal');
+  const settingsModalBox = settingsModal.querySelector('.modal');
   const pilotIdInput = document.getElementById('simbrief-pilot-id');
   const simbriefStatus = document.getElementById('simbrief-status');
 
@@ -1068,10 +1069,19 @@
   let sceneryAirportOptions = null;
   let sceneryErrorsRenderId = 0;
 
+  // Widens the whole settings dialog (animated via CSS transition) while the import-
+  // details disclosure is open - its resolution rows (airport dropdown + Assign button)
+  // need more horizontal room than the dialog's normal narrow width provides.
+  function syncSceneryDetailsWidth() {
+    settingsModalBox.classList.toggle('wide', sceneryErrorsEl.open);
+  }
+  sceneryErrorsEl.addEventListener('toggle', syncSceneryDetailsWidth);
+
   function updateSceneryErrors(errors) {
     sceneryImportErrors = Array.isArray(errors) ? errors : [];
     sceneryErrorsEl.classList.toggle('visible', sceneryImportErrors.length > 0);
     sceneryErrorsEl.removeAttribute('open');
+    syncSceneryDetailsWidth();
     sceneryErrorsSummary.textContent = `Import details (${sceneryImportErrors.length})`;
     sceneryErrorsCode.textContent = JSON.stringify(sceneryImportErrors, null, 2);
     renderSceneryErrorResolutions(sceneryImportErrors);

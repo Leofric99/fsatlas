@@ -1,0 +1,27 @@
+run/installed_scenery.json
+  s_5114eae8874fe7::t_3e3efe734911eb 1
+run/webapp/static/app.js
+  s_5114eae8874fe7::t_4ba0fd20848621 1532,1697-1698
+  s_5114eae8874fe7::t_149be057100717 88-94
+  s_5114eae8874fe7::t_a9b6ef03806e48 186-188
+  s_5114eae8874fe7::t_a4254e37c5f8f7 156-158,162-166,173,189-193,196,204-209
+run/webapp/static/app.css
+  s_5114eae8874fe7::t_326d69013e4a35 543
+  s_5114eae8874fe7::t_e3d90c481c2498 378-384
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "acc29c208ebf9cf05234bb93d12b2f18988103f0",
+  "prompts": {},
+  "sessions": {
+    "s_5114eae8874fe7": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "5ec413c5-03de-40b8-a312-968e79f75180",
+        "model": "copilot/claude-sonnet-5"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

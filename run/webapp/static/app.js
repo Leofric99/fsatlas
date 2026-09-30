@@ -59,10 +59,16 @@
 
   map.createPane('routesPane');
   map.getPane('routesPane').style.zIndex = 390;
-  map.createPane('sceneryPane');
-  map.getPane('sceneryPane').style.zIndex = 395;
   map.createPane('airportsPane');
   map.getPane('airportsPane').style.zIndex = 400;
+  // Above airportsPane, not below: airport dots are canvas-rendered (preferCanvas:true),
+  // which means ONE <canvas> element covers the whole map surface regardless of where
+  // dots are actually drawn - sitting below it, a star's own DOM element would never
+  // receive real clicks at all (the canvas intercepts every pointer event in its
+  // bounding box first, even over "empty" pixels), even though Leaflet's own internal
+  // `.fire('click', ...)` calls bypass that and appear to work fine in isolation.
+  map.createPane('sceneryPane');
+  map.getPane('sceneryPane').style.zIndex = 405;
 
   let tileLayer = null;
   function setTileLayer(name) {
@@ -90,8 +96,11 @@
   // circle does, so sizing its bounding box to the SAME diameter as a dot makes it read as
   // noticeably smaller. Scale the box up so the star's actual rendered AREA matches the
   // circle's area of the same rank instead, so they look the same size at a glance.
+  // The 0.9 factor is a manual 10% trim on top of that - area-matching alone still read
+  // as slightly too big in practice (area equivalence isn't quite the same as perceived
+  // size equivalence for a spiky vs. round shape).
   const STAR_POLYGON_AREA = 148.28;
-  const STAR_SIZE_SCALE = 24 * Math.sqrt(Math.PI / STAR_POLYGON_AREA);
+  const STAR_SIZE_SCALE = 24 * Math.sqrt(Math.PI / STAR_POLYGON_AREA) * 0.9;
 
   // Bottom-right, collapsible into a slim pull tab that stays docked to the edge.
   const legendTemplate = document.getElementById('legend-template');

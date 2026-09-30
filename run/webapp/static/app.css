@@ -375,10 +375,13 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
 .saved-empty { font-size: 13px; color: var(--text-dim); text-align: center; padding: 18px 4px; line-height: 1.5; }
 #saved-modal .modal { width: 480px; }
 
-/* Scenery-overlay star markers - purely decorative (interactive:false in app.js, so
-   clicks fall through to whatever's underneath), rendered in a Leaflet pane below the
-   airport dots pane. */
-.scenery-star-icon { pointer-events: none; }
+/* Scenery-overlay star markers, rendered in a Leaflet pane below the airport dots pane -
+   selectable exactly like the dot they stand in for (app.js only attaches a click handler
+   and Leaflet's 'leaflet-interactive' class when that's actually possible); a star without
+   that class is a plain decorative marker, so pointer-events:none lets clicks on it fall
+   through to the map underneath instead of silently swallowing them. */
+.scenery-star-icon:not(.leaflet-interactive) { pointer-events: none; }
+.scenery-star-icon.leaflet-interactive { cursor: pointer; }
 .saved-section { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
 .saved-section + .saved-section { margin-top: 10px; }
 .saved-section-toggle {
@@ -537,7 +540,7 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
   max-height: calc(100vh - var(--topbar-h) - 20px);
   max-height: calc(100dvh - var(--topbar-h) - 20px);
 }
-.legend-root.scenery-legend .legend-scenery-row { display: flex; align-items: flex-start; white-space: normal; }
+.legend-root.scenery-legend .legend-scenery-row { display: flex; align-items: center; white-space: normal; }
 /* 2x2 square instead of a single row of 4 - keeps this line no wider than the other
    legend rows above it, rather than pushing the text past the panel's edge. */
 .legend-star-group {

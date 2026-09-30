@@ -61,7 +61,6 @@
   map.getPane('routesPane').style.zIndex = 390;
   map.createPane('sceneryPane');
   map.getPane('sceneryPane').style.zIndex = 395;
-  map.getPane('sceneryPane').style.pointerEvents = 'none';
   map.createPane('airportsPane');
   map.getPane('airportsPane').style.zIndex = 400;
 
@@ -86,6 +85,13 @@
   function starSvgMarkup(color) {
     return '<svg viewBox="0 0 24 24" fill="' + color + '" stroke="#00000055" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 14.9 8.6 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9.1 8.6"></polygon></svg>';
   }
+  // The star polygon above only fills ~148.3 sq units of its 24x24 (576 sq unit) viewBox
+  // (shoelace area of its points) - a star fills far less of its own bounding box than a
+  // circle does, so sizing its bounding box to the SAME diameter as a dot makes it read as
+  // noticeably smaller. Scale the box up so the star's actual rendered AREA matches the
+  // circle's area of the same rank instead, so they look the same size at a glance.
+  const STAR_POLYGON_AREA = 148.28;
+  const STAR_SIZE_SCALE = 24 * Math.sqrt(Math.PI / STAR_POLYGON_AREA);
 
   // Bottom-right, collapsible into a slim pull tab that stays docked to the edge.
   const legendTemplate = document.getElementById('legend-template');
@@ -147,19 +153,24 @@
       map.removeLayer(routeLayer);
       map.removeLayer(airportLayer);
     }
+    // Stars are only selectable while the airport overlay is on - rebuild so their
+    // clickability (and cursor) picks up the change immediately.
+    if (sceneryOverlayEnabled) rebuildSceneryMarkers();
   }
 
   // --- Scenery overlay: star markers for the user's imported flight-sim scenery
-  // locations (see /api/scenery), drawn in a pane below the airport dots and never
-  // interactive/selectable (interactive:false + a pointer-events:none pane so clicks
-  // always fall through to whatever's underneath). Only added to the map while enabled. ---
+  // locations (see /api/scenery), drawn in a pane below the airport dots. Selectable
+  // exactly like the airport dot they stand in for - same click behavior, same size for
+  // their rank - except when the airport overlay is off, or the airport has no flights in
+  // the current dataset to show (not present in `airports`), in which case they're just a
+  // non-interactive marker (no click handler attached, so clicks fall through to the map). ---
   let sceneryOverlayEnabled = false;
   let sceneryData = []; // [{iata, icao, name, city, lat, lon}, ...]
   let sceneryIatas = new Set(); // iata codes with imported scenery - drives dot-hiding below
   let sceneryImportErrors = [];
   const sceneryLayer = L.layerGroup();
   const sceneryOffsetsBuilt = new Set();
-  const sceneryIconsByRank = {}; // rank -> cached L.divIcon, colored to match that rank's dot
+  const sceneryIconsByRank = {}; // "rank-size" -> cached L.divIcon, colored/sized to match that rank's dot
 
   function refreshSceneryIatas() {
     sceneryIatas = new Set(sceneryData.map(s => s.iata).filter(Boolean));
@@ -172,12 +183,17 @@
   }
 
   function sceneryIconForRank(rank) {
-    if (!sceneryIconsByRank[rank]) {
-      sceneryIconsByRank[rank] = L.divIcon({
-        className: 'scenery-star-icon', html: starSvgMarkup(colorForRank(rank)), iconSize: [14, 14], iconAnchor: [7, 7]
+    // Area-matched to that rank's circleMarker dot (markerRadius is the dot's radius in
+    // px) rather than same-diameter - see STAR_SIZE_SCALE above for why.
+    const size = markerRadius(rank) * STAR_SIZE_SCALE;
+    const key = rank + '-' + size;
+    if (!sceneryIconsByRank[key]) {
+      sceneryIconsByRank[key] = L.divIcon({
+        className: 'scenery-star-icon', html: starSvgMarkup(colorForRank(rank)),
+        iconSize: [size, size], iconAnchor: [size / 2, size / 2]
       });
     }
-    return sceneryIconsByRank[rank];
+    return sceneryIconsByRank[key];
   }
 
   function createSceneryForOffset(offset) {
@@ -185,9 +201,12 @@
     sceneryOffsetsBuilt.add(offset);
     sceneryData.forEach(s => {
       const ap = airports[s.iata];
-      L.marker([s.lat, s.lon + offset], { icon: sceneryIconForRank(ap ? ap.rank : 0), interactive: false, keyboard: false, pane: 'sceneryPane' })
-        .bindTooltip((s.icao || s.iata) + ' - ' + s.name, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' })
-        .addTo(sceneryLayer);
+      const clickable = airportsOverlayEnabled && !!ap;
+      const marker = L.marker([s.lat, s.lon + offset], {
+        icon: sceneryIconForRank(ap ? ap.rank : 0), interactive: clickable, keyboard: clickable, pane: 'sceneryPane'
+      }).bindTooltip((s.icao || s.iata) + ' - ' + s.name, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' });
+      if (clickable) marker.on('click', (e) => { L.DomEvent.stopPropagation(e); handleAirportClick(s.iata, offset); });
+      marker.addTo(sceneryLayer);
     });
   }
 
@@ -1510,6 +1529,7 @@
         document.body.classList.toggle('is-mobile', isMobile);
         isMobile ? closeSidebar() : openSidebar();
         rebuildAirportMarkers(); // marker radius depends on isMobile
+        if (sceneryOverlayEnabled) rebuildSceneryMarkers(); // star size depends on isMobile too
       }
       checkLegendOverlap();
     });
@@ -1674,6 +1694,8 @@
       (result.airports || []).forEach(ap => { airports[ap.iata] = ap; });
       airportsData = result.airports || [];
       rebuildAirportMarkers();
+      // Stars' clickability/rank depend on `airports`, just refreshed above.
+      if (sceneryOverlayEnabled) rebuildSceneryMarkers();
 
       flightsCountEl.textContent = result.count.toLocaleString() + ' flights match';
     } catch (err) {

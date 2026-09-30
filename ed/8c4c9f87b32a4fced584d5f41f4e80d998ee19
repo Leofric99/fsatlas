@@ -1,0 +1,26 @@
+run/webapp/templates/index.html
+  s_5114eae8874fe7::t_eb93c31b65ef72 8,242
+  s_5114eae8874fe7::t_77fb86f1ef6086 84
+.dev/README.md
+  s_5114eae8874fe7::t_e66992fe25f906 38-41
+run/webapp/routes.py
+  s_5114eae8874fe7::t_148180ca03aadb 6,9,17-30,47
+.dev/docker-release.sh
+  s_5114eae8874fe7::t_0211f1d32c7713 103-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed8c4c9f87b32a4fced584d5f41f4e80d998ee19",
+  "prompts": {},
+  "sessions": {
+    "s_5114eae8874fe7": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "5ec413c5-03de-40b8-a312-968e79f75180",
+        "model": "copilot/claude-sonnet-5"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

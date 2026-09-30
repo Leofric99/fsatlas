@@ -1,0 +1,22 @@
+run/installed_scenery.json
+  s_5114eae8874fe7::t_d3cd19cdea721c 1
+run/webapp/static/app.js
+  s_5114eae8874fe7::t_1f93c301458ec2 64-71
+  s_5114eae8874fe7::t_e6ea34f0bf2294 99-101,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0170440acaed0dc81c42c230f04bc55c2fcf09ac",
+  "prompts": {},
+  "sessions": {
+    "s_5114eae8874fe7": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "5ec413c5-03de-40b8-a312-968e79f75180",
+        "model": "copilot/claude-sonnet-5"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

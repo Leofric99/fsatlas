@@ -68,6 +68,14 @@ def load_new_records(json_path):
 
     df = pd.DataFrame.from_records(records)
 
+    if 'callsign' in df.columns:
+        if 'calsign' in df.columns:
+            has_calsign = df['calsign'].notna() & df['calsign'].astype(str).str.strip().ne('')
+            df['calsign'] = df['calsign'].where(has_calsign, df['callsign'])
+            df = df.drop(columns='callsign')
+        else:
+            df = df.rename(columns={'callsign': 'calsign'})
+
     unknown_columns = [c for c in df.columns if c not in REQUIRED_COLUMNS]
     if unknown_columns:
         print(f"Ignoring unrecognised columns: {', '.join(unknown_columns)}")

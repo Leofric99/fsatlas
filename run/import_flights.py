@@ -84,6 +84,11 @@ def load_new_records(json_path):
     return df.astype(str)
 
 
+def _drop_missing_callsigns(df):
+    has_callsign = df['calsign'].fillna('').astype(str).str.strip().ne('')
+    return df.loc[has_callsign].copy(), int((~has_callsign).sum())
+
+
 def load_cruise_speeds():
     """Return {type_icao: cruise_tas_knots}, or {} if the speeds file is missing."""
     if not os.path.exists(CRZ_SPEEDS_FILE):
@@ -126,7 +131,10 @@ def import_flights(json_path, dry_run=False):
         print(f"{DATA_FILE} not found or empty; creating it with columns: {', '.join(REQUIRED_COLUMNS)}")
         existing = pd.DataFrame(columns=REQUIRED_COLUMNS)
 
+    existing, removed_existing = _drop_missing_callsigns(existing)
     new_records = load_new_records(json_path)
+    read_count = len(new_records)
+    new_records, skipped_missing_callsign = _drop_missing_callsigns(new_records)
 
     cruise_speeds = load_cruise_speeds()
     if cruise_speeds:
@@ -140,7 +148,9 @@ def import_flights(json_path, dry_run=False):
     added = len(deduped) - len(existing)
     duplicates = len(new_records) - added
 
-    print(f"Read {len(new_records)} record(s) from {json_path}")
+    print(f"Read {read_count} record(s) from {json_path}")
+    print(f"  {skipped_missing_callsign} flight(s) skipped (missing callsign)")
+    print(f"  {removed_existing} existing flight(s) removed (missing callsign)")
     print(f"  {added} new flight(s) {'would be added' if dry_run else 'added'}")
     print(f"  {duplicates} duplicate(s) skipped")
 

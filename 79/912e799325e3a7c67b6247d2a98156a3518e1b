@@ -1,0 +1,85 @@
+run/webapp/templates/index.html
+  s_b90bc5adac03c1::t_48558baaa81efd 65,71,111,114
+  s_b90bc5adac03c1::t_87ad2ee18eab13 74
+  s_b90bc5adac03c1::t_cfc53e424de1f5 175-186,188-218,220-225,227-234,238,246-249
+  s_b90bc5adac03c1::t_23a92b72a6203b 66-70,72-73,75-94,98-101,107-110
+  s_b90bc5adac03c1::t_cee7ebd1b48822 30-50,52-58,60,64,113,127-132,134-136,138
+  s_b90bc5adac03c1::t_9c568d92e45f1d 95-97,102-106
+run/webapp/data.py
+  s_b90bc5adac03c1::t_35af21b6bd1b92 134-135
+  s_b90bc5adac03c1::t_aab7c32c22ec38 106-117
+  s_b90bc5adac03c1::t_bbe9385c778688 159-160
+  s_b90bc5adac03c1::t_07a93b2ed8b2cb 19-33
+run/webapp/static/app.css
+  s_b90bc5adac03c1::t_fe81953d4b6ad7 103,192,197,228,233,236-237,239,243-246
+  s_b90bc5adac03c1::t_22b04f8adbbac6 33,224-226
+  s_b90bc5adac03c1::t_9cf5a92cbe77b4 641-650,652-654,658-659,661-662
+  s_b90bc5adac03c1::t_8dc17ff2da9dae 302
+  s_b90bc5adac03c1::t_fa7452d2da6c21 307,639
+  s_b90bc5adac03c1::t_9c568d92e45f1d 318-330,343
+  s_b90bc5adac03c1::t_1c9b30e121befc 76-78
+  s_b90bc5adac03c1::t_4d2bbf7a8c4b65 637-638
+  s_b90bc5adac03c1::t_36275c2688d8b7 655-657
+  s_b90bc5adac03c1::t_04e816644a168c 313-317
+  s_b90bc5adac03c1::t_16591ea4e6048f 278-301,303-306,308-312,331-342,344
+  s_b90bc5adac03c1::t_532160f38df9d6 122,129,132,137,141,146
+  s_b90bc5adac03c1::t_55fd85399be0ee 44
+  s_b90bc5adac03c1::t_919d084cb8c29d 108-121,123-126
+  s_b90bc5adac03c1::t_bf36fa92e53d46 235,263-277,345-447
+  s_b90bc5adac03c1::t_7c510c6334d3f1 485-487,489,493-496,519
+  s_b90bc5adac03c1::t_f1a1f586c5e525 20-22,27-32
+  s_b90bc5adac03c1::t_6af40fad65f21a 631-636
+  s_b90bc5adac03c1::t_fe836c3423f01c 40
+  s_b90bc5adac03c1::t_05a58ad2fdbc2b 206-209,214,216-217,221-223,227,231-232,234,240,251-258,260-261
+  s_b90bc5adac03c1::t_734533bbf31881 663-664
+run/webapp/static/app.js
+  s_b90bc5adac03c1::t_d0f1f68c8bcf8f 699-700,702-703,706,714-717,719-731,734-764
+  s_b90bc5adac03c1::t_9546573563543d 768
+  s_b90bc5adac03c1::t_6fbdf0ca09dc33 1479-1488,1491-1508
+  s_b90bc5adac03c1::t_980a88ccb453e7 675,681,693-694,701,707
+  s_b90bc5adac03c1::t_1c3ef48d47eac2 480
+  s_b90bc5adac03c1::t_d84f14d6ae4455 331,425
+  s_b90bc5adac03c1::t_eff6bde0466832 304
+  s_b90bc5adac03c1::t_db46ce66f18a1f 983-985,987,992-1003,1011-1012,1015
+  s_b90bc5adac03c1::t_75ac31dea49175 495
+  s_b90bc5adac03c1::t_d3b412bad66bc5 142,154-156,158,175,179,288-291,301-302,306-307
+  s_b90bc5adac03c1::t_c4a49ad5797281 1518-1519,1528,1926,2006,2008-2010,2012-2016
+  s_b90bc5adac03c1::t_396614ddfb49dc 1537-1541,1567-1569,1575-1605,1607-1612,1614-1763,1768-1775,1779-1785,1789-1810,1814-1829,1831-1838,1845-1846,1850,1853,1859,1863-1869,1872-1873,1876-1885,1887-1889,1893
+  s_b90bc5adac03c1::t_56efa4d4a2c259 1920,1922,1931-1932,1940-1946,1957-1985
+  s_b90bc5adac03c1::t_fef16ef30328c9 1947-1956
+  s_b90bc5adac03c1::t_55fd85399be0ee 3,89
+  s_b90bc5adac03c1::t_6f2303d282cc31 271-273,332-348
+  s_b90bc5adac03c1::t_6f077909536eab 626-634,636-661
+  s_b90bc5adac03c1::t_8ab12a33478c5c 1008
+  s_b90bc5adac03c1::t_2c3501593f4817 1089,1113-1119
+  s_b90bc5adac03c1::t_b751385484fe0d 795-796,871,1042,1061
+  s_b90bc5adac03c1::t_b72fa30d56eae3 1606,1613
+  s_b90bc5adac03c1::t_7bddd66b171db4 59-66
+  s_b90bc5adac03c1::t_31386841c49fe3 499-501,521,543,554,561,570-571
+  s_b90bc5adac03c1::t_b49e34c73a5d86 1196-1199
+  s_b90bc5adac03c1::t_e1e7962fcd9f84 697
+  s_b90bc5adac03c1::t_d9816795818c83 1986
+run/filtering.py
+  s_b90bc5adac03c1::t_f623f63a1bbcb7 46-47,49-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79912e799325e3a7c67b6247d2a98156a3518e1b",
+  "prompts": {},
+  "humans": {
+    "h_2fb16336b691a1": {
+      "author": "chrhodge <chrhodge@cisco.com>"
+    }
+  },
+  "sessions": {
+    "s_b90bc5adac03c1": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "35f71c34-80c6-4e58-8e97-b36958648da0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

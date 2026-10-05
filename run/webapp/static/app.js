@@ -1054,12 +1054,43 @@
 
   function applySavedSearch(search) {
     openPanel('explore'); // show the restored tree immediately, not an empty map with nothing open
-    filters.replaceChildren();
-    const children = (search.filters && search.filters.children) || [];
-    rootLogic = majorityLogic(children);
-    setScopeUI(filtersScopeHeader, rootLogic);
-    if (children.length) children.forEach(child => filters.append(buildFilterTreeNode(child)));
-    else addRow();
+    SIMPLE_FILTER_SPECS.forEach(spec => { if (simpleFilterState[spec.key]) simpleFilterState[spec.key].values = []; });
+    const length = simpleFilterState.length;
+    if (length) length.active = false;
+    const leaves = [];
+    const collectLeaves = node => {
+      if (!node) return;
+      if (node.kind === 'group') (node.children || []).forEach(collectLeaves);
+      else leaves.push(node);
+    };
+    collectLeaves(search.filters);
+    leaves.forEach(leaf => {
+      const spec = SIMPLE_FILTER_SPECS.find(candidate => candidate.fields.some(field => field.id === leaf.column));
+      if (spec && Array.isArray(leaf.value) && simpleFilterState[spec.key]) {
+        simpleFilterState[spec.key].column = leaf.column;
+        simpleFilterState[spec.key].values = leaf.value.slice();
+      } else if (length && (leaf.column === 'distance' || leaf.column === 'rough_flight_time')) {
+        length.column = leaf.column;
+        if (leaf.operator === '>=') { length.min = Number(leaf.value); length.active = true; }
+        if (leaf.operator === '<=') { length.max = Number(leaf.value); length.active = true; }
+      }
+    });
+    SIMPLE_FILTER_SPECS.forEach(spec => {
+      const menu = simpleFiltersEl.querySelector(`.simple-filter-menu[data-filter="${spec.key}"]`);
+      if (menu) renderSimpleCategory(spec, menu);
+    });
+    const lengthMenu = simpleFiltersEl.querySelector('.simple-length-menu');
+    if (lengthMenu && length) {
+      const fieldSelect = lengthMenu.querySelector('.simple-filter-field');
+      const minInput = lengthMenu.querySelector('.simple-length-min');
+      const maxInput = lengthMenu.querySelector('.simple-length-max');
+      const outputs = lengthMenu.querySelectorAll('.simple-range-label output');
+      fieldSelect.value = length.column;
+      minInput.value = length.min; maxInput.value = length.max;
+      outputs[0].textContent = length.min + (length.column === 'distance' ? ' nm' : ' hr');
+      outputs[1].textContent = length.max + (length.column === 'distance' ? ' nm' : ' hr');
+      lengthMenu.querySelector('.simple-filter-trigger').textContent = length.active ? `Length (${length.column === 'distance' ? 'distance' : 'time'})` : 'Length';
+    }
     updateFilterCountBadge();
     applyFilters();
   }
@@ -1079,7 +1110,7 @@
   async function confirmSaveSearch() {
     const trimmed = saveSearchDescInput.value.trim();
     if (!trimmed) { saveSearchDescInput.focus(); return; }
-    const filterTree = { kind: 'group', logic: 'AND', children: serializeList(filters) };
+    const filterTree = currentFilterTree();
     try {
       await fsatlasFetch('/api/saved-searches', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1557,7 +1588,7 @@
 
   function countConfiguredFilters() { return [...filters.querySelectorAll('.column')].filter(col => col.value).length; }
   function updateFilterCountBadge() {
-    const configured = countConfiguredFilters();
+    const configured = simpleFilterChildren().length;
     filtersCountBadge.textContent = configured ? configured + ' active' : 'none active';
     filtersCountBadge.classList.toggle('zero', configured === 0);
   }
@@ -1938,7 +1969,130 @@
     };
   }
 
-  function currentFilterTree() { return { kind: 'group', logic: 'AND', children: serializeList(filters, rootLogic) }; }
+  const simpleFiltersEl = document.getElementById('simple-filters');
+  const SIMPLE_FILTER_SPECS = [
+    { key: 'airline', label: 'Airline', fields: [{ label: 'Airline', id: 'owner' }] },
+    { key: 'airport', label: 'Airports', fields: [
+      { label: 'ICAO', id: 'combined:dep_airport_icao:arr_airport_icao' },
+      { label: 'IATA', id: 'combined:dep_airport_iata:arr_airport_iata' },
+      { label: 'Name', id: 'combined:dep_airport:arr_airport' },
+    ] },
+    { key: 'aircraft', label: 'Aircraft', fields: [{ label: 'ICAO', id: 'type_icao' }, { label: 'Full type', id: 'type' }] },
+    { key: 'location', label: 'Location', fields: [
+      { label: 'City', id: 'combined:dep_airport_city:arr_airport_city' },
+      { label: 'Country', id: 'combined:dep_airport_country:arr_airport_country' },
+      { label: 'Region', id: 'combined:dep_airport_region:arr_airport_region' },
+    ] },
+  ];
+  const simpleFilterState = {};
+
+  function simpleColumn(id) { return columns.find(column => column.id === id); }
+  function simpleCategoryLabel(spec) {
+    const state = simpleFilterState[spec.key];
+    return spec.label;
+  }
+  function closeSimpleMenus(except) {
+    simpleFiltersEl.querySelectorAll('.simple-filter-menu.open').forEach(menu => { if (menu !== except) menu.classList.remove('open'); });
+  }
+  function renderSimpleCategory(spec, menu) {
+    const state = simpleFilterState[spec.key];
+    const field = simpleColumn(state.column);
+    const button = menu.querySelector('.simple-filter-trigger');
+    button.querySelector('.simple-filter-label').textContent = simpleCategoryLabel(spec);
+    const count = button.querySelector('.simple-filter-count');
+    count.textContent = state.values.length;
+    count.hidden = state.values.length === 0;
+    const fieldSelect = menu.querySelector('.simple-filter-field');
+    const search = menu.querySelector('.simple-filter-search');
+    const options = menu.querySelector('.simple-filter-options');
+    const query = search.value.trim().toLowerCase();
+    const values = Array.isArray(field && field.options) ? field.options : [];
+    options.replaceChildren();
+    values.filter(value => !query || value.toLowerCase().includes(query)).slice(0, 160).forEach(value => {
+      const label = document.createElement('label');
+      label.className = 'simple-filter-option';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox'; checkbox.checked = state.values.includes(value);
+      checkbox.addEventListener('change', () => {
+        state.values = checkbox.checked ? [...state.values, value] : state.values.filter(item => item !== value);
+        renderSimpleCategory(spec, menu); schedulePreview();
+      });
+      label.append(checkbox, document.createTextNode(value));
+      options.append(label);
+    });
+    if (!values.length) options.textContent = 'No values available for this field.';
+    fieldSelect.value = state.column;
+  }
+  function buildSimpleCategory(spec) {
+    const availableFields = spec.fields.filter(field => simpleColumn(field.id));
+    if (!availableFields.length) return null;
+    const state = simpleFilterState[spec.key] = { column: availableFields[0].id, values: [] };
+    const menu = document.createElement('div');
+    menu.className = 'simple-filter-menu';
+    menu.dataset.filter = spec.key;
+    menu.innerHTML = '<button type="button" class="simple-filter-trigger"><span class="simple-filter-label"></span><span class="simple-filter-count" hidden></span></button><div class="simple-filter-popover"><select class="simple-filter-field"></select><input class="simple-filter-search" type="search" placeholder="Search..."><div class="simple-filter-options"></div></div>';
+    const fieldSelect = menu.querySelector('.simple-filter-field');
+    availableFields.forEach(field => fieldSelect.add(new Option(field.label, field.id)));
+    menu.querySelector('.simple-filter-trigger').addEventListener('click', () => {
+      const opening = !menu.classList.contains('open'); closeSimpleMenus(menu); menu.classList.toggle('open', opening);
+      if (opening) menu.querySelector('.simple-filter-search').focus();
+    });
+    fieldSelect.addEventListener('change', () => { state.column = fieldSelect.value; state.values = []; renderSimpleCategory(spec, menu); schedulePreview(); });
+    menu.querySelector('.simple-filter-search').addEventListener('input', () => renderSimpleCategory(spec, menu));
+    renderSimpleCategory(spec, menu);
+    return menu;
+  }
+  function buildLengthFilter() {
+    const menu = document.createElement('div');
+    menu.className = 'simple-filter-menu simple-length-menu';
+    menu.innerHTML = '<button type="button" class="simple-filter-trigger"><span class="simple-filter-label">Length</span></button><div class="simple-filter-popover"><select class="simple-filter-field"><option value="distance">Distance</option><option value="rough_flight_time">Flight time</option></select><label class="simple-range-label"><span>Minimum</span><output></output><input class="simple-length-min" type="range"></label><label class="simple-range-label"><span>Maximum</span><output></output><input class="simple-length-max" type="range"></label></div>';
+    const state = simpleFilterState.length = { column: 'distance', min: null, max: null, active: false };
+    const trigger = menu.querySelector('.simple-filter-trigger');
+    const fieldSelect = menu.querySelector('.simple-filter-field');
+    const minInput = menu.querySelector('.simple-length-min');
+    const maxInput = menu.querySelector('.simple-length-max');
+    const update = (reset) => {
+      const column = simpleColumn(state.column);
+      const minimum = Math.floor((column && column.minimum) || 0);
+      const maximum = Math.ceil((column && column.maximum) || 1);
+      if (reset) { state.min = minimum; state.max = maximum; state.active = false; }
+      [minInput, maxInput].forEach(input => { input.min = minimum; input.max = maximum; input.step = state.column === 'rough_flight_time' ? '0.25' : '10'; });
+      minInput.value = state.min; maxInput.value = state.max;
+      menu.querySelector('.simple-range-label output').textContent = state.min + (state.column === 'distance' ? ' nm' : ' hr');
+      menu.querySelectorAll('.simple-range-label output')[1].textContent = state.max + (state.column === 'distance' ? ' nm' : ' hr');
+      trigger.querySelector('.simple-filter-label').textContent = state.active ? `Length (${state.column === 'distance' ? 'distance' : 'time'})` : 'Length';
+    };
+    menu.querySelector('.simple-filter-trigger').addEventListener('click', () => { const opening = !menu.classList.contains('open'); closeSimpleMenus(menu); menu.classList.toggle('open', opening); });
+    fieldSelect.addEventListener('change', () => { state.column = fieldSelect.value; update(true); schedulePreview(); });
+    minInput.addEventListener('input', () => { state.min = Number(minInput.value); if (state.min > state.max) state.max = state.min; state.active = true; update(false); schedulePreview(); });
+    maxInput.addEventListener('input', () => { state.max = Number(maxInput.value); if (state.max < state.min) state.min = state.max; state.active = true; update(false); schedulePreview(); });
+    update(true);
+    return menu;
+  }
+  function initSimpleFilters() {
+    simpleFiltersEl.replaceChildren();
+    SIMPLE_FILTER_SPECS.forEach(spec => { const menu = buildSimpleCategory(spec); if (menu) simpleFiltersEl.append(menu); });
+    simpleFiltersEl.append(buildLengthFilter());
+    const clear = document.createElement('button');
+    clear.type = 'button'; clear.className = 'simple-filter-clear'; clear.textContent = 'Clear';
+    clear.addEventListener('click', resetFilters);
+    simpleFiltersEl.append(clear);
+    document.addEventListener('click', event => { if (!simpleFiltersEl.contains(event.target)) closeSimpleMenus(); });
+  }
+  function simpleFilterChildren() {
+    const children = [];
+    SIMPLE_FILTER_SPECS.forEach(spec => {
+      const state = simpleFilterState[spec.key];
+      if (state && state.values.length) children.push({ column: state.column, operator: 'equals', value: state.values, type: 'select', logic: 'AND' });
+    });
+    const length = simpleFilterState.length;
+    if (length && length.active) {
+      children.push({ column: length.column, operator: '>=', value: length.min, type: 'number', logic: 'AND' });
+      children.push({ column: length.column, operator: '<=', value: length.max, type: 'number', logic: 'AND' });
+    }
+    return children;
+  }
+  function currentFilterTree() { return { kind: 'group', logic: 'AND', children: simpleFilterChildren() }; }
 
   // --- Airport marker rebuild: called on filter apply and on theme change (colors read
   // from CSS vars at creation time) - clears and recreates every marker for the world
@@ -1975,10 +2129,33 @@
   }
 
   function resetFilters() {
-    filters.replaceChildren();
-    rootLogic = 'AND';
-    setScopeUI(filtersScopeHeader, 'AND');
-    addRow();
+    SIMPLE_FILTER_SPECS.forEach(spec => {
+      const state = simpleFilterState[spec.key];
+      if (state) state.values = [];
+    });
+    const length = simpleFilterState.length;
+    if (length) {
+      const column = simpleColumn(length.column);
+      length.min = Math.floor((column && column.minimum) || 0);
+      length.max = Math.ceil((column && column.maximum) || 1);
+      length.active = false;
+    }
+    SIMPLE_FILTER_SPECS.forEach(spec => {
+      const menu = simpleFiltersEl.querySelector(`.simple-filter-menu[data-filter="${spec.key}"]`);
+      if (menu) renderSimpleCategory(spec, menu);
+    });
+    const lengthMenu = simpleFiltersEl.querySelector('.simple-length-menu');
+    if (lengthMenu) {
+      const minInput = lengthMenu.querySelector('.simple-length-min');
+      const maxInput = lengthMenu.querySelector('.simple-length-max');
+      const outputs = lengthMenu.querySelectorAll('.simple-range-label output');
+      minInput.value = length.min; maxInput.value = length.max;
+      outputs[0].textContent = length.min + (length.column === 'distance' ? ' nm' : ' hr');
+      outputs[1].textContent = length.max + (length.column === 'distance' ? ' nm' : ' hr');
+      lengthMenu.querySelector('.simple-filter-trigger').textContent = 'Length';
+    }
+    closeSimpleMenus();
+    updateFilterCountBadge();
     applyFilters();
   }
 
@@ -2064,7 +2241,7 @@
     if (topbarH || occludedLeft) map.panBy([-occludedLeft / 2, -topbarH / 2], { animate: false });
 
     ensureWorldCoverage();
-    addRow();
+    initSimpleFilters();
     await applyFilters();
 
     fsatlasFetch('/api/saved-flights')

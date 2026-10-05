@@ -11,6 +11,8 @@ import sys
 
 import pandas as pd
 
+from run.data_loader import discard_overlong_flights
+
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(CURRENT_DIR, 'database', 'flights.csv')
 CRZ_SPEEDS_FILE = os.path.join(CURRENT_DIR, 'database', 'aircraft_crz_speeds.json')
@@ -150,6 +152,8 @@ def import_flights(json_path, dry_run=False):
     else:
         print(f"Warning: {CRZ_SPEEDS_FILE} not found; keeping rough_flight_time as provided")
 
+    new_records, discarded_overlong = discard_overlong_flights(new_records)
+
     combined = pd.concat([existing, new_records], ignore_index=True)
     deduped = combined.drop_duplicates(subset=DEDUP_KEY_COLUMNS, keep='first')
 
@@ -158,6 +162,7 @@ def import_flights(json_path, dry_run=False):
 
     print(f"Read {read_count} record(s) from {json_path}")
     print(f"  {skipped_missing_callsign} flight(s) skipped (missing callsign)")
+    print(f"  {discarded_overlong} flight(s) skipped (estimated duration over 25 hours)")
     print(f"  {removed_existing} existing flight(s) removed (missing callsign)")
     print(f"  {added} new flight(s) {'would be added' if dry_run else 'added'}")
     print(f"  {duplicates} duplicate(s) skipped")

@@ -48,6 +48,25 @@ _AIRPORT_FIELDS = {
 _SCENERY_MATCH_RADIUS_MILES = 1.0
 _EARTH_RADIUS_MILES = 3958.8
 
+
+def _airport_region(latitude, longitude):
+    """Return a coarse geographic region for Location filtering without changing the CSV schema."""
+    if pd.isna(latitude) or pd.isna(longitude):
+        return "Unknown"
+    if latitude < -60:
+        return "Antarctica"
+    if -90 <= longitude <= -30 and latitude < 15:
+        return "South America"
+    if -170 <= longitude <= -20 and latitude >= 7:
+        return "North America"
+    if -25 <= longitude <= 60 and latitude >= 35:
+        return "Europe"
+    if -20 <= longitude <= 55 and -35 <= latitude < 35:
+        return "Africa"
+    if 110 <= longitude <= 180 and latitude < 20:
+        return "Oceania"
+    return "Asia"
+
 _DEFAULT_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 _DEFAULT_TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 
@@ -60,6 +79,13 @@ def load():
     """
     if not _state:
         df = data_loader.load_data()
+        for prefix in ('dep', 'arr'):
+            region_column = f'{prefix}_airport_region'
+            if region_column not in df.columns:
+                df[region_column] = [
+                    _airport_region(latitude, longitude)
+                    for latitude, longitude in zip(df[f'{prefix}_airport_lat'], df[f'{prefix}_airport_lon'])
+                ]
         _state['df'] = df
         _state['airport_counts'] = data_loader.get_airport_destination_counts(df)
         _state['columns'] = _build_columns(df)
@@ -134,6 +160,11 @@ def _build_columns(df):
             "options": _chip_options(df[column]) if column in MULTISELECT_COLUMNS else _column_options(df[column]),
             "multi": column in MULTISELECT_COLUMNS,
         }
+        if entry["numeric"]:
+            values = pd.to_numeric(df[column], errors="coerce").dropna()
+            if not values.empty:
+                entry["minimum"] = float(values.min())
+                entry["maximum"] = float(values.max())
 
         if column.startswith("dep_"):
             entry["group"] = "Departure"

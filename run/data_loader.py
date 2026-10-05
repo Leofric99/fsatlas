@@ -8,6 +8,10 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Data file path
 DATA_FILE = os.path.join(CURRENT_DIR, 'database', 'flights.csv')
 
+# Flight duration is an estimate based on distance and cruise speed. Longer records are
+# implausible as a single flight leg and are excluded from the application.
+MAX_FLIGHT_TIME_HOURS = 25
+
 # Maps the UN geoscheme subregion (from country_converter) to the coarser set of
 # regions we expose as a filter: the usual continents, plus Middle East, North
 # America, South America, Central America (incl. Caribbean) and Antarctica.
@@ -78,6 +82,15 @@ def normalize_airline_names(df):
         df['owner'] = df['owner'].str.replace(r'\s*\(.*$', '', regex=True).str.strip()
     return df
 
+
+def discard_overlong_flights(df):
+    """Return rows whose estimated flight time is at most the supported maximum."""
+    if 'rough_flight_time' not in df.columns:
+        return df, 0
+    flight_times = pd.to_numeric(df['rough_flight_time'], errors='coerce')
+    overlong = flight_times > MAX_FLIGHT_TIME_HOURS
+    return df.loc[~overlong].copy(), int(overlong.sum())
+
 def load_data():
     """
     Loads the flight data from the CSV file.
@@ -100,6 +113,10 @@ def load_data():
         for col in numeric_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        df, discarded_overlong = discard_overlong_flights(df)
+        if discarded_overlong:
+            print(f"Discarded {discarded_overlong} flight(s) exceeding {MAX_FLIGHT_TIME_HOURS} hours")
         
         # Drop rows with critical missing location data
         df.dropna(subset=['dep_airport_lat', 'dep_airport_lon', 'arr_airport_lat', 'arr_airport_lon'], inplace=True)

@@ -270,6 +270,55 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
    inside a container now inherits that container's single operator; mixing requires
    nesting a sub-group (its own Scope Header), not alternating per-row pills. */
 .scope-header { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 2px 0 10px; }
+.simple-filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 6px; align-items: center; }
+.simple-filter-menu { position: relative; min-width: 0; }
+.simple-filter-trigger, .simple-filter-clear {
+  width: 100%; min-height: 28px; padding: 4px 5px; background: var(--surface-2); border: 1px solid var(--border);
+  overflow: hidden; color: var(--text); font: 600 9px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; text-align: left; text-overflow: ellipsis;
+}
+.simple-filter-trigger { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.simple-filter-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.simple-filter-count {
+  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; min-width: 12px; height: 12px;
+  padding: 0 2px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--accent); font-size: 8px;
+}
+.simple-filter-count[hidden] { display: none; }
+.simple-filter-trigger::after { content: '\25BE'; flex: 0 0 auto; margin-left: auto; color: var(--text-dim); }
+.simple-filter-menu.open .simple-filter-trigger { border-color: var(--accent); }
+.simple-filter-clear { width: auto; min-width: 52px; background: transparent; color: var(--text-dim); }
+.simple-filter-clear:hover { color: var(--text); background: var(--surface-hover); }
+.simple-filter-popover {
+  display: none; position: absolute; top: calc(100% + 5px); left: 0; width: min(340px, 72vw); min-width: 0; padding: 8px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 47;
+}
+.simple-filter-menu:nth-child(3) .simple-filter-popover { left: 50%; right: auto; transform: translateX(-50%); }
+.simple-filter-menu:nth-child(n + 4) .simple-filter-popover { left: auto; right: 0; }
+.simple-filter-menu.open .simple-filter-popover { display: grid; gap: 7px; }
+.simple-filter-field, .simple-filter-search { margin: 0; min-height: 30px; font-size: 12px; }
+.simple-filter-options { display: grid; gap: 2px; min-width: 0; max-height: 230px; overflow-y: auto; padding-right: 2px; }
+.simple-filter-option { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.25; overflow-wrap: anywhere; cursor: pointer; }
+.simple-filter-option:hover { background: var(--surface-hover); }
+.simple-filter-option input { width: 14px; min-height: 14px; margin: 0; accent-color: var(--accent); flex: 0 0 auto; }
+.simple-range-label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; color: var(--text-dim); font-size: 11px; }
+.simple-range-label input[type="range"] {
+  grid-column: 1 / -1; width: 100%; min-height: 24px; padding: 0; border: none; border-radius: 0;
+  background: transparent; box-shadow: none; appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+.simple-range-label input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: var(--radius-pill); background: var(--border-strong); }
+.simple-range-label input[type="range"]::-webkit-slider-thumb {
+  width: 16px; height: 16px; margin-top: -5px; border: 2px solid var(--surface); border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 1px var(--accent); appearance: none; -webkit-appearance: none;
+}
+.simple-range-label input[type="range"]::-moz-range-track { height: 6px; border-radius: var(--radius-pill); background: var(--border-strong); }
+.simple-range-label input[type="range"]::-moz-range-progress { height: 6px; border-radius: var(--radius-pill); background: var(--accent); }
+.simple-range-label input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border: 2px solid var(--surface); border-radius: 50%; background: var(--accent); }
+.simple-range-label output { color: var(--text); font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  .simple-filters { display: flex; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+  .simple-filter-menu { flex: 0 0 132px; }
+  .simple-filter-clear { flex: 0 0 52px; }
+}
+#filters-scope, #filters-collapsible { display: none; }
 .scope-toggle { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 2px; gap: 2px; }
 .scope-opt {
   min-height: 0; padding: 5px 11px; border-radius: var(--radius-pill); border: none; background: transparent;

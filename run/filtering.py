@@ -43,12 +43,15 @@ def _mask_for_column(df, col, op, val, ftype):
         return None
 
     if ftype == 'select':
-        # Multi-select (already implies OR between selections)
+        # Multi-select (already implies OR between selections); 'not_equals' negates the
+        # whole set, powering the UI's inline "is / is not" toggle for categorical chips.
         if isinstance(val, list) and val:
-            return df[col].isin(val)
-        if not isinstance(val, list):
-            return df[col] == val
-        return None
+            mask = df[col].isin(val)
+        elif not isinstance(val, list):
+            mask = df[col] == val
+        else:
+            return None
+        return ~mask if op == 'not_equals' else mask
 
     return None
 

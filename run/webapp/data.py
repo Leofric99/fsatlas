@@ -16,6 +16,21 @@ COMPANY_COLUMNS = {"owner", "calsign", "flight_number"}
 EQUIPMENT_COLUMNS = {"reg", "type", "type_icao"}
 OTHER_COLUMNS = {"distance", "rough_flight_time"}
 
+# Closed/categorical columns that get the chip multi-select input (type-ahead -> inline
+# token chips, "is any of") instead of a free-text field - unlike _column_options' default
+# 15-value cap (meant for a plain single-choice dropdown), these get the FULL distinct
+# value list up to _MULTISELECT_OPTIONS_CAP, since the chip combobox does its own
+# client-side prefix/substring filtering (same pattern already used for the scenery
+# airport picker's full unfiltered directory).
+MULTISELECT_COLUMNS = {
+    "owner", "type", "type_icao",
+    "dep_airport", "dep_airport_iata", "dep_airport_icao", "dep_airport_city",
+    "dep_airport_country", "dep_airport_region",
+    "arr_airport", "arr_airport_iata", "arr_airport_icao", "arr_airport_city",
+    "arr_airport_country", "arr_airport_region",
+}
+_MULTISELECT_OPTIONS_CAP = 6000
+
 # Columns pulled from the dep_/arr_ side of each flight row to build the unique airport
 # list, keyed by the name they're exposed under in the resulting airport record.
 _AIRPORT_FIELDS = {
@@ -88,6 +103,18 @@ def _column_options(series, limit=15):
     return [_format_value(v, series) for v in uniques]
 
 
+def _chip_options(series, limit=_MULTISELECT_OPTIONS_CAP):
+    """Like _column_options but for the chip multi-select input - no low-cardinality
+    cap (a few thousand airports/airlines is still a perfectly fine one-shot JSON list,
+    same as the existing scenery airport directory), just a generous safety ceiling.
+    """
+    uniques = [v for v in series.dropna().unique().tolist() if str(v).strip() != ""]
+    if not (0 < len(uniques) < limit):
+        return None
+    uniques.sort()
+    return [_format_value(v, series) for v in uniques]
+
+
 def _build_columns(df):
     """Build the filter column list, grouped into "Company", "Equipment", "Departure",
     "Arrival", a synthetic "Departure or Arrival X" per dep_/arr_ column pair (matches rows
@@ -104,7 +131,8 @@ def _build_columns(df):
             "id": column, "name": display_name,
             "numeric": bool(pd.api.types.is_numeric_dtype(df[column])),
             "example": _column_example(df[column]),
-            "options": _column_options(df[column]),
+            "options": _chip_options(df[column]) if column in MULTISELECT_COLUMNS else _column_options(df[column]),
+            "multi": column in MULTISELECT_COLUMNS,
         }
 
         if column.startswith("dep_"):
@@ -128,7 +156,8 @@ def _build_columns(df):
                     "name": base_name,
                     "numeric": bool(pd.api.types.is_numeric_dtype(df[dep_col])),
                     "example": _column_example(df[dep_col]),
-                    "options": _column_options(combined_series),
+                    "options": _chip_options(combined_series) if dep_col in MULTISELECT_COLUMNS else _column_options(combined_series),
+                    "multi": dep_col in MULTISELECT_COLUMNS,
                     "group": "Departure or Arrival",
                 })
             continue

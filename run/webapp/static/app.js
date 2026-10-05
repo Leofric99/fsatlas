@@ -1,6 +1,6 @@
 // FSAtlas frontend - vanilla JS, no framework/build step. Fetches JSON from the Flask API
 // and renders everything client-side: Leaflet map (canvas circleMarkers for the ~3-4k
-// airports, not one DOM node per marker), filter toolbar, legend, saved items, SimBrief
+// airports, not one DOM node per marker), filter toolbar, saved items, SimBrief
 // export, and the dark/light theme toggle.
 (function () {
   'use strict';
@@ -56,6 +56,14 @@
   // MAP SETUP
   // ===================================================================================
   const map = L.map('map', { preferCanvas: true, minZoom: 2, zoomControl: false }).setView([20, 0], 2);
+  // Keep the vertical pan bounded to where real map tiles exist (~85.06deg is the usual
+  // Web Mercator limit) so the user can never drag/scroll up into the empty gray void
+  // above the north pole or below the south pole. Longitude is deliberately left
+  // effectively unbounded (an absurdly large but finite range, since Leaflet's bounds
+  // math needs finite numbers) - horizontal world-copy wrapping is intentional (routes/
+  // airports render across repeated world copies as the user pans east/west forever).
+  const VERTICAL_PAN_LIMIT = 85.06;
+  map.setMaxBounds(L.latLngBounds([-VERTICAL_PAN_LIMIT, -1e9], [VERTICAL_PAN_LIMIT, 1e9]));
 
   map.createPane('routesPane');
   map.getPane('routesPane').style.zIndex = 390;
@@ -78,15 +86,7 @@
     tileLayer = L.tileLayer(info.url, { attribution: info.attr, maxZoom: 19 }).addTo(map);
   }
 
-  // Destination-count bands (red, gold, blue, dark blue) - theme-independent, defined once
-  // as CSS custom properties so this single function is the only place both the marker
-  // fill and the legend swatches read the color from.
-  const RANK_VARS = ['--rank-0', '--rank-1', '--rank-2', '--rank-3'];
-  function colorForRank(rank) {
-    return getComputedStyle(document.documentElement).getPropertyValue(RANK_VARS[rank] || RANK_VARS[0]).trim();
-  }
-
-  // Shared star shape (used both for the scenery map markers and the legend swatches),
+  // Shared star shape (used for the scenery map markers),
   // parameterized on fill color so it can match whichever rank color it stands in for.
   function starSvgMarkup(color) {
     return '<svg viewBox="0 0 24 24" fill="' + color + '" stroke="#00000055" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 14.9 8.6 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9.1 8.6"></polygon></svg>';
@@ -101,52 +101,6 @@
   // size equivalence for a spiky vs. round shape).
   const STAR_POLYGON_AREA = 148.28;
   const STAR_SIZE_SCALE = 24 * Math.sqrt(Math.PI / STAR_POLYGON_AREA) * 0.9;
-
-  // Bottom-right, collapsible into a slim pull tab that stays docked to the edge.
-  const legendTemplate = document.getElementById('legend-template');
-  const legend = L.control({ position: 'bottomright' });
-  let legendEl = null;
-  legend.onAdd = () => {
-    const container = L.DomUtil.create('div', 'legend-root');
-    container.appendChild(legendTemplate.content.cloneNode(true));
-    container.querySelectorAll('.legend-dot').forEach(dot => {
-      dot.style.background = colorForRank(Number(dot.dataset.rank));
-    });
-    container.querySelectorAll('.legend-star').forEach(star => {
-      star.innerHTML = starSvgMarkup(colorForRank(Number(star.dataset.rank)));
-    });
-    // Starts collapsed on mobile - the small pull tab stays reachable but doesn't eat into
-    // the limited map area the way the full legend card would.
-    if (isMobile) container.classList.add('collapsed');
-    container.querySelector('.legend-tab').addEventListener('click', () => {
-      container.classList.toggle('collapsed');
-    });
-    L.DomEvent.disableClickPropagation(container);
-    legendEl = container;
-    return container;
-  };
-  legend.addTo(map);
-
-  // Auto-collapses the legend the moment the flight-details panel would visually overlap
-  // it, then leaves it alone - never force-expands it back, even if the panel later
-  // closes/shrinks, so a manual re-open (the pull tab) or a page refresh are the only ways
-  // to see it again. Edge-triggered (only acts the instant overlap begins) so re-opening
-  // the legend while the panel still happens to overlap doesn't immediately re-collapse it.
-  // Shown/hidden as one extra legend line only while the scenery overlay is enabled -
-  // see the scenery-overlay block below for what actually toggles sceneryOverlayEnabled.
-  function updateLegendSceneryRow() {
-    if (legendEl) legendEl.classList.toggle('scenery-legend', sceneryOverlayEnabled);
-  }
-
-  let legendWasOverlapping = false;
-  function checkLegendOverlap() {
-    if (!legendEl || !infoPanel.classList.contains('open')) { legendWasOverlapping = false; return; }
-    const a = infoPanel.getBoundingClientRect();
-    const b = legendEl.getBoundingClientRect();
-    const overlapping = a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-    if (overlapping && !legendWasOverlapping) legendEl.classList.add('collapsed');
-    legendWasOverlapping = overlapping;
-  }
 
   // Layers
   const routeLayer = L.layerGroup().addTo(map);
@@ -185,8 +139,7 @@
   const sceneryLayer = L.layerGroup();
   const sceneryOffsetsBuilt = new Set();
   let sceneryMarkers = {}; // iata -> {offset -> marker} - mirrors airportMarkers, drives connectivity show/hide
-  const sceneryIconsByRank = {}; // "rank-size" -> cached L.divIcon, colored/sized to match that rank's dot
-  let sceneryUniformIconCached = null; // single accent-colored icon reused while the airport overlay is off
+  let sceneryUniformIconCached = null; // single accent-colored icon, reused for every scenery star
 
   function refreshSceneryIatas() {
     sceneryIatas = new Set(sceneryData.map(s => s.iata).filter(Boolean));
@@ -198,26 +151,11 @@
     return sceneryOverlayEnabled && sceneryIatas.has(iata);
   }
 
-  function sceneryIconForRank(rank) {
-    // Area-matched to that rank's circleMarker dot (markerRadius is the dot's radius in
-    // px) rather than same-diameter - see STAR_SIZE_SCALE above for why.
-    const size = markerRadius(rank) * STAR_SIZE_SCALE;
-    const key = rank + '-' + size;
-    if (!sceneryIconsByRank[key]) {
-      sceneryIconsByRank[key] = L.divIcon({
-        className: 'scenery-star-icon', html: starSvgMarkup(colorForRank(rank)),
-        iconSize: [size, size], iconAnchor: [size / 2, size / 2]
-      });
-    }
-    return sceneryIconsByRank[key];
-  }
-
-  // Uniform accent-colored icon used only while the airport overlay is off (see below) -
-  // rank/color is meaningless there since dots aren't shown at all, so every scenery
-  // airport gets the same size (rank 1's, as a representative mid-size) and the app's own
-  // highlight color instead of a rank color.
+  // Single accent-colored star, one fixed size - airport dots no longer vary by rank, so
+  // scenery stars don't either (every scenery airport looks the same regardless of the
+  // airport overlay's on/off state).
   function sceneryUniformIcon() {
-    const size = markerRadius(1) * STAR_SIZE_SCALE;
+    const size = markerRadius() * STAR_SIZE_SCALE;
     if (!sceneryUniformIconCached || sceneryUniformIconCached.__size !== size) {
       sceneryUniformIconCached = L.divIcon({
         className: 'scenery-star-icon', html: starSvgMarkup(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()),
@@ -234,12 +172,11 @@
     sceneryData.forEach(s => {
       if (airportsOverlayEnabled) {
         // Matches the airport dots' own filtering: an airport with no flights in the
-        // current filtered dataset has no dot to show either, so hide its star too
-        // instead of falling back to a meaningless rank-0/red color.
+        // current filtered dataset has no dot to show either, so hide its star too.
         const ap = airports[s.iata];
         if (!ap) return;
         const marker = L.marker([s.lat, s.lon + offset], {
-          icon: sceneryIconForRank(ap.rank), interactive: true, keyboard: true, pane: 'sceneryPane'
+          icon: sceneryUniformIcon(), interactive: true, keyboard: true, pane: 'sceneryPane'
         })
           .bindTooltip((s.icao || s.iata) + ' - ' + s.name, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' })
           .on('click', (e) => { L.DomEvent.stopPropagation(e); handleAirportClick(s.iata, offset); });
@@ -283,7 +220,6 @@
     sceneryOverlayEnabled = enabled;
     if (enabled) { rebuildSceneryMarkers(); sceneryLayer.addTo(map); } else { map.removeLayer(sceneryLayer); }
     rebuildAirportMarkers(); // scenery-covered dots need to hide/reappear immediately
-    updateLegendSceneryRow();
   }
 
   function showImportedScenery() {
@@ -332,6 +268,9 @@
   let pendingSavedFlight = null;
   let highlightedFlightKey = null;
   let lastRenderedRoutes = [];
+  let lastPairRoutesUnsorted = [];
+  let flightSortColumn = null; // 'flight' | 'from' | 'to' | 'aircraft' | 'time'
+  let flightSortDir = 'asc'; // 'asc' | 'desc'
 
   function nearestOffset(canonicalLon) {
     const centerLon = map.getCenter().lng;
@@ -346,10 +285,10 @@
     Object.values(airportMarkers[iata] || {}).forEach(m => { if (airportLayer.hasLayer(m)) airportLayer.removeLayer(m); });
   }
 
-  // Bigger radius on mobile - a 3-6px circle is nearly impossible to tap accurately with
-  // a finger, even though it's fine for a mouse pointer on desktop.
-  function markerRadius(rank) {
-    return isMobile ? 7 + rank * 2 : 3 + rank * 1.15;
+  // Fixed radius for every airport, regardless of destination-count rank - bigger on
+  // mobile since a small circle is nearly impossible to tap accurately with a finger.
+  function markerRadius() {
+    return isMobile ? 9 : 4;
   }
 
   function createAirportsForOffset(offset) {
@@ -358,13 +297,14 @@
     if (sceneryOverlayEnabled) createSceneryForOffset(offset);
 
     airportsData.forEach(ap => {
-      const color = colorForRank(ap.rank);
       const marker = L.circleMarker([ap.lat, ap.lon + offset], {
-        radius: markerRadius(ap.rank),
-        fillColor: color,
+        radius: markerRadius(),
+        fillColor: getComputedStyle(document.documentElement).getPropertyValue('--marker-dot').trim(),
         color: getComputedStyle(document.documentElement).getPropertyValue('--marker-border').trim(),
-        weight: isMobile ? 1 : 0.6, stroke: true, fillOpacity: 0.75, pane: 'airportsPane'
+        weight: isMobile ? 1 : 0.6, stroke: true, fillOpacity: 0.95, pane: 'airportsPane'
       });
+      // Hover-only tooltip (no `permanent: true`) - the ICAO/city label only shows on
+      // mouseover, never baked permanently onto the dot.
       marker.bindTooltip(ap.iata + " - " + ap.city, { direction: 'top', offset: [0, -5], className: 'atlas-tooltip' });
       marker.on('click', (e) => { L.DomEvent.stopPropagation(e); handleAirportClick(ap.iata, offset); });
 
@@ -388,8 +328,24 @@
   map.on('moveend', () => { if (selectedSource) renderMapState(); });
   map.on('click', () => { if (!_isDragging) deselect(); });
 
-  const infoPanel = document.getElementById('info');
-  document.getElementById('info-close').addEventListener('click', deselect);
+  const routeFlightsSection = document.getElementById('route-flights');
+  document.getElementById('route-flights-close').addEventListener('click', deslectDestOnly);
+
+  const FLIGHT_SORT_KEYS = {
+    flight: r => (r.flight || '').toLowerCase(),
+    from: r => (r.dep_icao || r.dep || '').toLowerCase(),
+    to: r => (r.arr_icao || r.arr || '').toLowerCase(),
+    aircraft: r => (r.type_icao || r.type || '').toLowerCase(),
+    time: r => (r.flight_time_hours === null || r.flight_time_hours === undefined) ? -Infinity : r.flight_time_hours
+  };
+  document.querySelectorAll('.sortable-col').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const col = btn.dataset.sort;
+      flightSortDir = (flightSortColumn === col && flightSortDir === 'asc') ? 'desc' : 'asc';
+      flightSortColumn = col;
+      renderFlightsTable();
+    });
+  });
 
   function handleAirportClick(code, offset) {
     if (selectedSource === null) { selectSource(code, offset); return; }
@@ -404,7 +360,6 @@
       if (selectedDest === code) { deslectDestOnly(); return; }
       selectedDest = code;
       selectedDestOffset = offset;
-      infoPanel.classList.add('open');
 
       if (deselectDestMarker) airportLayer.removeLayer(deselectDestMarker);
       const destAp = airports[code];
@@ -455,8 +410,6 @@
       });
     }
 
-    infoPanel.classList.remove('open');
-
     fsatlasFetch('/api/flights?iata=' + encodeURIComponent(code) + '&filters=' + encodeURIComponent(JSON.stringify(currentFilterTree())))
       .then(response => response.ok ? response.json() : [])
       .then(loadRoutes)
@@ -469,8 +422,7 @@
     currentRoutes = [];
     highlightedFlightKey = null;
     routeLayer.clearLayers();
-    infoPanel.classList.remove('open');
-    checkLegendOverlap();
+    routeFlightsSection.classList.remove('visible');
 
     if (deselectMarker) { airportLayer.removeLayer(deselectMarker); deselectMarker = null; }
     if (deselectDestMarker) { airportLayer.removeLayer(deselectDestMarker); deselectDestMarker = null; }
@@ -482,7 +434,6 @@
 
   function deslectDestOnly() {
     selectedDest = null;
-    infoPanel.classList.remove('open');
     if (deselectDestMarker) { airportLayer.removeLayer(deselectDestMarker); deselectDestMarker = null; }
     renderMapState();
   }
@@ -505,16 +456,13 @@
         if (wantedArr && connectedIatas.has(wantedArr)) {
           selectedDest = wantedArr;
           selectedDestOffset = selectedSourceOffset;
-          infoPanel.classList.add('open');
         } else if (routes.length > 0 && connectedIatas.size === 1) {
           selectedDest = selectedSource;
           selectedDestOffset = selectedSourceOffset;
-          infoPanel.classList.add('open');
         }
       } else if (routes.length > 0 && connectedIatas.size === 1) {
         selectedDest = selectedSource;
         selectedDestOffset = selectedSourceOffset;
-        infoPanel.classList.add('open');
       }
 
       renderMapState();
@@ -529,6 +477,7 @@
   // --- SAVED FLIGHTS (bookmarking) ---
   const BOOKMARK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>';
   const BOOKMARK_ICON_FILLED = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>';
+  const SIMBRIEF_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
   const savedFlightKeys = new Set();
 
   // Shared identity for a route record - must match `flight_key` in run/webapp/storage.py.
@@ -543,10 +492,13 @@
     + "where Buffer = 83.33 / Cruise Speed (time lost climbing/descending ~250nm at 75% of cruise "
     + "speed vs. covering it at full cruise speed). Cruise speed comes from aircraft_crz_speeds.json; "
     + "shown as Unknown when the aircraft's ICAO type isn't in that file.";
+  document.getElementById('flights-table-time-header').title = FLIGHT_TIME_INFO;
 
   function setSaveButtonState(btn, saved) {
     btn.classList.toggle('saved', saved);
-    btn.innerHTML = (saved ? BOOKMARK_ICON_FILLED : BOOKMARK_ICON) + (saved ? ' Saved' : ' Save Flight');
+    btn.innerHTML = saved ? BOOKMARK_ICON_FILLED : BOOKMARK_ICON;
+    btn.title = saved ? 'Remove from saved flights' : 'Save flight';
+    btn.setAttribute('aria-label', btn.title);
   }
 
   async function toggleSaveFlight(route, btn) {
@@ -566,7 +518,7 @@
   }
 
   function showSavedFlight(record) {
-    document.getElementById('saved-modal').classList.remove('open');
+    openPanel('explore'); // show the restored route's table immediately, not a closed panel
     pendingSavedFlight = record;
     highlightedFlightKey = flightKey(record);
     const depAp = airports[record.dep];
@@ -588,7 +540,7 @@
       bounds = L.latLngBounds([[depAp.lat, depAp.lon + offset], [depAp.lat, depAp.lon + offset]]);
     }
 
-    const panelRect = infoPanel.getBoundingClientRect();
+    const panelRect = panelEls.explore.getBoundingClientRect();
     map.fitBounds(bounds, isMobile ? {
       paddingTopLeft: [50, 50], paddingBottomRight: [50, panelRect.height + 20], maxZoom: 7, animate: true
     } : {
@@ -599,15 +551,14 @@
   function scrollToHighlightedCard(record) {
     const idx = lastRenderedRoutes.findIndex(r => flightKey(r) === flightKey(record));
     if (idx === -1) return;
-    const card = document.getElementById('flight-card-' + idx);
+    const card = document.getElementById('flight-row-' + idx);
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   // --- SIMBRIEF EXPORT ---
   async function exportToSimbrief(route, btn) {
-    const originalLabel = btn.innerHTML;
     btn.disabled = true;
-    btn.innerText = 'Opening SimBrief...';
+    btn.classList.remove('error');
     try {
       const response = await fsatlasFetch('/api/simbrief/export', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(route)
@@ -616,11 +567,9 @@
       if (!response.ok || !result.url) throw new Error(result.error || 'Export failed');
       window.open(result.url, '_blank', 'noopener');
     } catch (err) {
-      btn.innerText = 'Export failed';
-      setTimeout(() => { btn.innerHTML = originalLabel; btn.disabled = false; }, 2500);
-      return;
+      btn.classList.add('error');
+      setTimeout(() => btn.classList.remove('error'), 2000);
     }
-    btn.innerHTML = originalLabel;
     btn.disabled = false;
   }
 
@@ -674,20 +623,42 @@
   const PLANE_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="#000" stroke-width="1" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-4.5l8 2.5z"></path></svg>';
 
   // Marks the midpoint of a complete (both-ends-selected) route with a plane icon,
-  // oriented along the direction of travel. Direction is computed in screen-pixel space
-  // (not raw lat/lon bearing) so it stays visually correct regardless of map projection
-  // or which world copy the route is drawn on.
+  // oriented along the direction of travel. Walks CUMULATIVE ON-SCREEN PIXEL DISTANCE
+  // along the already-projected curve (not the Nth-of-50 equal-angle sample point) to find
+  // the true visual midpoint - a Mercator projection distorts long-haul/polar routes
+  // enough that equal great-circle angular steps are very unevenly spaced on screen (e.g.
+  // a route that bulges up near the pole bunches many samples together up there), so the
+  // old "array index 25 of 50" pick could land well off-center of the rendered curve, or
+  // pick two neighbouring points far enough apart in screen space to misjudge the angle.
+  // Working in screen pixels guarantees the plane always sits exactly on the rendered
+  // line, at its actual halfway point as drawn, regardless of projection distortion.
   function drawRouteMidpointPlane(src, dest, offset, layer) {
-    const pts = computeGeodesicPoints(src.lat, src.lon, dest.lat, dest.lon);
-    const mid = Math.floor(pts.length / 2);
-    const before = pts[Math.max(0, mid - 1)];
-    const after = pts[Math.min(pts.length - 1, mid + 1)];
-    const midPoint = pts[mid];
-    const p1 = map.latLngToLayerPoint([before[0], before[1] + offset]);
-    const p2 = map.latLngToLayerPoint([after[0], after[1] + offset]);
-    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI + 90;
+    const pts = computeGeodesicPoints(src.lat, src.lon, dest.lat, dest.lon).map(p => [p[0], p[1] + offset]);
+    const screenPts = pts.map(p => map.latLngToLayerPoint(p));
 
-    L.marker([midPoint[0], midPoint[1] + offset], {
+    const segLengths = [];
+    let totalLength = 0;
+    for (let i = 1; i < screenPts.length; i++) {
+      const d = screenPts[i].distanceTo(screenPts[i - 1]);
+      segLengths.push(d);
+      totalLength += d;
+    }
+    if (totalLength === 0) return; // degenerate curve (identical points) - nothing to orient along
+
+    const target = totalLength / 2;
+    let covered = 0;
+    let idx = 0;
+    while (idx < segLengths.length - 1 && covered + segLengths[idx] < target) {
+      covered += segLengths[idx];
+      idx++;
+    }
+    const segStart = screenPts[idx];
+    const segEnd = screenPts[idx + 1];
+    const t = segLengths[idx] ? Math.min(1, Math.max(0, (target - covered) / segLengths[idx])) : 0;
+    const midScreenPoint = L.point(segStart.x + (segEnd.x - segStart.x) * t, segStart.y + (segEnd.y - segStart.y) * t);
+    const angle = Math.atan2(segEnd.y - segStart.y, segEnd.x - segStart.x) * 180 / Math.PI + 90;
+
+    L.marker(map.layerPointToLatLng(midScreenPoint), {
       icon: L.divIcon({
         className: 'route-plane-icon',
         html: `<div class="route-plane-badge" style="transform: rotate(${angle}deg)">${PLANE_ICON}</div>`,
@@ -700,14 +671,14 @@
   }
 
   function renderMapState() {
-    checkLegendOverlap();
     routeLayer.clearLayers();
-    if (!currentRoutes || currentRoutes.length === 0) return;
+    if (!currentRoutes || currentRoutes.length === 0) { routeFlightsSection.classList.remove('visible'); return; }
 
     const lineColor = getComputedStyle(document.documentElement).getPropertyValue('--line-color').trim();
 
     // CASE A: Source Selected, No Dest (Show All Connections)
     if (selectedSource && !selectedDest) {
+      routeFlightsSection.classList.remove('visible');
       currentRoutes.forEach(r => {
         const otherCode = (r.dep === selectedSource) ? r.arr : r.dep;
         const otherAp = airports[otherCode];
@@ -719,90 +690,82 @@
       return;
     }
 
-    // CASE B: Source AND Dest Selected (Show Pair Details)
+    // CASE B: Source AND Dest Selected - list the pair's flights as a table in the Explore
+    // panel (underneath the filter tree), instead of a separate floating card panel.
     if (selectedSource && selectedDest) {
       const destAp = airports[selectedDest];
-      const destCity = destAp ? destAp.city : '';
+      const srcAp = airports[selectedSource];
       const isSelfLoop = selectedDest === selectedSource;
-      document.getElementById('title-loc').innerText = isSelfLoop
-        ? selectedSource + " (" + destCity + ") \u2014 Self Flights"
-        : selectedSource + " \u21c4 " + selectedDest + " (" + destCity + ")";
+      const srcIcao = srcAp ? (srcAp.icao || selectedSource) : selectedSource;
+      const destIcao = destAp ? (destAp.icao || selectedDest) : selectedDest;
+      document.getElementById('route-flights-title').innerText = isSelfLoop
+        ? srcIcao + " \u2014 Self Flights"
+        : srcIcao + " \u21c4 " + destIcao;
 
       const pairRoutes = currentRoutes.filter(r => r.dep === selectedDest || r.arr === selectedDest);
-      lastRenderedRoutes = pairRoutes;
+      lastPairRoutesUnsorted = pairRoutes;
+      document.getElementById('route-flights-count').textContent = pairRoutes.length + (pairRoutes.length === 1 ? ' Flight' : ' Flights');
 
-      const srcAp = airports[selectedSource];
       if (srcAp && destAp && !isSelfLoop) {
         drawRouteAtCenter(srcAp, destAp, { color: lineColor, weight: 2, opacity: 1, pane: 'routesPane' }, routeLayer, selectedSourceOffset);
         drawRouteMidpointPlane(srcAp, destAp, selectedSourceOffset, routeLayer);
       }
 
-      let html = '<div><strong>' + pairRoutes.length + ' Flights</strong></div><br>';
-      pairRoutes.forEach((r, idx) => {
-        const callsign = r.callsign || '-';
-        const reg = r.reg || '-';
-        const type = r.type || '-';
-        const type_icao = r.type_icao || '-';
-        const dep_icao = r.dep_icao || '-';
-        const arr_icao = r.arr_icao || '-';
-        const airline = r.airline || '-';
-        const date = r.date || '-';
-        const flightTime = formatFlightTime(r.flight_time_hours);
-        const dep = r.dep, arr = r.arr;
-        const uniqueId = uniqueIdFor(idx);
-        const isHighlighted = highlightedFlightKey !== null && flightKey(r) === highlightedFlightKey;
-
-        html += `
-          <div class="flight-card${isHighlighted ? ' highlighted' : ''}" id="flight-card-${idx}">
-            <div class="flight-header"><span>${escapeHtml(r.flight)}</span><span style="opacity:0.7">${escapeHtml(type_icao)}</span></div>
-            <div class="flight-sub">${escapeHtml(dep)} (${escapeHtml(dep_icao)}) &rarr; ${escapeHtml(arr)} (${escapeHtml(arr_icao)})</div>
-            <div id="${uniqueId}" style="display:${isHighlighted ? 'block' : 'none'}; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
-              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:11px;">
-                <div class="detail-kv" style="grid-column: span 2"><span class="label">Airline</span><span>${escapeHtml(airline)}</span></div>
-                <div class="detail-kv"><span class="label">Callsign</span><span>${escapeHtml(callsign)}</span></div>
-                <div class="detail-kv"><span class="label">Registration</span><span>${escapeHtml(reg)}</span></div>
-                <div class="detail-kv"><span class="label">Aircraft</span><span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(type)}</span></div>
-                <div class="detail-kv"><span class="label">Type Code</span><span>${escapeHtml(type_icao)}</span></div>
-                <div class="detail-kv"><span class="label">From</span><span>${escapeHtml(dep)} / ${escapeHtml(dep_icao)}</span></div>
-                <div class="detail-kv"><span class="label">To</span><span>${escapeHtml(arr)} / ${escapeHtml(arr_icao)}</span></div>
-                <div class="detail-kv"><span class="label">Date Recorded</span><span>${escapeHtml(date)}</span></div>
-                <div class="detail-kv"><span class="label">Flight Time<span class="info-icon" title="${escapeHtml(FLIGHT_TIME_INFO)}">i</span></span><span>${escapeHtml(flightTime)}</span></div>
-              </div>
-              <button class="simbrief-btn" id="simbrief-${idx}" type="button">&#9992; Export to SimBrief</button>
-              <button class="save-btn" id="save-${idx}" type="button"></button>
-            </div>
-            <div class="expand-btn" id="expand-btn-${idx}">${isHighlighted ? '\u25b2 Less Info' : '\u25bc More Info'}</div>
-          </div>`;
-      });
-      html += '<br><div style="text-align:center; font-size:11px; opacity:0.6; cursor:pointer;" id="return-to-all">Return to All Connections</div>';
-
-      document.getElementById('panel-content').innerHTML = html;
-
-      pairRoutes.forEach((r, idx) => {
-        const btn = document.getElementById('simbrief-' + idx);
-        if (btn) btn.addEventListener('click', () => exportToSimbrief(r, btn));
-        const saveBtn = document.getElementById('save-' + idx);
-        if (saveBtn) {
-          setSaveButtonState(saveBtn, savedFlightKeys.has(flightKey(r)));
-          saveBtn.addEventListener('click', () => toggleSaveFlight(r, saveBtn));
-        }
-        const expandBtn = document.getElementById('expand-btn-' + idx);
-        expandBtn.addEventListener('click', () => {
-          highlightedFlightKey = null;
-          const el = document.getElementById(uniqueIdFor(idx));
-          const open = el.style.display === 'block';
-          el.style.display = open ? 'none' : 'block';
-          expandBtn.innerText = open ? '\u25bc More Info' : '\u25b2 Less Info';
-        });
-      });
-      const returnLink = document.getElementById('return-to-all');
-      if (returnLink) returnLink.addEventListener('click', deslectDestOnly);
+      renderFlightsTable();
+      routeFlightsSection.classList.add('visible');
     }
   }
-  function uniqueIdFor(idx) { return 'flight-detail-' + idx; }
+
+  // Builds the flight rows from `lastPairRoutesUnsorted`, applying the current column sort
+  // (set by clicking a `.sortable-col` header) - kept separate from renderMapState() so a
+  // header click can just re-sort/re-render the table without touching the map/route layer.
+  function renderFlightsTable() {
+    let pairRoutes = lastPairRoutesUnsorted;
+    if (flightSortColumn) {
+      const keyFn = FLIGHT_SORT_KEYS[flightSortColumn];
+      const dir = flightSortDir === 'asc' ? 1 : -1;
+      pairRoutes = [...pairRoutes].sort((a, b) => {
+        const av = keyFn(a), bv = keyFn(b);
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
+        return 0;
+      });
+    }
+    lastRenderedRoutes = pairRoutes;
+
+    document.querySelectorAll('.sortable-col').forEach(btn => {
+      btn.classList.toggle('sort-asc', btn.dataset.sort === flightSortColumn && flightSortDir === 'asc');
+      btn.classList.toggle('sort-desc', btn.dataset.sort === flightSortColumn && flightSortDir === 'desc');
+    });
+
+    const tableBody = document.getElementById('flights-table-body');
+    tableBody.innerHTML = pairRoutes.map((r, idx) => {
+      const type_icao = r.type_icao || r.type || '-';
+      const flightTime = formatFlightTime(r.flight_time_hours);
+      const isHighlighted = highlightedFlightKey !== null && flightKey(r) === highlightedFlightKey;
+      return `
+        <div class="flight-row${isHighlighted ? ' highlighted' : ''}" id="flight-row-${idx}">
+          <button class="row-bookmark" id="row-bookmark-${idx}" type="button"></button>
+          <div class="row-flight">${escapeHtml(r.flight || '-')}</div>
+          <div class="row-from">${escapeHtml(r.dep_icao || r.dep || '-')}</div>
+          <div class="row-to">${escapeHtml(r.arr_icao || r.arr || '-')}</div>
+          <div class="row-aircraft">${escapeHtml(type_icao)}</div>
+          <div class="row-time">${escapeHtml(flightTime)}</div>
+          <button class="row-simbrief" id="row-simbrief-${idx}" type="button" title="Export to SimBrief" aria-label="Export to SimBrief">${SIMBRIEF_ICON}</button>
+        </div>`;
+    }).join('');
+
+    pairRoutes.forEach((r, idx) => {
+      const bookmarkBtn = document.getElementById('row-bookmark-' + idx);
+      setSaveButtonState(bookmarkBtn, savedFlightKeys.has(flightKey(r)));
+      bookmarkBtn.addEventListener('click', () => toggleSaveFlight(r, bookmarkBtn));
+      const simbriefBtn = document.getElementById('row-simbrief-' + idx);
+      simbriefBtn.addEventListener('click', () => exportToSimbrief(r, simbriefBtn));
+    });
+  }
 
   // ===================================================================================
-  // SIDEBAR / FILTER PANEL
+  // RAIL / FLYOUT PANELS (Explore, Saved, Hangar, Settings)
   // ===================================================================================
   const flightsCountEl = document.getElementById('flights-count');
 
@@ -829,8 +792,8 @@
   }
   themeToggle.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark', true));
 
-  // --- Saved Flights / Saved Searches modal ---
-  const savedModal = document.getElementById('saved-modal');
+  // --- Saved Flights / Saved Searches panel ---
+  const savedPanel = document.getElementById('panel-saved');
   const savedList = document.getElementById('saved-list');
   const savedSort = document.getElementById('saved-sort');
   let savedFlightsRaw = [];
@@ -905,7 +868,7 @@
 
     [...savedList.querySelectorAll('.saved-row')].forEach((row, i) => {
       const flight = flights[i];
-      row.addEventListener('click', () => { savedModal.classList.remove('open'); showSavedFlight(flight); });
+      row.addEventListener('click', () => { closePanel(); showSavedFlight(flight); });
       row.querySelector('.saved-remove').addEventListener('click', async e => {
         e.stopPropagation();
         try {
@@ -1017,27 +980,39 @@
   function buildFilterTreeNode(nodeData) {
     if (nodeData && nodeData.kind === 'group') {
       const group = createGroup();
-      group.querySelector(':scope > .group-head > .logic').value = nodeData.logic || 'AND';
+      const children = nodeData.children || [];
+      group.dataset.logic = majorityLogic(children);
+      setScopeUI(group.querySelector(':scope > .scope-header'), group.dataset.logic);
       const list = group.querySelector(':scope > .filters-list');
-      (nodeData.children || []).forEach(child => list.append(buildFilterTreeNode(child)));
+      children.forEach(child => list.append(buildFilterTreeNode(child)));
       return group;
     }
     const row = createConditionRow();
     row.querySelector('.column').value = nodeData.column || '';
-    updateOperators(row);
-    row.querySelector('.operator').value = nodeData.operator || '';
-    row.querySelector('.value').value = nodeData.value ?? '';
-    row.querySelector(':scope > .logic').value = nodeData.logic || 'AND';
+    renderRowBody(row);
+    const column = columns.find(c => c.id === nodeData.column);
+    const opWord = row.querySelector('.op-word');
+    if (column && Array.isArray(column.options)) {
+      if (opWord) opWord.value = nodeData.operator === 'not_equals' ? 'not_equals' : 'equals';
+      const values = Array.isArray(nodeData.value) ? nodeData.value : (nodeData.value != null && nodeData.value !== '' ? [nodeData.value] : []);
+      if (row._chipCombo) row._chipCombo.setValues(values);
+    } else {
+      if (opWord) opWord.value = nodeData.operator || '';
+      const valueInput = row.querySelector('.value');
+      if (valueInput) valueInput.value = nodeData.value ?? '';
+    }
     return row;
   }
 
   function applySavedSearch(search) {
-    savedModal.classList.remove('open');
+    openPanel('explore'); // show the restored tree immediately, not an empty map with nothing open
     filters.replaceChildren();
     const children = (search.filters && search.filters.children) || [];
+    rootLogic = majorityLogic(children);
+    setScopeUI(filtersScopeHeader, rootLogic);
     if (children.length) children.forEach(child => filters.append(buildFilterTreeNode(child)));
     else addRow();
-    refreshRows();
+    updateFilterCountBadge();
     applyFilters();
   }
 
@@ -1064,7 +1039,7 @@
       });
     } catch (err) { /* best effort */ }
     closeSaveSearchModal();
-    if (savedModal.classList.contains('open')) loadSavedSearches();
+    if (savedPanel.classList.contains('open')) loadSavedSearches();
   }
 
   document.getElementById('save-search-btn').addEventListener('click', openSaveSearchModal);
@@ -1083,32 +1058,9 @@
     });
   });
 
-  document.getElementById('saved-toggle').addEventListener('click', () => {
-    savedModal.classList.add('open');
-    loadSavedFlights();
-    loadSavedSearches();
-  });
-  document.getElementById('saved-close').addEventListener('click', () => savedModal.classList.remove('open'));
-  savedModal.addEventListener('click', e => { if (e.target === savedModal) savedModal.classList.remove('open'); });
-
-  // --- Settings modal (SimBrief Pilot ID) ---
-  const settingsModal = document.getElementById('settings-modal');
-  const settingsModalBox = settingsModal.querySelector('.modal');
+  // --- Settings panel (SimBrief Pilot ID) ---
   const pilotIdInput = document.getElementById('simbrief-pilot-id');
   const simbriefStatus = document.getElementById('simbrief-status');
-
-  function openSettings() {
-    pilotIdInput.value = savedPilotId;
-    simbriefStatus.textContent = '';
-    sceneryStatusEl.textContent = '';
-    settingsModal.classList.add('open');
-  }
-  function closeSettings() { settingsModal.classList.remove('open'); }
-
-  document.getElementById('settings-toggle').addEventListener('click', openSettings);
-  document.getElementById('settings-close').addEventListener('click', closeSettings);
-  document.getElementById('settings-cancel').addEventListener('click', closeSettings);
-  settingsModal.addEventListener('click', e => { if (e.target === settingsModal) closeSettings(); });
 
   document.getElementById('simbrief-verify').addEventListener('click', async () => {
     const pilotId = pilotIdInput.value.trim();
@@ -1134,9 +1086,7 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ simbrief_pilot_id: savedPilotId })
       });
     } catch (err) { /* best effort - the setting still applies for this session */ }
-    await loadSceneryData();
-    showImportedScenery();
-    closeSettings();
+    closePanel();
   });
 
   // --- Scenery import: scan package directories client-side and read only manifests. ---
@@ -1153,22 +1103,20 @@
   let sceneryAirportOptions = null;
   let sceneryErrorsRenderId = 0;
 
-  // Widens the whole settings dialog (animated via CSS transition) while the import-
-  // details disclosure is open - its resolution rows (airport dropdown + Assign button)
-  // need more horizontal room than the dialog's normal narrow width provides.
-  function syncSceneryDetailsWidth() {
-    settingsModalBox.classList.toggle('wide', sceneryErrorsEl.open);
-  }
-  sceneryErrorsEl.addEventListener('toggle', syncSceneryDetailsWidth);
-
   function updateSceneryErrors(errors) {
     sceneryImportErrors = Array.isArray(errors) ? errors : [];
     sceneryErrorsEl.classList.toggle('visible', sceneryImportErrors.length > 0);
     sceneryErrorsEl.removeAttribute('open');
-    syncSceneryDetailsWidth();
     sceneryErrorsSummary.textContent = `Import details (${sceneryImportErrors.length})`;
     sceneryErrorsCode.textContent = JSON.stringify(sceneryImportErrors, null, 2);
     renderSceneryErrorResolutions(sceneryImportErrors);
+    updateHangarStats();
+  }
+
+  function updateHangarStats() {
+    const unresolvedCount = sceneryImportErrors.filter(e => e.stage === 'airport_match' && e.source).length;
+    document.getElementById('hangar-matched-count').textContent = String(sceneryData.length);
+    document.getElementById('hangar-unresolved-count').textContent = String(unresolvedCount);
   }
 
   async function renderSceneryErrorResolutions(errors) {
@@ -1245,7 +1193,10 @@
       button.addEventListener('click', () => resolveSceneryAirport(error.source, select.value, button));
       search.addEventListener('input', updateAirportOptions);
 
-      row.append(packageName, search, select, button);
+      const controls = document.createElement('div');
+      controls.className = 'scenery-error-resolution-controls';
+      controls.append(search, select, button);
+      row.append(packageName, controls);
       sceneryErrorResolutions.append(row);
     });
   }
@@ -1525,20 +1476,36 @@
   });
   document.addEventListener('click', e => { if (!mapTypeFabWrap.contains(e.target)) closeMapTypeMenu(); });
 
-  // --- Sidebar open/close: one slide-over drawer shared by desktop and mobile (desktop
-  // just defaults to open) - no more separate "move #filters to <body> for a fullscreen
-  // mobile editor" trick, since the sidebar IS the same DOM at every breakpoint now. ---
-  const sidebar = document.getElementById('sidebar');
-  const sidebarScrim = document.getElementById('sidebar-scrim');
+  // --- Icon rail + flyout panels: Explore/Saved/Hangar/Settings each slide over the map
+  // from the same spot (right of the rail on desktop, up from the bottom rail on mobile -
+  // see app.css); only one is open at a time, and clicking the active rail icon again
+  // closes it. Desktop defaults to Explore open; mobile defaults to all closed. ---
+  const PANEL_NAMES = ['explore', 'saved', 'hangar', 'settings'];
+  const panelEls = {};
+  const railBtns = {};
+  PANEL_NAMES.forEach(name => { panelEls[name] = document.getElementById('panel-' + name); });
+  document.querySelectorAll('.rail-btn').forEach(btn => { railBtns[btn.dataset.panel] = btn; });
+  const panelScrim = document.getElementById('panel-scrim');
   const filtersCountBadge = document.getElementById('filters-count-badge');
 
-  function openSidebar() { sidebar.classList.add('open'); document.body.classList.add('sidebar-open'); }
-  function closeSidebar() { sidebar.classList.remove('open'); document.body.classList.remove('sidebar-open'); }
-  function toggleSidebar() { sidebar.classList.contains('open') ? closeSidebar() : openSidebar(); }
-
-  document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
-  document.getElementById('sidebar-close').addEventListener('click', closeSidebar);
-  sidebarScrim.addEventListener('click', closeSidebar);
+  function closeAllPanels() {
+    PANEL_NAMES.forEach(name => { panelEls[name].classList.remove('open'); railBtns[name].classList.remove('active'); });
+    document.body.classList.remove('panel-open');
+  }
+  function closePanel() { closeAllPanels(); }
+  function openPanel(name) {
+    const alreadyOpen = panelEls[name].classList.contains('open');
+    closeAllPanels();
+    if (alreadyOpen) return; // clicking the active rail icon again just closes it
+    panelEls[name].classList.add('open');
+    railBtns[name].classList.add('active');
+    document.body.classList.add('panel-open');
+    if (name === 'saved') { loadSavedFlights(); loadSavedSearches(); }
+    if (name === 'settings') { pilotIdInput.value = savedPilotId; simbriefStatus.textContent = ''; }
+  }
+  PANEL_NAMES.forEach(name => railBtns[name].addEventListener('click', () => openPanel(name)));
+  document.querySelectorAll('.panel-close').forEach(btn => btn.addEventListener('click', closeAllPanels));
+  panelScrim.addEventListener('click', closeAllPanels);
 
   function countConfiguredFilters() { return [...filters.querySelectorAll('.column')].filter(col => col.value).length; }
   function updateFilterCountBadge() {
@@ -1548,42 +1515,8 @@
   }
   filters.addEventListener('change', e => { if (e.target.matches('.column')) updateFilterCountBadge(); });
 
-  function operatorsFor(column) {
-    if (Array.isArray(column.options)) return [['equals', 'Is']];
-    return column.numeric
-      ? [['equals', 'Equals (=)'], ['>', 'Greater (>)'], ['<', 'Less (<)'], ['>=', 'Greater/Eq (>=)'], ['<=', 'Less/Eq (<=)']]
-      : [['contains', 'Contains'], ['equals', 'Equals'], ['starts_with', 'Starts With'], ['ends_with', 'Ends With']];
-  }
-
-  function updateOperators(row) {
-    const column = columns.find(item => item.id === row.querySelector('.column').value);
-    const operator = row.querySelector('.operator');
-    operator.replaceChildren();
-    if (!column) return;
-    operatorsFor(column).forEach(([value, label]) => operator.add(new Option(label, value)));
-
-    const oldValue = row.querySelector('.value');
-    const wantsSelect = Array.isArray(column.options);
-    operator.disabled = wantsSelect;
-    let value = oldValue;
-    if (wantsSelect !== (oldValue.tagName === 'SELECT')) {
-      value = document.createElement(wantsSelect ? 'select' : 'input');
-      value.className = 'value';
-      oldValue.replaceWith(value);
-    }
-
-    if (wantsSelect) {
-      value.replaceChildren(new Option('Select value...', ''));
-      column.options.forEach(opt => value.add(new Option(opt, opt)));
-    } else {
-      value.type = column.numeric ? 'number' : 'text';
-      value.step = column.numeric ? 'any' : '';
-      value.placeholder = column.example ? 'e.g. ' + column.example : 'Value';
-    }
-  }
-
-  // Sidebar default state follows the breakpoint: open on desktop, closed (drawer) on
-  // mobile - re-applied live if the window is resized across it.
+  // Default panel state follows the breakpoint: Explore open on desktop, everything
+  // closed on mobile - re-applied live if the window is resized across it.
   let resizeRaf;
   function scheduleResizeCheck() {
     cancelAnimationFrame(resizeRaf);
@@ -1592,25 +1525,20 @@
       if (nowMobile !== isMobile) {
         isMobile = nowMobile;
         document.body.classList.toggle('is-mobile', isMobile);
-        isMobile ? closeSidebar() : openSidebar();
+        isMobile ? closeAllPanels() : openPanel('explore');
         rebuildAirportMarkers(); // marker radius depends on isMobile
         if (sceneryOverlayEnabled) rebuildSceneryMarkers(); // star size depends on isMobile too
       }
-      checkLegendOverlap();
     });
   }
   window.addEventListener('resize', scheduleResizeCheck);
-  // The info panel is user-resizable (CSS `resize: both`) - dragging it larger can newly
-  // overlap the legend without any of the other triggers above firing.
-  new ResizeObserver(checkLegendOverlap).observe(infoPanel);
 
   // --- Filter tree (nested AND/OR groups) ---
-  function markFirst(list) { [...list.children].forEach((node, index) => node.classList.toggle('first', index === 0)); }
-  function refreshRows() {
-    markFirst(filters);
-    filters.querySelectorAll('.filters-list').forEach(markFirst);
-    updateFilterCountBadge();
-  }
+  // Scope Header pattern: a container (the root #filters list, or a .filter-group) owns
+  // ONE AND/OR toggle anchored at its top, instead of a per-row floating logic pill - every
+  // row inherits whichever operator its nearest container declares. Mixing AND/OR requires
+  // nesting a sub-group (its own Scope Header), never alternating row-level pills.
+  let rootLogic = 'AND';
 
   function populateColumnSelect(columnSelect) {
     const optgroups = {};
@@ -1636,106 +1564,333 @@
       removeNode(parentList.closest('.filter-group'));
       return;
     }
-    refreshRows();
+    if (isRoot && !filters.children.length) addRow(); // never leave the root list empty
+    updateFilterCountBadge();
+    schedulePreview();
   }
 
-  // Small stroke-style SVG icons for the filter-row action cluster, matching the app's
-  // existing icon language (the old "+"/"⧉"/"⧈" unicode glyphs weren't legible at a glance).
   const ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
   const ICON_GROUP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2"></path><path d="M16 4h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2"></path></svg>';
-  const ICON_UNGROUP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v3"></path><path d="M4 15v3a2 2 0 0 0 2 2h3"></path><path d="M15 4h3a2 2 0 0 1 2 2v3"></path><path d="M20 15v3a2 2 0 0 1-2 2h-3"></path></svg>';
   const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  const ICON_KEBAB = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>';
+
+  // --- Contextual kebab menu: shared by every row and every group's Scope Header. The
+  // button fades in on hover/focus (see app.css) instead of a persistent button row, and
+  // only ONE menu is ever open at a time (closed by the delegated document click below). ---
+  function attachKebab(wrap, items) {
+    const btn = wrap.querySelector('.kebab');
+    const menu = wrap.querySelector('.kebab-menu');
+    items.forEach(({ label, action, danger }) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'kebab-item' + (danger ? ' danger' : '');
+      item.textContent = label;
+      item.addEventListener('click', e => { e.stopPropagation(); closeAllKebabMenus(); action(); });
+      menu.append(item);
+    });
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const opening = !menu.classList.contains('open');
+      closeAllKebabMenus();
+      menu.classList.toggle('open', opening);
+      btn.classList.toggle('menu-open', opening);
+    });
+  }
+  function closeAllKebabMenus() {
+    document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+    document.querySelectorAll('.kebab.menu-open').forEach(b => b.classList.remove('menu-open'));
+  }
+  document.addEventListener('click', closeAllKebabMenus);
+
+  function wireScopeToggle(scopeHeader, onChange) {
+    const buttons = [...scopeHeader.querySelectorAll('.scope-opt')];
+    buttons.forEach(btn => btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.toggle('active', b === btn));
+      onChange(btn.dataset.logic);
+    }));
+  }
+  function setScopeUI(scopeHeader, logic) {
+    [...scopeHeader.querySelectorAll('.scope-opt')].forEach(
+      b => b.classList.toggle('active', b.dataset.logic === logic)
+    );
+  }
+  // Old saved searches may predate the Scope Header simplification and carry genuinely
+  // mixed per-child logic - pick whichever operator the majority of (non-first) children
+  // used, so restoring one degrades gracefully instead of crashing or losing data.
+  function majorityLogic(children) {
+    if (!children || !children.length) return 'AND';
+    if (children.length === 1) return (children[0].logic || 'AND').toUpperCase() === 'OR' ? 'OR' : 'AND';
+    const counts = { AND: 0, OR: 0 };
+    children.slice(1).forEach(c => { counts[(c.logic || 'AND').toUpperCase() === 'OR' ? 'OR' : 'AND']++; });
+    return counts.OR > counts.AND ? 'OR' : 'AND';
+  }
+
+  // --- Multi-select chip combobox: categorical columns (airline, airport, aircraft type,
+  // country, region, ...) get type-ahead -> inline chip tokens in the SAME row instead of
+  // a bare dropdown/text field - "is any of A, B, C" needs no nested OR sub-group. ---
+  function createChipCombo(options, onChange) {
+    const el = document.createElement('div');
+    el.className = 'chip-combo';
+    const chipsWrap = document.createElement('div');
+    chipsWrap.className = 'chip-combo-chips';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'chip-combo-input';
+    input.placeholder = 'Search\u2026';
+    chipsWrap.append(input);
+    const suggestions = document.createElement('div');
+    suggestions.className = 'chip-combo-suggestions';
+    el.append(chipsWrap, suggestions);
+
+    let values = [];
+
+    function renderChips() {
+      [...chipsWrap.querySelectorAll('.chip')].forEach(c => c.remove());
+      values.forEach(v => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = v;
+        const x = document.createElement('button');
+        x.type = 'button'; x.className = 'chip-x'; x.setAttribute('aria-label', 'Remove ' + v);
+        x.innerHTML = ICON_X;
+        x.addEventListener('click', e => { e.stopPropagation(); values = values.filter(v2 => v2 !== v); renderChips(); onChange(); });
+        chip.append(x);
+        chipsWrap.insertBefore(chip, input);
+      });
+    }
+
+    function currentMatches() {
+      const q = input.value.trim().toLowerCase();
+      const pool = options.filter(o => !values.includes(o));
+      return (q ? pool.filter(o => o.toLowerCase().includes(q)) : pool).slice(0, 40);
+    }
+
+    function renderSuggestions() {
+      const matches = currentMatches();
+      suggestions.replaceChildren();
+      if (!matches.length) { suggestions.classList.remove('open'); return; }
+      matches.forEach((m, i) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'chip-combo-suggestion' + (i === 0 ? ' active' : '');
+        item.textContent = m;
+        item.addEventListener('mousedown', e => { e.preventDefault(); addValue(m); });
+        suggestions.append(item);
+      });
+      suggestions.classList.add('open');
+    }
+
+    function addValue(v) {
+      if (!values.includes(v)) { values.push(v); renderChips(); onChange(); }
+      input.value = '';
+      renderSuggestions();
+      input.focus();
+    }
+
+    input.addEventListener('focus', renderSuggestions);
+    input.addEventListener('input', renderSuggestions);
+    input.addEventListener('keydown', e => {
+      const items = [...suggestions.querySelectorAll('.chip-combo-suggestion')];
+      const activeIdx = items.findIndex(i => i.classList.contains('active'));
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!items.length) return;
+        const next = e.key === 'ArrowDown' ? (activeIdx + 1) % items.length : (activeIdx - 1 + items.length) % items.length;
+        items.forEach((item, i) => item.classList.toggle('active', i === next));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const active = items[activeIdx] || items[0];
+        if (active) addValue(active.textContent);
+      } else if (e.key === 'Backspace' && !input.value && values.length) {
+        values.pop(); renderChips(); onChange();
+      } else if (e.key === 'Escape') {
+        suggestions.classList.remove('open'); input.blur();
+      }
+    });
+    input.addEventListener('blur', () => { setTimeout(() => suggestions.classList.remove('open'), 120); });
+
+    return { el, getValues: () => values.slice(), setValues: v => { values = (v || []).slice(); renderChips(); } };
+  }
+
+  // Static unit suffixes for numeric columns, shown as plain text after the value input
+  // (part of the "sentence" - never something the user has to type themselves).
+  const UNITS = {
+    distance: 'nm', rough_flight_time: 'hrs',
+    dep_airport_elevation: 'ft', arr_airport_elevation: 'ft',
+    dep_airport_lat: '\u00b0', dep_airport_lon: '\u00b0', arr_airport_lat: '\u00b0', arr_airport_lon: '\u00b0',
+  };
+
+  // Builds (or rebuilds) a row's content based on whichever column is currently selected -
+  // categorical columns get the chip combo, numeric/text columns get an inline operator
+  // word + value input, collapsing the old 3-separate-boxes grid into one flowing line.
+  function renderRowBody(row) {
+    const column = columns.find(c => c.id === row.querySelector('.column').value);
+    const body = row.querySelector('.row-body');
+    body.replaceChildren();
+    delete row._chipCombo;
+    if (!column) return;
+
+    if (Array.isArray(column.options)) {
+      const opWord = document.createElement('select');
+      opWord.className = 'op-word';
+      opWord.add(new Option('is', 'equals'));
+      opWord.add(new Option('is not', 'not_equals'));
+      opWord.addEventListener('change', schedulePreview);
+      const combo = createChipCombo(column.options, schedulePreview);
+      row._chipCombo = combo;
+      body.append(opWord, combo.el);
+      return;
+    }
+
+    const opWord = document.createElement('select');
+    opWord.className = 'op-word';
+    const ops = column.numeric
+      ? [['equals', 'is'], ['>', 'is greater than'], ['<', 'is less than'], ['>=', 'is at least'], ['<=', 'is at most']]
+      : [['contains', 'contains'], ['equals', 'is exactly'], ['starts_with', 'starts with'], ['ends_with', 'ends with']];
+    ops.forEach(([value, label]) => opWord.add(new Option(label, value)));
+    opWord.addEventListener('change', schedulePreview);
+
+    const value = document.createElement('input');
+    value.className = 'value';
+    value.type = column.numeric ? 'number' : 'text';
+    value.step = column.numeric ? 'any' : '';
+    value.placeholder = column.example ? 'e.g. ' + column.example : 'Value';
+    value.addEventListener('input', schedulePreview);
+
+    body.append(opWord, value);
+    const unit = UNITS[column.id];
+    if (column.numeric && unit) body.append(Object.assign(document.createElement('span'), { className: 'row-unit', textContent: unit }));
+  }
 
   function createConditionRow() {
     const row = document.createElement('div');
     row.className = 'filter-row';
-    row.innerHTML = '<select class="logic"><option>AND</option><option>OR</option></select>' +
-      '<select class="column"><option value="">Select Filter...</option></select>' +
-      '<select class="operator"></select>' +
-      '<input class="value" placeholder="Value">' +
-      '<div class="row-actions">' +
-      '<button class="icon insert" title="Add a filter below" aria-label="Add a filter below">' + ICON_PLUS + '<span class="action-label">Add</span></button>' +
-      '<button class="icon group" title="Wrap in a group" aria-label="Wrap in a group">' + ICON_GROUP + '<span class="action-label">Group</span></button>' +
-      '<button class="icon remove" title="Remove this filter" aria-label="Remove this filter">' + ICON_X + '<span class="action-label">Remove Filter</span></button>' +
+    row.innerHTML =
+      '<div class="row-sentence">' +
+        '<select class="column"><option value="">Choose a field\u2026</option></select>' +
+        '<div class="row-body"></div>' +
+      '</div>' +
+      '<div class="kebab-wrap">' +
+        '<button class="kebab" type="button" aria-label="Row options">' + ICON_KEBAB + '</button>' +
+        '<div class="kebab-menu"></div>' +
       '</div>';
     const columnSelect = row.querySelector('.column');
     populateColumnSelect(columnSelect);
-    columnSelect.addEventListener('change', () => updateOperators(row));
-    row.querySelector('.insert').addEventListener('click', () => { row.after(createConditionRow()); refreshRows(); });
-    row.querySelector('.group').addEventListener('click', () => wrapInGroup(row));
-    row.querySelector('.remove').addEventListener('click', () => removeNode(row));
+    columnSelect.addEventListener('change', () => { renderRowBody(row); updateFilterCountBadge(); schedulePreview(); });
+    attachKebab(row.querySelector('.kebab-wrap'), [
+      { label: 'Duplicate', action: () => duplicateRow(row) },
+      { label: 'Wrap in group', action: () => wrapInGroup(row) },
+      { label: 'Delete', action: () => removeNode(row), danger: true },
+    ]);
+    renderRowBody(row);
     return row;
+  }
+
+  function duplicateRow(row) {
+    const clone = createConditionRow();
+    const colId = row.querySelector('.column').value;
+    clone.querySelector('.column').value = colId;
+    renderRowBody(clone);
+    const column = columns.find(c => c.id === colId);
+    if (column) {
+      const srcOpWord = row.querySelector('.op-word');
+      const cloneOpWord = clone.querySelector('.op-word');
+      if (srcOpWord && cloneOpWord) cloneOpWord.value = srcOpWord.value;
+      if (Array.isArray(column.options)) {
+        if (row._chipCombo && clone._chipCombo) clone._chipCombo.setValues(row._chipCombo.getValues());
+      } else {
+        const srcValue = row.querySelector('.value');
+        const cloneValue = clone.querySelector('.value');
+        if (srcValue && cloneValue) cloneValue.value = srcValue.value;
+      }
+    }
+    row.after(clone);
+    schedulePreview();
   }
 
   function createGroup() {
     const group = document.createElement('div');
     group.className = 'filter-group';
-    group.innerHTML = '<div class="group-head">' +
-      '<select class="logic"><option>AND</option><option>OR</option></select>' +
-      '<span class="group-label">Group</span>' +
-      '<div class="row-actions">' +
-      '<button class="icon ungroup" title="Ungroup" aria-label="Ungroup">' + ICON_UNGROUP + '<span class="action-label">Ungroup</span></button>' +
-      '<button class="icon remove" title="Remove this group" aria-label="Remove this group">' + ICON_X + '<span class="action-label">Remove Group</span></button>' +
-      '</div></div><div class="filters-list"></div>' +
-      // Deliberately styled/placed OUTSIDE the group's tinted box (see .group-append in
-      // app.css) and labelled accordingly - this button does NOT add to this group's own
-      // conditions, it adds a new sibling filter after the group ends, so it must not look
-      // like it belongs to the group's contents the way the Ungroup/Remove buttons above do.
-      '<div class="group-append">' +
-      '<button class="icon insert" title="Add a new filter after this group (not inside it)" aria-label="Add a new filter after this group (not inside it)">' + ICON_PLUS + '<span class="action-label">Add After Group</span></button>' +
+    group.dataset.logic = 'AND';
+    group.innerHTML =
+      '<div class="scope-header">' +
+        '<div class="scope-toggle" role="group" aria-label="How conditions in this group combine">' +
+          '<button type="button" class="scope-opt active" data-logic="AND">Match ALL</button>' +
+          '<button type="button" class="scope-opt" data-logic="OR">Match ANY</button>' +
+        '</div>' +
+        '<div class="kebab-wrap">' +
+          '<button class="kebab" type="button" aria-label="Group options">' + ICON_KEBAB + '</button>' +
+          '<div class="kebab-menu"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="filters-list"></div>' +
+      '<div class="tree-add-row">' +
+        '<button type="button" class="ghost-add add-condition">' + ICON_PLUS + 'Add condition</button>' +
+        '<button type="button" class="ghost-add add-group">' + ICON_GROUP + 'Add nested group</button>' +
       '</div>';
-    group.querySelector('.insert').addEventListener('click', () => { group.after(createConditionRow()); refreshRows(); });
-    group.querySelector('.ungroup').addEventListener('click', () => ungroup(group));
-    group.querySelector('.remove').addEventListener('click', () => removeNode(group));
+    wireScopeToggle(group.querySelector(':scope > .scope-header'), logic => { group.dataset.logic = logic; schedulePreview(); });
+    attachKebab(group.querySelector(':scope > .scope-header > .kebab-wrap'), [
+      { label: 'Ungroup', action: () => ungroup(group) },
+      { label: 'Delete group', action: () => removeNode(group), danger: true },
+    ]);
+    const list = group.querySelector(':scope > .filters-list');
+    group.querySelector(':scope > .tree-add-row > .add-condition').addEventListener('click', () => { list.append(createConditionRow()); schedulePreview(); });
+    group.querySelector(':scope > .tree-add-row > .add-group').addEventListener('click', () => { list.append(createGroup()); schedulePreview(); });
     return group;
   }
 
   function wrapInGroup(node) {
     const group = createGroup();
-    const logic = node.querySelector(':scope > .logic').value;
-    group.querySelector('.logic').value = logic;
     node.before(group);
-    group.querySelector('.filters-list').append(node);
-    refreshRows();
+    group.querySelector(':scope > .filters-list').append(node);
+    schedulePreview();
   }
 
   function ungroup(group) {
-    const children = [...group.querySelector('.filters-list').children];
-    if (children.length) {
-      children[0].querySelector(':scope > .logic, .group-head > .logic').value = group.querySelector('.logic').value;
-    }
+    const children = [...group.querySelector(':scope > .filters-list').children];
     children.forEach(child => group.before(child));
     group.remove();
-    refreshRows();
+    schedulePreview();
   }
 
   function addRow(afterRow) {
     const row = createConditionRow();
     if (afterRow) afterRow.after(row); else filters.append(row);
-    refreshRows();
+    updateFilterCountBadge();
     return row;
   }
 
-  function serializeList(listEl) { return [...listEl.children].map(serializeNode).filter(Boolean); }
+  // Each container's OWN children all share that container's single Scope Header
+  // operator (parentLogic), stamped onto every child dict here - `logic` on a child still
+  // means "how I combine with my previous sibling" per the existing backend schema, it's
+  // just uniformly authored by the container now instead of per-row.
+  function serializeList(listEl, parentLogic) {
+    return [...listEl.children].map(serializeNode).filter(Boolean).map(item => ({ ...item, logic: parentLogic }));
+  }
   function serializeNode(node) {
     if (node.classList.contains('filter-group')) {
-      const logic = node.querySelector(':scope > .group-head > .logic').value;
-      const children = serializeList(node.querySelector(':scope > .filters-list'));
-      return children.length ? { kind: 'group', logic, children } : null;
+      const children = serializeList(node.querySelector(':scope > .filters-list'), node.dataset.logic || 'AND');
+      return children.length ? { kind: 'group', logic: 'AND', children } : null;
     }
     const column = columns.find(item => item.id === node.querySelector('.column').value);
-    const value = node.querySelector('.value').value.trim();
-    if (!column || !value) return null;
+    if (!column) return null;
+    const opWord = node.querySelector('.op-word');
+    if (!opWord) return null;
+    if (Array.isArray(column.options)) {
+      const values = node._chipCombo ? node._chipCombo.getValues() : [];
+      if (!values.length) return null;
+      return { column: column.id, operator: opWord.value, value: values, logic: 'AND', type: 'select' };
+    }
+    const raw = node.querySelector('.value').value.trim();
+    if (!raw) return null;
     return {
-      column: column.id,
-      operator: node.querySelector('.operator').value,
-      value: column.numeric ? Number(value) : value,
-      logic: node.querySelector(':scope > .logic').value,
-      type: column.numeric ? 'number' : 'text'
+      column: column.id, operator: opWord.value,
+      value: column.numeric ? Number(raw) : raw,
+      logic: 'AND', type: column.numeric ? 'number' : 'text',
     };
   }
 
-  function currentFilterTree() { return { kind: 'group', logic: 'AND', children: serializeList(filters) }; }
+  function currentFilterTree() { return { kind: 'group', logic: 'AND', children: serializeList(filters, rootLogic) }; }
 
   // --- Airport marker rebuild: called on filter apply and on theme change (colors read
   // from CSS vars at creation time) - clears and recreates every marker for the world
@@ -1762,21 +1917,72 @@
       // Stars' clickability/rank depend on `airports`, just refreshed above.
       if (sceneryOverlayEnabled) rebuildSceneryMarkers();
 
+      lastAppliedCount = result.count;
       flightsCountEl.textContent = result.count.toLocaleString() + ' flights match';
+      previewEl.innerHTML = ''; // the preview now matches what's actually applied
     } catch (err) {
       flightsCountEl.textContent = '';
     }
-    if (isMobile) closeSidebar();
+    if (isMobile) closeAllPanels();
   }
 
   function resetFilters() {
     filters.replaceChildren();
+    rootLogic = 'AND';
+    setScopeUI(filtersScopeHeader, 'AND');
     addRow();
     applyFilters();
   }
 
   document.getElementById('apply').addEventListener('click', applyFilters);
   document.getElementById('reset').addEventListener('click', resetFilters);
+
+  // --- Root Scope Header + consolidated "+ Add" footer (one of each for the whole tree,
+  // mirroring what every nested .filter-group gets via createGroup()). ---
+  const filtersScopeHeader = document.getElementById('filters-scope');
+  wireScopeToggle(filtersScopeHeader, logic => { rootLogic = logic; schedulePreview(); });
+  document.getElementById('filters-add-condition').addEventListener('click', () => { addRow(); schedulePreview(); });
+  document.getElementById('filters-add-group').addEventListener('click', () => { filters.append(createGroup()); schedulePreview(); });
+
+  // --- Collapse the whole filter tree (Scope Header + rows + add-buttons) down to just
+  // the toggle button itself, next to the Match ALL/ANY control. ---
+  const filtersCollapseToggle = document.getElementById('filters-collapse-toggle');
+  filtersCollapseToggle.addEventListener('click', () => {
+    const collapsed = panelEls.explore.classList.toggle('filters-collapsed');
+    filtersCollapseToggle.title = collapsed ? 'Expand filters' : 'Collapse filters';
+    filtersCollapseToggle.setAttribute('aria-label', filtersCollapseToggle.title);
+    filtersCollapseToggle.setAttribute('aria-expanded', String(!collapsed));
+  });
+
+  // --- Live density preview: a debounced "what would Apply do right now" estimate shown
+  // above the bold last-applied count, so editing a rule gives immediate feedback before
+  // the (comparatively expensive) marker-rebuilding Apply click. Stale responses from a
+  // superseded request are dropped via a monotonically increasing request id. ---
+  const previewEl = document.getElementById('filters-preview');
+  let lastAppliedCount = null;
+  let previewTimer = null;
+  let previewRequestId = 0;
+
+  function schedulePreview() {
+    updateFilterCountBadge();
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(runPreviewCount, 350);
+  }
+
+  async function runPreviewCount() {
+    const myId = ++previewRequestId;
+    try {
+      const response = await fsatlasFetch('/api/airports?filters=' + encodeURIComponent(JSON.stringify(currentFilterTree())));
+      if (myId !== previewRequestId) return; // a newer edit already superseded this request
+      const result = await response.json();
+      if (myId !== previewRequestId) return;
+      const count = result.count || 0;
+      const baseline = lastAppliedCount || count || 1;
+      const pct = Math.max(2, Math.min(100, Math.round((count / baseline) * 100)));
+      previewEl.innerHTML = '~' + count.toLocaleString() + ' flights <span class="preview-label">(preview)</span>' +
+        '<div class="preview-bar"><span style="width:' + pct + '%"></span></div>';
+    } catch (err) { /* best effort - preview is non-critical */ }
+  }
 
   // ===================================================================================
   // INIT
@@ -1790,7 +1996,6 @@
     airportsOverlayEnabled = meta.airports_overlay !== false;
     sceneryOverlayEnabled = !!meta.scenery_overlay;
     setAirportsOverlayEnabled(airportsOverlayEnabled);
-    updateLegendSceneryRow();
 
     mapTypeSelect.add(new Option('Use Theme', USE_THEME_VALUE, true, true));
     Object.keys(mapTypes).forEach(name => mapTypeSelect.add(new Option(name, name, false, false)));
@@ -1798,14 +2003,17 @@
     applyTheme(meta.theme === 'light' ? 'light' : 'dark', false);
     setTileLayer(effectiveMapType());
 
-    isMobile ? closeSidebar() : openSidebar();
+    isMobile ? closeAllPanels() : openPanel('explore');
 
-    // The map fills the whole viewport behind the fixed top bar and (on desktop) the
-    // open sidebar, so pan once at load to keep the initial view centered in what's
-    // actually visible, rather than in the full occluded viewport.
+    // The map fills the whole viewport behind the fixed top bar, the rail, and (on
+    // desktop) the open panel, so pan once at load to keep the initial view centered in
+    // what's actually visible, rather than in the full occluded viewport.
     const topbarH = document.querySelector('.topbar').getBoundingClientRect().height;
-    const sidebarW = sidebar.classList.contains('open') ? sidebar.getBoundingClientRect().width : 0;
-    if (topbarH || sidebarW) map.panBy([-sidebarW / 2, -topbarH / 2], { animate: false });
+    const railW = isMobile ? 0 : document.getElementById('rail').getBoundingClientRect().width;
+    const explorePanel = panelEls.explore;
+    const panelW = (!isMobile && explorePanel.classList.contains('open')) ? explorePanel.getBoundingClientRect().width : 0;
+    const occludedLeft = railW + panelW;
+    if (topbarH || occludedLeft) map.panBy([-occludedLeft / 2, -topbarH / 2], { animate: false });
 
     ensureWorldCoverage();
     addRow();

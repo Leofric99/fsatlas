@@ -11,9 +11,6 @@
   <div id="map"></div>
 
   <header class="topbar">
-    <button id="sidebar-toggle" class="topbar-icon-btn" type="button" title="Toggle filters" aria-label="Toggle filters">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line><circle cx="9" cy="7" r="2" fill="currentColor" stroke="none"></circle><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="11" cy="17" r="2" fill="currentColor" stroke="none"></circle></svg>
-    </button>
     <div class="brand">
       <img class="logo" src="{{ url_for('static', filename='images/fsatlas-logo.png') }}" alt="FSAtlas" width="1377" height="768">
     </div>
@@ -26,30 +23,95 @@
         <div id="map-type-menu" class="popover-menu"></div>
       </div>
       <button id="theme-toggle" class="topbar-icon-btn" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode"></button>
-      <button id="saved-toggle" class="topbar-icon-btn" type="button" title="Saved Items" aria-label="Saved Items">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-      </button>
-      <button id="settings-toggle" class="topbar-icon-btn" type="button" title="Settings" aria-label="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-      </button>
     </div>
     <label class="map-type"><select id="map-type"></select></label>
   </header>
 
-  <div id="sidebar-scrim"></div>
+  <nav id="rail" class="rail">
+    <button class="rail-btn" type="button" data-panel="explore" title="Explore" aria-label="Explore filters">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+      <span class="rail-btn-label">Explore</span>
+    </button>
+    <button class="rail-btn" type="button" data-panel="saved" title="Saved Items" aria-label="Saved Items">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      <span class="rail-btn-label">Saved</span>
+    </button>
+    <button class="rail-btn" type="button" data-panel="hangar" title="Hangar" aria-label="Hangar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></svg>
+      <span class="rail-btn-label">Hangar</span>
+    </button>
+    <div class="rail-spacer"></div>
+    <button class="rail-btn" type="button" data-panel="settings" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      <span class="rail-btn-label">Settings</span>
+    </button>
+  </nav>
 
-  <aside id="sidebar" class="sidebar">
-    <div class="sidebar-head">
-      <span class="sidebar-title">Filters</span>
+  <div id="panel-scrim"></div>
+
+  <aside id="panel-explore" class="panel">
+    <div class="panel-head">
+      <div class="panel-head-text">
+        <span class="panel-eyebrow">FSAtlas</span>
+        <h2 class="panel-title">Explore</h2>
+        <p class="panel-sub">Build AND/OR filters to narrow the map to the flights you want.</p>
+      </div>
       <span id="filters-count-badge" class="filters-count-badge zero">none active</span>
-      <button id="sidebar-close" class="topbar-icon-btn sidebar-close" type="button" aria-label="Close filters">
+      <button class="panel-close topbar-icon-btn" type="button" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
-    <div id="filters-wrap" class="sidebar-body">
-      <div id="filters"></div>
+    <div id="filters-wrap" class="panel-body">
+      <div id="filters-scope" class="scope-header root">
+        <div id="filters-scope-toggle-wrap" class="scope-toggle-wrap">
+          <div class="scope-toggle" role="group" aria-label="How conditions combine">
+            <button type="button" class="scope-opt active" data-logic="AND">Match ALL</button>
+            <button type="button" class="scope-opt" data-logic="OR">Match ANY</button>
+          </div>
+        </div>
+        <button type="button" id="filters-collapse-toggle" class="btn-icon filters-collapse-btn" title="Collapse filters" aria-label="Collapse filters" aria-expanded="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </button>
+      </div>
+      <div id="filters-collapsible">
+        <div id="filters"></div>
+        <div class="tree-add-row">
+          <button type="button" id="filters-add-condition" class="ghost-add">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add condition
+          </button>
+          <button type="button" id="filters-add-group" class="ghost-add">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2"></path><path d="M16 4h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2"></path></svg>
+            Add nested group
+          </button>
+        </div>
+      </div>
+      <div id="route-flights" class="route-flights">
+        <div class="route-flights-head">
+          <div class="route-flights-head-text">
+            <div id="route-flights-title" class="route-flights-title"></div>
+            <div id="route-flights-count" class="route-flights-count"></div>
+          </div>
+          <button type="button" id="route-flights-close" class="btn-icon-sm" title="Close flight list" aria-label="Close flight list">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="flights-table">
+          <div class="flights-table-head">
+            <span></span>
+            <button type="button" class="sortable-col" data-sort="flight">Flight</button>
+            <button type="button" class="sortable-col" data-sort="from">From</button>
+            <button type="button" class="sortable-col" data-sort="to">To</button>
+            <button type="button" class="sortable-col" data-sort="aircraft" title="Aircraft type">A/C</button>
+            <button type="button" class="sortable-col" id="flights-table-time-header" data-sort="time">Time</button>
+            <span></span>
+          </div>
+          <div id="flights-table-body"></div>
+        </div>
+      </div>
     </div>
-    <div class="sidebar-foot">
+    <div class="panel-foot">
+      <div id="filters-preview" class="filters-preview"></div>
       <div id="flights-count" class="sidebar-result"></div>
       <div class="sidebar-foot-actions">
         <button id="save-search-btn" class="btn-icon" type="button" title="Save the current filters as a search" aria-label="Save the current filters as a search">
@@ -61,42 +123,19 @@
     </div>
   </aside>
 
-  <div id="info" class="info-panel">
-    <div class="panel-header">Flights <span class="close-btn" id="info-close">&times;</span></div>
-    <div id="title-loc" style="margin-bottom:10px; opacity:0.8;"></div>
-    <div id="panel-content" class="panel-content">Select an airport...</div>
-  </div>
 
-  <template id="legend-template">
-    <div class="legend-panel">
-      <span class="legend-title">Map Legend</span>
-      <div class="legend-row"><span class="legend-dot" data-rank="3"></span>&gt; 100 non-stop destinations</div>
-      <div class="legend-row"><span class="legend-dot" data-rank="2"></span>&gt; 30 non-stop destinations</div>
-      <div class="legend-row"><span class="legend-dot" data-rank="1"></span>&gt; 7 non-stop destinations</div>
-      <div class="legend-row"><span class="legend-dot" data-rank="0"></span>&lt; 7 non-stop destinations</div>
-      <div class="legend-row legend-scenery-row">
-        <span class="legend-star-group">
-          <span class="legend-star" data-rank="0"></span>
-          <span class="legend-star" data-rank="1"></span>
-          <span class="legend-star" data-rank="2"></span>
-          <span class="legend-star" data-rank="3"></span>
-        </span>
-        Scenery Installed
+  <aside id="panel-saved" class="panel">
+    <div class="panel-head">
+      <div class="panel-head-text">
+        <span class="panel-eyebrow">FSAtlas</span>
+        <h2 class="panel-title">Saved</h2>
+        <p class="panel-sub">Routes and searches you've bookmarked for later.</p>
       </div>
+      <button id="saved-close" class="panel-close topbar-icon-btn" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
     </div>
-    <div class="legend-tab" title="Toggle map legend" aria-label="Toggle map legend">
-      <span class="legend-tab-label">Map Legend</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-    </div>
-  </template>
-
-  <div id="saved-modal" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>Saved Items</h2>
-        <button id="saved-close" class="icon" type="button" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
+      <div class="panel-body">
         <div class="saved-section">
           <button class="saved-section-toggle collapsed" type="button" aria-expanded="false">
             <svg class="saved-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -133,61 +172,81 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+  </aside>
 
-  <div id="settings-modal" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>Settings</h2>
-        <button id="settings-close" class="icon" type="button" aria-label="Close">&times;</button>
+  <aside id="panel-hangar" class="panel">
+    <div class="panel-head">
+      <div class="panel-head-text">
+        <span class="panel-eyebrow">Hangar</span>
+        <h2 class="panel-title">Scenery</h2>
+        <p class="panel-sub">Import your sim's scenery folder to star installed airports on the map.</p>
       </div>
-      <div class="modal-body">
+      <button class="panel-close topbar-icon-btn" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="panel-body">
+      <div class="hangar-stats">
+        <div class="hangar-stat"><span id="hangar-matched-count" class="hangar-stat-num">0</span><span class="hangar-stat-label">Matched</span></div>
+        <div class="hangar-stat"><span id="hangar-unresolved-count" class="hangar-stat-num">0</span><span class="hangar-stat-label">Unresolved</span></div>
+      </div>
+      <div class="modal-actions">
+        <button id="scenery-import-btn" class="secondary" type="button">Import Scenery Folder&hellip;</button>
+        <span id="scenery-status"></span>
+      </div>
+      <p class="modal-hint">
+        Choose your MSFS Community or X-Plane Custom Scenery folder. Package names and
+        small manifests are checked locally; scenery files are never uploaded. Firefox
+        may take time to list filenames in a very large folder.
+      </p>
+      <div id="scenery-progress" class="scenery-progress" role="status" aria-live="polite" aria-hidden="true">
+        <span class="scenery-spinner" aria-hidden="true"></span>
+        <div class="scenery-progress-content">
+          <span id="scenery-progress-text"></span>
+          <div class="scenery-progress-track" role="progressbar" aria-label="Scenery import progress">
+            <span></span>
+          </div>
+        </div>
+      </div>
+      <details id="scenery-errors" class="scenery-errors">
+        <summary id="scenery-errors-summary">Import details (0)</summary>
+        <div id="scenery-error-resolutions" class="scenery-error-resolutions"></div>
+        <pre class="scenery-error-block"><code id="scenery-errors-code"></code></pre>
+      </details>
+      <input id="scenery-folder-input" type="file" webkitdirectory directory multiple hidden>
+    </div>
+  </aside>
+
+  <aside id="panel-settings" class="panel">
+    <div class="panel-head">
+      <div class="panel-head-text">
+        <span class="panel-eyebrow">App</span>
+        <h2 class="panel-title">Settings</h2>
+        <p class="panel-sub">Dispatch preferences for this browser.</p>
+      </div>
+      <button id="settings-close" class="panel-close topbar-icon-btn" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="panel-body">
+      <div class="settings-card">
+        <h3 class="settings-card-title">Dispatch</h3>
+        <p class="settings-card-hint">Pre-fills dispatch links and powers the SimBrief OFP uplink.</p>
         <label for="simbrief-pilot-id">SimBrief Pilot ID or Username</label>
         <input id="simbrief-pilot-id" type="text" placeholder="e.g. 123456 or jdoe">
         <p class="modal-hint">
-          Used to pre-fill the Pilot ID when exporting a flight to SimBrief. Find yours on
-          SimBrief's <a href="https://www.simbrief.com/system/profile.php#settings" target="_blank" rel="noopener">Account Settings</a> page.
+          Find yours on SimBrief's <a href="https://www.simbrief.com/system/profile.php#settings" target="_blank" rel="noopener">Account Settings</a> page.
         </p>
         <div class="modal-actions">
           <button id="simbrief-verify" class="secondary" type="button">Verify</button>
           <span id="simbrief-status"></span>
         </div>
-
-        <hr class="modal-divider">
-
-        <label>Flight Sim Scenery</label>
-        <p class="modal-hint">
-          Choose your MSFS Community or X-Plane Custom Scenery folder. Package names and
-          small manifests are checked locally; scenery files are never uploaded. Firefox
-          may take time to list filenames in a very large folder.
-        </p>
-        <div class="modal-actions">
-          <button id="scenery-import-btn" class="secondary" type="button">Import Scenery Folder&hellip;</button>
-          <span id="scenery-status"></span>
-        </div>
-        <div id="scenery-progress" class="scenery-progress" role="status" aria-live="polite" aria-hidden="true">
-          <span class="scenery-spinner" aria-hidden="true"></span>
-          <div class="scenery-progress-content">
-            <span id="scenery-progress-text"></span>
-            <div class="scenery-progress-track" role="progressbar" aria-label="Scenery import progress">
-              <span></span>
-            </div>
-          </div>
-        </div>
-        <details id="scenery-errors" class="scenery-errors">
-          <summary id="scenery-errors-summary">Import details (0)</summary>
-          <div id="scenery-error-resolutions" class="scenery-error-resolutions"></div>
-          <pre class="scenery-error-block"><code id="scenery-errors-code"></code></pre>
-        </details>
-        <input id="scenery-folder-input" type="file" webkitdirectory directory multiple hidden>
-      </div>
-      <div class="modal-footer">
-        <button id="settings-cancel" class="secondary" type="button">Cancel</button>
-        <button id="settings-save" type="button">Save</button>
       </div>
     </div>
-  </div>
+    <div class="panel-foot">
+      <button id="settings-save" class="btn-primary" type="button" style="width:100%">Save Changes</button>
+    </div>
+  </aside>
 
   <div id="scenery-warning-modal" class="modal-overlay">
     <div class="modal">

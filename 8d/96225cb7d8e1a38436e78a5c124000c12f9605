@@ -1,0 +1,48 @@
+run/data_loader.py
+  s_3f88e9253b15b6::t_2e72b81bde9d7d 11-14,85-93,116-119
+run/webapp/data.py
+  s_3f88e9253b15b6::t_6055dbe109a08a 51-69,82-88
+  s_3f88e9253b15b6::t_9c3becd13d3e94 163-167
+run/import_flights.py
+  s_3f88e9253b15b6::t_2e72b81bde9d7d 14-15,155-156,165
+run/webapp/static/app.js
+  s_3f88e9253b15b6::t_0966fb0bc6dc70 2001,2048,2063
+  s_3f88e9253b15b6::t_df9983114582e5 2032,2137-2142,2148-2156
+  s_3f88e9253b15b6::t_1b309cbe4e0ff5 1113,1591,2132-2136,2143-2147,2157-2158,2244
+  s_3f88e9253b15b6::t_2e2d4d0d9ba983 1972-1991,1993-2000,2005-2031,2034-2047,2049-2062,2064-2079,2081-2095
+  s_3f88e9253b15b6::t_bafcd93f505217 1992,2002-2004,2033
+  s_3f88e9253b15b6::t_e8bf5bc81a6e02 1057-1093,2080
+run/webapp/static/app.css
+  s_3f88e9253b15b6::t_bafcd93f505217 281,284-285
+  s_3f88e9253b15b6::t_7da6d4c3fa6419 294-295
+  s_3f88e9253b15b6::t_348f43b946290f 273-274,288,316-320
+  s_3f88e9253b15b6::t_df9983114582e5 275,278,287,289-290,292-293,296-297,300-302,315,321
+  s_3f88e9253b15b6::t_6b6aa0998c0a4d 286
+  s_3f88e9253b15b6::t_c703f157e6f9ad 303-314
+  s_3f88e9253b15b6::t_0966fb0bc6dc70 280,291,298-299
+  s_3f88e9253b15b6::t_e2ce4f61f26eb3 276-277,279,282-283
+run/webapp/templates/index.html
+  s_3f88e9253b15b6::t_348f43b946290f 57
+  s_3f88e9253b15b6::t_9c3becd13d3e94 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d96225cb7d8e1a38436e78a5c124000c12f9605",
+  "prompts": {},
+  "humans": {
+    "h_2fb16336b691a1": {
+      "author": "chrhodge <chrhodge@cisco.com>"
+    }
+  },
+  "sessions": {
+    "s_3f88e9253b15b6": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "6fd22769-7f51-4b97-9ee1-9fdfcf1e18cb",
+        "model": "copilot/gpt-5.6-terra"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

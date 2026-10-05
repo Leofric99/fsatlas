@@ -90,6 +90,7 @@
         <div class="route-flights-head">
           <div class="route-flights-head-text">
             <div id="route-flights-title" class="route-flights-title"></div>
+            <div id="route-flights-airports" class="route-flights-airports"></div>
             <div id="route-flights-count" class="route-flights-count"></div>
           </div>
           <button type="button" id="route-flights-close" class="btn-icon-sm" title="Close flight list" aria-label="Close flight list">
@@ -103,7 +104,7 @@
             <button type="button" class="sortable-col" data-sort="from">From</button>
             <button type="button" class="sortable-col" data-sort="to">To</button>
             <button type="button" class="sortable-col" data-sort="aircraft" title="Aircraft type">A/C</button>
-            <button type="button" class="sortable-col" id="flights-table-time-header" data-sort="time">Time</button>
+            <button type="button" class="sortable-col" id="flights-table-time-header" data-sort="time">Length</button>
             <span></span>
           </div>
           <div id="flights-table-body"></div>
@@ -155,7 +156,18 @@
                   </select>
                 </label>
               </div>
-              <div id="saved-list" class="saved-list"></div>
+              <div class="flights-table saved-flights-table">
+                <div class="flights-table-head">
+                  <span></span>
+                  <span>Flight</span>
+                  <span>From</span>
+                  <span>To</span>
+                  <span title="Aircraft type">A/C</span>
+                  <span>Length</span>
+                  <span></span>
+                </div>
+                <div id="saved-list" class="saved-list saved-flights-table-body"></div>
+              </div>
             </div>
           </div>
         </div>

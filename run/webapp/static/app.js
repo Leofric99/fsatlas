@@ -89,7 +89,7 @@
   // Shared star shape (used for the scenery map markers),
   // parameterized on fill color so it can match whichever rank color it stands in for.
   function starSvgMarkup(color) {
-    return '<svg viewBox="0 0 24 24" fill="' + color + '" stroke="#00000055" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 14.9 8.6 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9.1 8.6"></polygon></svg>';
+    return '<svg viewBox="0 0 24 24" fill="' + color + '" stroke="var(--map-outline)" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 14.9 8.6 22 9.3 16.5 14 18.2 21 12 17.3 5.8 21 7.5 14 2 9.3 9.1 8.6"></polygon></svg>';
   }
   // The star polygon above only fills ~148.3 sq units of its 24x24 (576 sq unit) viewBox
   // (shoelace area of its points) - a star fills far less of its own bounding box than a
@@ -185,7 +185,7 @@
         // Same connectivity filter as the dots (see loadRoutes/deselect) - a star built
         // lazily for a newly-panned-to world copy while a source is already selected
         // must respect that selection immediately, not just future show/hide calls.
-        if (!visibleFilter || visibleFilter.has(s.iata)) marker.addTo(sceneryLayer);
+        if ((!visibleFilter || visibleFilter.has(s.iata)) && (visibleFilterOffset === null || offset === visibleFilterOffset)) marker.addTo(sceneryLayer);
       } else {
         // Airport overlay off: every installed-scenery airport shows regardless of
         // filters/flight matches (there's no dot layer to stay consistent with), and
@@ -202,8 +202,14 @@
     });
   }
 
-  function showSceneryStar(iata) {
-    Object.values(sceneryMarkers[iata] || {}).forEach(m => { if (!sceneryLayer.hasLayer(m)) sceneryLayer.addLayer(m); });
+  function showSceneryStar(iata, onlyOffset = null) {
+    Object.entries(sceneryMarkers[iata] || {}).forEach(([offset, marker]) => {
+      if (onlyOffset === null || Number(offset) === onlyOffset) {
+        if (!sceneryLayer.hasLayer(marker)) sceneryLayer.addLayer(marker);
+      } else if (sceneryLayer.hasLayer(marker)) {
+        sceneryLayer.removeLayer(marker);
+      }
+    });
   }
   function hideSceneryStar(iata) {
     Object.values(sceneryMarkers[iata] || {}).forEach(m => { if (sceneryLayer.hasLayer(m)) sceneryLayer.removeLayer(m); });
@@ -265,6 +271,7 @@
   let _isDragging = false;
   let _dragTimer = null;
   let visibleFilter = null; // Set of visible IATA codes, or null to show all
+  let visibleFilterOffset = null; // World-copy offset to show while a source airport is selected
   let pendingSavedFlight = null;
   let highlightedFlightKey = null;
   let lastRenderedRoutes = [];
@@ -277,9 +284,15 @@
     return Math.round((centerLon - canonicalLon) / 360) * 360;
   }
 
-  function showAirport(iata) {
+  function showAirport(iata, onlyOffset = null) {
     if (sceneryHidesAirportDot(iata)) return;
-    Object.values(airportMarkers[iata] || {}).forEach(m => { if (!airportLayer.hasLayer(m)) airportLayer.addLayer(m); });
+    Object.entries(airportMarkers[iata] || {}).forEach(([offset, marker]) => {
+      if (onlyOffset === null || Number(offset) === onlyOffset) {
+        if (!airportLayer.hasLayer(marker)) airportLayer.addLayer(marker);
+      } else if (airportLayer.hasLayer(marker)) {
+        airportLayer.removeLayer(marker);
+      }
+    });
   }
   function hideAirport(iata) {
     Object.values(airportMarkers[iata] || {}).forEach(m => { if (airportLayer.hasLayer(m)) airportLayer.removeLayer(m); });
@@ -311,7 +324,7 @@
       if (!airportMarkers[ap.iata]) airportMarkers[ap.iata] = {};
       airportMarkers[ap.iata][offset] = marker;
 
-      if (!sceneryHidesAirportDot(ap.iata) && (!visibleFilter || visibleFilter.has(ap.iata))) airportLayer.addLayer(marker);
+      if (!sceneryHidesAirportDot(ap.iata) && (!visibleFilter || visibleFilter.has(ap.iata)) && (visibleFilterOffset === null || offset === visibleFilterOffset)) airportLayer.addLayer(marker);
     });
   }
 
@@ -360,6 +373,7 @@
       if (selectedDest === code) { deslectDestOnly(); return; }
       selectedDest = code;
       selectedDestOffset = offset;
+      if (!panelEls.explore.classList.contains('open')) openPanel('explore');
 
       if (deselectDestMarker) airportLayer.removeLayer(deselectDestMarker);
       const destAp = airports[code];
@@ -428,6 +442,7 @@
     if (deselectDestMarker) { airportLayer.removeLayer(deselectDestMarker); deselectDestMarker = null; }
 
     visibleFilter = null;
+    visibleFilterOffset = null;
     Object.keys(airports).forEach(iata => showAirport(iata));
     Object.keys(sceneryMarkers).forEach(iata => showSceneryStar(iata));
   }
@@ -447,9 +462,10 @@
       connectedIatas.add(selectedSource);
       routes.forEach(r => { connectedIatas.add(r.dep); connectedIatas.add(r.arr); });
       visibleFilter = connectedIatas;
+      visibleFilterOffset = selectedSourceOffset;
 
-      Object.keys(airports).forEach(iata => { connectedIatas.has(iata) ? showAirport(iata) : hideAirport(iata); });
-      Object.keys(sceneryMarkers).forEach(iata => { connectedIatas.has(iata) ? showSceneryStar(iata) : hideSceneryStar(iata); });
+      Object.keys(airports).forEach(iata => { connectedIatas.has(iata) ? showAirport(iata, visibleFilterOffset) : hideAirport(iata); });
+      Object.keys(sceneryMarkers).forEach(iata => { connectedIatas.has(iata) ? showSceneryStar(iata, visibleFilterOffset) : hideSceneryStar(iata); });
 
       if (pendingSavedFlight && pendingSavedFlight.dep === selectedSource) {
         const wantedArr = pendingSavedFlight.arr;
@@ -487,6 +503,29 @@
     if (hours === null || hours === undefined) return 'Unknown';
     const totalMinutes = Math.round(hours * 60);
     return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
+  }
+  function formatDistance(distance) {
+    return typeof distance === 'number' ? Math.round(distance).toLocaleString() + ' nm' : 'Unknown';
+  }
+  function compactAirportName(name) {
+    const compact = String(name || '').replace(/\b(?:airport|airfield|aerodrome)\b/gi, '').replace(/\s{2,}/g, ' ').trim();
+    return compact || 'Unknown';
+  }
+  function airportLabel(route, direction) {
+    const code = route[direction];
+    return compactAirportName(route[direction + '_name'] || (airports[code] && airports[code].name));
+  }
+  function fitFlightTableColumns(table, routes) {
+    if (!table) return;
+    const measureCanvas = document.createElement('canvas');
+    const context = measureCanvas.getContext('2d');
+    const fontFamily = getComputedStyle(table).fontFamily;
+    context.font = `italic 9px ${fontFamily}`;
+    const minimumWidth = values => Math.ceil(Math.max(0, ...values.flatMap(value => String(value || 'Unknown').split(/\s+/))
+      .map(word => context.measureText(word).width))) + 2;
+    table.style.setProperty('--from-min', minimumWidth(routes.map(route => airportLabel(route, 'dep'))) + 'px');
+    table.style.setProperty('--to-min', minimumWidth(routes.map(route => airportLabel(route, 'arr'))) + 'px');
+    table.style.setProperty('--aircraft-min', minimumWidth(routes.map(route => route.type || route.type_icao)) + 'px');
   }
   const FLIGHT_TIME_INFO = "Estimated as (Distance x 1.07 / Cruise Speed) + Ascent/Descent Buffer, "
     + "where Buffer = 83.33 / Cruise Speed (time lost climbing/descending ~250nm at 75% of cruise "
@@ -620,7 +659,7 @@
   // Small filled plane silhouette (matches the reference image) - colored with the same
   // --line-color as the route itself rather than a separate icon color, and rotated to
   // face from source toward destination.
-  const PLANE_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="#000" stroke-width="1" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-4.5l8 2.5z"></path></svg>';
+  const PLANE_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="var(--map-outline)" stroke-width="1" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-4.5l8 2.5z"></path></svg>';
 
   // Marks the midpoint of a complete (both-ends-selected) route with a plane icon,
   // oriented along the direction of travel. Walks CUMULATIVE ON-SCREEN PIXEL DISTANCE
@@ -701,6 +740,9 @@
       document.getElementById('route-flights-title').innerText = isSelfLoop
         ? srcIcao + " \u2014 Self Flights"
         : srcIcao + " \u21c4 " + destIcao;
+      document.getElementById('route-flights-airports').textContent = isSelfLoop
+        ? (srcAp && srcAp.city) || 'Unknown'
+        : ((srcAp && srcAp.city) || 'Unknown') + " \u21c4 " + ((destAp && destAp.city) || 'Unknown');
 
       const pairRoutes = currentRoutes.filter(r => r.dep === selectedDest || r.arr === selectedDest);
       lastPairRoutesUnsorted = pairRoutes;
@@ -744,14 +786,16 @@
       const flightTime = formatFlightTime(r.flight_time_hours);
       const isHighlighted = highlightedFlightKey !== null && flightKey(r) === highlightedFlightKey;
       return `
-        <div class="flight-row${isHighlighted ? ' highlighted' : ''}" id="flight-row-${idx}">
-          <button class="row-bookmark" id="row-bookmark-${idx}" type="button"></button>
-          <div class="row-flight">${escapeHtml(r.flight || '-')}</div>
-          <div class="row-from">${escapeHtml(r.dep_icao || r.dep || '-')}</div>
-          <div class="row-to">${escapeHtml(r.arr_icao || r.arr || '-')}</div>
-          <div class="row-aircraft">${escapeHtml(type_icao)}</div>
-          <div class="row-time">${escapeHtml(flightTime)}</div>
-          <button class="row-simbrief" id="row-simbrief-${idx}" type="button" title="Export to SimBrief" aria-label="Export to SimBrief">${SIMBRIEF_ICON}</button>
+        <div class="flight-table-entry">
+          <div class="flight-row${isHighlighted ? ' highlighted' : ''}" id="flight-row-${idx}">
+            <button class="row-bookmark" id="row-bookmark-${idx}" type="button"></button>
+            <div class="row-flight"><span class="row-primary">${escapeHtml(r.flight || '-')}</span><span class="row-secondary">${escapeHtml(r.airline || 'Unknown')}</span></div>
+            <div class="row-from"><span class="row-primary">${escapeHtml(r.dep_icao || r.dep || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(r, 'dep'))}</span></div>
+            <div class="row-to"><span class="row-primary">${escapeHtml(r.arr_icao || r.arr || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(r, 'arr'))}</span></div>
+            <div class="row-aircraft"><span class="row-primary">${escapeHtml(type_icao)}</span><span class="row-secondary">${escapeHtml(r.type || 'Unknown')}</span></div>
+            <div class="row-time"><span class="row-primary">${escapeHtml(flightTime)}</span><span class="row-secondary">${escapeHtml(formatDistance(r.distance))}</span></div>
+            <button class="row-simbrief" id="row-simbrief-${idx}" type="button" title="Export to SimBrief" aria-label="Export to SimBrief">${SIMBRIEF_ICON}</button>
+          </div>
         </div>`;
     }).join('');
 
@@ -809,6 +853,7 @@
       return dir * (da - db);
     };
     const savedAt = f => f.saved_at || '';
+    fitFlightTableColumns(tableBody.closest('.flights-table'), pairRoutes);
     const firstTag = f => (f.tags && f.tags.length ? f.tags[0].toLowerCase() : '\uffff');
     switch (savedSort.value) {
       case 'distance-asc': flights.sort((a, b) => distCompare(a, b, 1)); break;
@@ -842,42 +887,45 @@
     const allTags = [...new Set(savedFlightsRaw.flatMap(f => f.tags || []))].sort((a, b) => a.localeCompare(b));
 
     savedList.innerHTML = flights.map((f, i) => {
-      const depLabel = (f.dep_city ? escapeHtml(f.dep_city) + ' ' : '') + '(' + escapeHtml(f.dep_icao || f.dep || '?') + ')';
-      const arrLabel = (f.arr_city ? escapeHtml(f.arr_city) + ' ' : '') + '(' + escapeHtml(f.arr_icao || f.arr || '?') + ')';
       const tags = f.tags || [];
       return `
-        <div class="saved-row" data-idx="${i}">
-          <div class="saved-row-top">
-            <div>
-              <div class="saved-route">${depLabel} &rarr; ${arrLabel}</div>
-              <div class="saved-type">${escapeHtml(f.type_icao || '')}</div>
+        <div class="saved-flight-entry" data-idx="${i}">
+          <div class="flight-row saved-flight-row">
+            <button class="row-bookmark saved-bookmark" type="button"></button>
+            <div class="row-flight"><span class="row-primary">${escapeHtml(f.flight || '-')}</span><span class="row-secondary">${escapeHtml(f.airline || 'Unknown')}</span></div>
+            <div class="row-from"><span class="row-primary">${escapeHtml(f.dep_icao || f.dep || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(f, 'dep'))}</span></div>
+            <div class="row-to"><span class="row-primary">${escapeHtml(f.arr_icao || f.arr || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(f, 'arr'))}</span></div>
+            <div class="row-aircraft"><span class="row-primary">${escapeHtml(f.type_icao || f.type || '-')}</span><span class="row-secondary">${escapeHtml(f.type || 'Unknown')}</span></div>
+            <div class="row-time"><span class="row-primary">${escapeHtml(formatFlightTime(f.flight_time_hours))}</span><span class="row-secondary">${escapeHtml(formatDistance(f.distance))}</span></div>
+            <button class="row-simbrief" type="button" title="Export to SimBrief" aria-label="Export to SimBrief">${SIMBRIEF_ICON}</button>
+          </div>
+          <div class="saved-flight-tags">
+            <div class="saved-tags">
+              ${tags.map(t => `<span class="tag-chip">${escapeHtml(t)}<button type="button" class="tag-remove" data-tag="${escapeHtml(t)}" title="Remove tag" aria-label="Remove tag ${escapeHtml(t)}">&times;</button></span>`).join('')}
+              <button type="button" class="tag-add-btn">+ Tag</button>
             </div>
-            <button class="saved-remove" type="button" title="Remove" aria-label="Remove">&times;</button>
-          </div>
-          <div class="saved-tags">
-            ${tags.map(t => `<span class="tag-chip">${escapeHtml(t)}<button type="button" class="tag-remove" data-tag="${escapeHtml(t)}" title="Remove tag" aria-label="Remove tag ${escapeHtml(t)}">&times;</button></span>`).join('')}
-            <button type="button" class="tag-add-btn">+ Tag</button>
-          </div>
-          <div class="tag-editor">
-            <input type="text" class="tag-input" placeholder="Search or create a tag...">
-            <div class="tag-suggestions"></div>
+            <div class="tag-editor">
+              <input type="text" class="tag-input" placeholder="Search or create a tag...">
+              <div class="tag-suggestions"></div>
+            </div>
           </div>
         </div>
       `;
     }).join('');
+    fitFlightTableColumns(savedList.closest('.flights-table'), flights);
 
-    [...savedList.querySelectorAll('.saved-row')].forEach((row, i) => {
+    [...savedList.querySelectorAll('.saved-flight-entry')].forEach((row, i) => {
       const flight = flights[i];
       row.addEventListener('click', () => { closePanel(); showSavedFlight(flight); });
-      row.querySelector('.saved-remove').addEventListener('click', async e => {
+      const bookmarkBtn = row.querySelector('.saved-bookmark');
+      setSaveButtonState(bookmarkBtn, true);
+      bookmarkBtn.addEventListener('click', async e => {
         e.stopPropagation();
-        try {
-          await fsatlasFetch('/api/saved-flights', {
-            method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(flight)
-          });
-        } catch (err) { /* best effort */ }
+        await toggleSaveFlight(flight, bookmarkBtn);
         loadSavedFlights();
       });
+      const simbriefBtn = row.querySelector('.row-simbrief');
+      simbriefBtn.addEventListener('click', e => { e.stopPropagation(); exportToSimbrief(flight, simbriefBtn); });
 
       [...row.querySelectorAll('.tag-remove')].forEach(btn => {
         btn.addEventListener('click', e => {

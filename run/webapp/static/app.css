@@ -30,14 +30,16 @@
   --topbar-h: 54px;
   --rail-w: 58px;
   --rail-h: 54px;
-  --sidebar-w: 414px;
+  --sidebar-w: 520px;
   --map-bg: #14161b;
   --panel-bg: var(--surface);
   --card-bg: var(--surface-2);
   --card-border: var(--border);
   --line-color: var(--accent);
-  --marker-border: #05070a;
-  --marker-dot: #ffffff;
+  --map-outline: #05070a;
+  --map-outline-shadow: rgba(0, 0, 0, 0.5);
+  --marker-border: var(--map-outline);
+  --marker-dot: var(--accent);
   --accent-soft: rgba(45, 212, 191, 0.14);
   /* Destination-count bands, theme-independent (same on dark/light): red, gold, blue, dark
      blue - kept as CSS vars so colorForRank() in app.js is the single place both the marker
@@ -72,10 +74,10 @@
   --card-bg: var(--surface-2);
   --card-border: var(--border);
   --line-color: var(--accent);
-  --marker-border: #14161a;
-  /* Dark-mode's own UI surface color, reused here since plain white dots over the light
-     basemap read as too bright/low-contrast - a dark dot matches the app's dark-mode chrome. */
-  --marker-dot: #111318;
+  --map-outline: #f8fafc;
+  --map-outline-shadow: rgba(255, 255, 255, 0.8);
+  --marker-border: var(--map-outline);
+  --marker-dot: var(--accent);
   --accent-soft: rgba(13, 148, 136, 0.1);
 }
 
@@ -225,27 +227,27 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
    redundant, --sidebar-w matches it directly (the Explore flights table needed the same
    extra room, so the two were unified instead of keeping two separately-tracked widths). */
 .panel-head {
-  flex-shrink: 0; display: flex; align-items: flex-start; gap: 9px; padding: 16px 16px 13px;
+  flex-shrink: 0; display: flex; align-items: flex-start; gap: 7px; padding: 13px 13px 10px;
   border-bottom: 1px solid var(--border);
 }
 .panel-head-text { flex: 1 1 auto; min-width: 0; }
 .panel-eyebrow {
-  display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--accent); margin-bottom: 4px;
+  display: block; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 3px;
 }
-.panel-title { font-size: 19px; font-weight: 700; margin: 0 0 4px; line-height: 1.2; }
-.panel-sub { font-size: 11.5px; color: var(--text-dim); line-height: 1.5; margin: 0; }
+.panel-title { font-size: 16px; font-weight: 700; margin: 0 0 3px; line-height: 1.2; }
+.panel-sub { font-size: 10px; color: var(--text-dim); line-height: 1.4; margin: 0; }
 .filters-count-badge {
-  font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: var(--radius-pill);
+  font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: var(--radius-pill);
   background: var(--accent-soft); color: var(--accent); flex-shrink: 0; margin-top: 2px;
 }
 .filters-count-badge.zero { background: var(--surface-2); color: var(--muted); }
-.panel-close { flex-shrink: 0; margin-left: auto; width: 27px; height: 27px; }
-.panel-close svg { width: 13px; height: 13px; }
-.panel-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 13px 16px; }
-.panel-foot { flex-shrink: 0; border-top: 1px solid var(--border); padding: 13px 16px; display: flex; flex-direction: column; gap: 9px; }
-.sidebar-result { font-size: 12px; color: var(--text-dim); font-weight: 600; min-height: 16px; }
-.sidebar-foot-actions { display: flex; gap: 8px; }
+.panel-close { flex-shrink: 0; margin-left: auto; width: 24px; height: 24px; }
+.panel-close svg { width: 12px; height: 12px; }
+.panel-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 13px; }
+.panel-foot { flex-shrink: 0; border-top: 1px solid var(--border); padding: 10px 13px; display: flex; flex-direction: column; gap: 7px; }
+.sidebar-result { font-size: 10px; color: var(--text-dim); font-weight: 600; min-height: 14px; }
+.sidebar-foot-actions { display: flex; gap: 7px; }
 .sidebar-foot-actions .btn-ghost, .sidebar-foot-actions .btn-primary { flex: 1 1 0; }
 
 /* --- Settings/Hangar section cards --- */
@@ -300,15 +302,22 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .btn-icon-sm svg { width: 14px; height: 14px; }
 .route-flights-head-text { min-width: 0; flex: 1 1 auto; }
 .route-flights-title { font-size: 13px; font-weight: 700; line-height: 1.35; }
+.route-flights-airports {
+  margin-top: 1px; color: var(--text-dim); font-size: 10px; font-style: italic; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .route-flights-count { font-size: 11px; color: var(--text-dim); }
 
-.flights-table { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.flights-table {
+  display: flex; flex-direction: column; gap: 0; min-width: 0; overflow-x: auto; overflow-y: hidden;
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2);
+}
 .flights-table-head, .flight-row {
-  display: grid; grid-template-columns: 24px .9fr 46px 46px 38px 50px 24px; gap: 8px; align-items: center; min-width: 0;
+  display: grid; grid-template-columns: 24px 52px minmax(var(--from-min, 0px), 1fr) minmax(var(--to-min, 0px), 1fr) minmax(var(--aircraft-min, 0px), 1fr) 50px 24px; gap: 8px; align-items: center; min-width: 0;
 }
 .flights-table-head {
-  padding: 0 4px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .04em; color: var(--muted);
+  padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--muted); background: var(--surface); border-bottom: 1px solid var(--border);
 }
 /* Headers are single-line/truncated, not wrapped - a wrapped two-line header (e.g. "Flight
    Time" breaking onto "Flight"/"Time") grows that one cell taller than its neighbours,
@@ -328,9 +337,11 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .flights-table-head button.sortable-col.sort-desc { color: var(--accent); }
 .flights-table-head button.sortable-col.sort-asc::after { content: '\25B2'; font-size: 8px; }
 .flights-table-head button.sortable-col.sort-desc::after { content: '\25BC'; font-size: 8px; }
-.flight-row { padding: 7px 4px; border-radius: var(--radius-sm); font-size: 12px; }
+.flight-row { min-height: 52px; padding: 7px 8px; border-radius: 0; font-size: 12px; align-items: start; }
 .flight-row:hover { background: var(--surface-hover); }
 .flight-row.highlighted { background: var(--accent-soft); }
+.flight-table-entry, .saved-flight-entry { position: relative; }
+.flight-table-entry + .flight-table-entry, .saved-flight-entry + .saved-flight-entry { border-top: 1px solid var(--border); }
 .row-bookmark, .row-simbrief {
   width: 22px; height: 22px; padding: 0; min-height: 0; background: transparent; border: none; box-shadow: none;
   color: var(--text-dim); display: flex; align-items: center; justify-content: center;
@@ -339,9 +350,14 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .row-bookmark:hover, .row-simbrief:hover { color: var(--accent); }
 .row-bookmark.saved { color: var(--accent); }
 .row-simbrief.error { color: var(--danger); }
-.row-flight { font-weight: 700; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row-from, .row-to { font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row-aircraft, .row-time { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-flight, .row-from, .row-to, .row-aircraft, .row-time { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.row-flight { font-weight: 700; color: var(--accent); }
+.row-from, .row-to, .row-aircraft, .row-time { font-weight: 600; color: var(--text); }
+.row-primary, .row-secondary { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-secondary {
+  display: -webkit-box; max-height: 2.4em; white-space: normal; color: var(--text-dim);
+  font-size: 9px; font-style: italic; font-weight: 400; line-height: 1.2; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
 
 /* --- Contextual kebab: every row/group's management actions (duplicate, wrap in group,
    ungroup, delete) live in ONE hover-revealed icon instead of a persistent button row -
@@ -518,6 +534,13 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
 
 .saved-list { display: flex; flex-direction: column; gap: 8px; }
 .saved-empty { font-size: 13px; color: var(--text-dim); text-align: center; padding: 18px 4px; line-height: 1.5; }
+.saved-flights-table { width: 100%; }
+.saved-flights-table-body { width: 100%; gap: 0; }
+.saved-flight-entry { width: 100%; border-radius: 0; }
+.saved-flight-entry:hover { background: var(--surface-hover); }
+.saved-flight-entry .saved-flight-row:hover { background: transparent; }
+.saved-flight-tags { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 6px 42px 8px; }
+.saved-flight-entry:not(:has(.tag-chip)) .saved-flight-tags { padding-top: 4px; }
 
 /* Scenery-overlay star markers, rendered in a Leaflet pane below the airport dots pane -
    selectable exactly like the dot they stand in for (app.js only attaches a click handler
@@ -552,7 +575,7 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
 .saved-route { font-weight: 600; font-size: 13px; line-height: 1.35; }
 .saved-type { font-size: 11px; color: var(--text-dim); }
 .saved-remove {
-  width: 26px; height: 26px; padding: 0; background: transparent; color: var(--danger);
+  width: 22px; height: 22px; padding: 0; min-height: 0; background: transparent; color: var(--danger);
   box-shadow: none; border: none; font-size: 16px; line-height: 1; flex-shrink: 0;
 }
 .saved-remove:hover { background: color-mix(in srgb, var(--danger) 18%, transparent); }
@@ -615,8 +638,9 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
 .route-plane-badge {
   width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
   color: var(--line-color);
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 1px 3px var(--map-outline-shadow));
 }
+:root[data-theme="light"] .route-plane-badge { filter: none; }
 .route-plane-badge svg { width: 20px; height: 20px; }
 
 /* Mobile: sidebar becomes a near-full-width drawer with a scrim behind it (identical
@@ -636,7 +660,7 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
   .ghost-add { min-height: 38px; padding: 8px 13px; }
   .row-bookmark, .row-simbrief { width: 30px; height: 30px; min-height: 0; }
   .row-bookmark svg, .row-simbrief svg { width: 16px; height: 16px; }
-  .flights-table-head, .flight-row { grid-template-columns: 30px .9fr 46px 46px 38px 50px 30px; }
+  .flights-table-head, .flight-row { grid-template-columns: 30px 52px minmax(var(--from-min, 0px), 1fr) minmax(var(--to-min, 0px), 1fr) minmax(var(--aircraft-min, 0px), 1fr) 50px 30px; }
 
   /* Rail becomes a bottom tab bar (thumb-reachable) instead of a persistent left column -
      panels become bottom sheets that slide up above it, matching the existing info-panel

@@ -9,7 +9,7 @@ import pandas as pd
 from run import config, data_loader, filtering
 
 # Columns hidden entirely from the filter dropdown.
-HIDDEN_COLUMNS = {"timestamp_read"}
+HIDDEN_COLUMNS = {"reg", "timestamp_read"}
 
 # Non-directional columns get bucketed into a couple of small logical groups.
 COMPANY_COLUMNS = {"owner", "calsign", "flight_number"}
@@ -175,7 +175,7 @@ def _build_columns(df):
             entry["group"] = None
             ungrouped.append(entry)
 
-    return ungrouped + company + equipment + departure + arrival + combined + other
+    return ungrouped + company + equipment + combined + departure + arrival + other
 
 
 def get_columns():
@@ -388,6 +388,8 @@ def get_flights(iata, filters):
         "reg": matches["reg"].astype(str),
         "dep_icao": matches["dep_airport_icao"].astype(str),
         "arr_icao": matches["arr_airport_icao"].astype(str),
+        "dep_name": matches["dep_airport"].astype(str),
+        "arr_name": matches["arr_airport"].astype(str),
         "dep_city": matches["dep_airport_city"].astype(str),
         "arr_city": matches["arr_airport_city"].astype(str),
         "airline": matches["owner"].astype(str),

@@ -853,7 +853,6 @@
       return dir * (da - db);
     };
     const savedAt = f => f.saved_at || '';
-    fitFlightTableColumns(tableBody.closest('.flights-table'), pairRoutes);
     const firstTag = f => (f.tags && f.tags.length ? f.tags[0].toLowerCase() : '\uffff');
     switch (savedSort.value) {
       case 'distance-asc': flights.sort((a, b) => distCompare(a, b, 1)); break;

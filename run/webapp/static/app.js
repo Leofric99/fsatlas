@@ -184,8 +184,10 @@
         sceneryMarkers[s.iata][offset] = marker;
         // Same connectivity filter as the dots (see loadRoutes/deselect) - a star built
         // lazily for a newly-panned-to world copy while a source is already selected
-        // must respect that selection immediately, not just future show/hide calls.
-        if ((!visibleFilter || visibleFilter.has(s.iata)) && (visibleFilterOffset === null || offset === visibleFilterOffset)) marker.addTo(sceneryLayer);
+        // must respect that selection immediately, not just future show/hide calls. Each
+        // airport has its OWN correct offset (see visibleFilterOffsets/routeOffsetFor) -
+        // not necessarily the source's offset, since its route line may wrap the antimeridian.
+        if (!visibleFilter || (visibleFilter.has(s.iata) && visibleFilterOffsets[s.iata] === offset)) marker.addTo(sceneryLayer);
       } else {
         // Airport overlay off: every installed-scenery airport shows regardless of
         // filters/flight matches (there's no dot layer to stay consistent with), and
@@ -271,7 +273,22 @@
   let _isDragging = false;
   let _dragTimer = null;
   let visibleFilter = null; // Set of visible IATA codes, or null to show all
-  let visibleFilterOffset = null; // World-copy offset to show while a source airport is selected
+  // iata -> world-copy offset to show that airport at while a source is selected. Each
+  // connected airport gets its OWN offset (not necessarily the source's), because a route
+  // can cross the antimeridian in either direction - see routeOffsetFor().
+  let visibleFilterOffsets = {};
+
+  // Picks whichever world-copy offset makes `destLon` render on the SAME side of the map
+  // as the great-circle route line actually draws on (computeGeodesicPoints picks the
+  // shorter great-circle path by wrapping destLon by ±360 when the raw difference exceeds
+  // 180° - this mirrors that same single-wrap decision so a connected airport's dot never
+  // ends up on the opposite side of the map from where its own route line terminates).
+  function routeOffsetFor(srcLon, destLon, baseOffset) {
+    const dLon = destLon - srcLon;
+    if (dLon > 180) return baseOffset - 360;
+    if (dLon < -180) return baseOffset + 360;
+    return baseOffset;
+  }
   let pendingSavedFlight = null;
   let highlightedFlightKey = null;
   let lastRenderedRoutes = [];
@@ -324,7 +341,7 @@
       if (!airportMarkers[ap.iata]) airportMarkers[ap.iata] = {};
       airportMarkers[ap.iata][offset] = marker;
 
-      if (!sceneryHidesAirportDot(ap.iata) && (!visibleFilter || visibleFilter.has(ap.iata)) && (visibleFilterOffset === null || offset === visibleFilterOffset)) airportLayer.addLayer(marker);
+      if (!sceneryHidesAirportDot(ap.iata) && (!visibleFilter || (visibleFilter.has(ap.iata) && visibleFilterOffsets[ap.iata] === offset))) airportLayer.addLayer(marker);
     });
   }
 
@@ -442,7 +459,7 @@
     if (deselectDestMarker) { airportLayer.removeLayer(deselectDestMarker); deselectDestMarker = null; }
 
     visibleFilter = null;
-    visibleFilterOffset = null;
+    visibleFilterOffsets = {};
     Object.keys(airports).forEach(iata => showAirport(iata));
     Object.keys(sceneryMarkers).forEach(iata => showSceneryStar(iata));
   }
@@ -462,10 +479,16 @@
       connectedIatas.add(selectedSource);
       routes.forEach(r => { connectedIatas.add(r.dep); connectedIatas.add(r.arr); });
       visibleFilter = connectedIatas;
-      visibleFilterOffset = selectedSourceOffset;
 
-      Object.keys(airports).forEach(iata => { connectedIatas.has(iata) ? showAirport(iata, visibleFilterOffset) : hideAirport(iata); });
-      Object.keys(sceneryMarkers).forEach(iata => { connectedIatas.has(iata) ? showSceneryStar(iata, visibleFilterOffset) : hideSceneryStar(iata); });
+      const srcAp = airports[selectedSource];
+      visibleFilterOffsets = {};
+      connectedIatas.forEach(iata => {
+        const ap = airports[iata];
+        visibleFilterOffsets[iata] = (ap && srcAp) ? routeOffsetFor(srcAp.lon, ap.lon, selectedSourceOffset) : selectedSourceOffset;
+      });
+
+      Object.keys(airports).forEach(iata => { connectedIatas.has(iata) ? showAirport(iata, visibleFilterOffsets[iata]) : hideAirport(iata); });
+      Object.keys(sceneryMarkers).forEach(iata => { connectedIatas.has(iata) ? showSceneryStar(iata, visibleFilterOffsets[iata]) : hideSceneryStar(iata); });
 
       if (pendingSavedFlight && pendingSavedFlight.dep === selectedSource) {
         const wantedArr = pendingSavedFlight.arr;

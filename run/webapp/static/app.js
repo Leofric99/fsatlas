@@ -863,7 +863,6 @@
   const savedPanel = document.getElementById('panel-saved');
   const savedList = document.getElementById('saved-list');
   const savedSort = document.getElementById('saved-sort');
-  const exploreSavedRoutesSelect = document.getElementById('explore-saved-routes');
   let savedFlightsRaw = [];
 
   function sortedSavedFlights() {
@@ -887,28 +886,9 @@
     return flights;
   }
 
-  // Lets the Explore panel jump straight to a saved route without opening the Saved
-  // panel - always reflects the same list/order as the Saved panel's own table.
-  function renderExploreSavedRoutesDropdown(flights) {
-    exploreSavedRoutesSelect._flights = flights;
-    exploreSavedRoutesSelect.innerHTML = '<option value="" selected>Jump to a saved route\u2026</option>' +
-      flights.map((f, i) => {
-        const label = (f.dep_icao || f.dep || '?') + ' \u2192 ' + (f.arr_icao || f.arr || '?') + ' \u2013 ' + (f.flight || 'Unknown');
-        return `<option value="${i}">${escapeHtml(label)}</option>`;
-      }).join('');
-  }
-  exploreSavedRoutesSelect.addEventListener('change', () => {
-    const idx = exploreSavedRoutesSelect.value;
-    exploreSavedRoutesSelect.value = '';
-    if (idx === '') return;
-    const flight = (exploreSavedRoutesSelect._flights || [])[Number(idx)];
-    if (flight) showSavedFlight(flight);
-  });
-
   function renderSavedFlights() {
     const flights = sortedSavedFlights();
     document.getElementById('saved-routes-count').textContent = flights.length ? String(flights.length) : '';
-    renderExploreSavedRoutesDropdown(flights);
     if (!flights.length) {
       savedList.innerHTML = '<div class="saved-empty">No saved flights yet. Use the bookmark button in a flight\'s More Info panel to save one.</div>';
       return;
@@ -957,10 +937,26 @@
 
   // --- Saved Searches ---
   const savedSearchesList = document.getElementById('saved-searches-list');
+  const exploreSavedSearchesSelect = document.getElementById('explore-saved-searches');
   let savedSearchesRaw = [];
+
+  // Lets the Explore panel apply a saved search without opening the Saved panel - always
+  // reflects the same list as the Saved panel's own list.
+  function renderExploreSavedSearchesDropdown() {
+    exploreSavedSearchesSelect.innerHTML = '<option value="" selected>Apply a saved search\u2026</option>' +
+      savedSearchesRaw.map((s, i) => `<option value="${i}">${escapeHtml(s.description || 'Untitled search')}</option>`).join('');
+  }
+  exploreSavedSearchesSelect.addEventListener('change', () => {
+    const idx = exploreSavedSearchesSelect.value;
+    exploreSavedSearchesSelect.value = '';
+    if (idx === '') return;
+    const search = savedSearchesRaw[Number(idx)];
+    if (search) applySavedSearch(search);
+  });
 
   function renderSavedSearches() {
     document.getElementById('saved-searches-count').textContent = savedSearchesRaw.length ? String(savedSearchesRaw.length) : '';
+    renderExploreSavedSearchesDropdown();
     if (!savedSearchesRaw.length) {
       savedSearchesList.innerHTML = '<div class="saved-empty">No saved searches yet. Use "Save Search" in the filter bar to save one.</div>';
       return;
@@ -997,6 +993,7 @@
       savedSearchesList.innerHTML = '<div class="saved-empty">Could not load saved searches.</div>';
     }
   }
+
 
   function buildFilterTreeNode(nodeData) {
     if (nodeData && nodeData.kind === 'group') {
@@ -2208,10 +2205,11 @@
     initSimpleFilters();
     await applyFilters();
 
-    // Also populates the Explore panel's "jump to a saved route" dropdown, not just the
-    // Saved panel's own list - no need to open the Saved panel first.
+    // Also populates the Explore panel's "jump to saved route"/"apply a saved search"
+    // dropdowns, not just the Saved panel's own lists - no need to open it first.
     await loadSavedFlights();
     savedFlightsRaw.forEach(f => savedFlightKeys.add(flightKey(f)));
+    await loadSavedSearches();
 
     loadSceneryData();
   }

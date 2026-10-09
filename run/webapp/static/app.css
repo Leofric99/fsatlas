@@ -603,9 +603,9 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
 .saved-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
 .saved-sort-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
 .saved-sort-label select { font-size: 12px; padding: 6px 8px; margin-bottom: 0; }
-.saved-routes-jump { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-.saved-routes-jump-label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
-.saved-routes-jump select { flex: 1 1 auto; min-width: 0; font-size: 12px; padding: 7px 9px; margin-bottom: 0; }
+.saved-search-jump { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.saved-search-jump-label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.saved-search-jump select { flex: 1 1 auto; min-width: 0; font-size: 12px; padding: 7px 9px; margin-bottom: 0; }
 .saved-row {
   display: flex; flex-direction: column; gap: 8px;
   padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-md);

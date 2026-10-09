@@ -1,0 +1,73 @@
+run/webapp/templates/index.html
+  s_566ca9e75f1e42::t_73afc33e306168 71-76
+docs/_navbar.md
+  s_566ca9e75f1e42::t_51de2da42bbb1b 1-4
+docs/index.html
+  s_566ca9e75f1e42::t_df1924b665423b 1-16,18-53
+  s_566ca9e75f1e42::t_082566c6e2e863 17
+docs/index.md
+  s_566ca9e75f1e42::t_228b19ab66ff5b 1-22,30-68
+  s_566ca9e75f1e42::t_1279b15b30095a 23-29
+docs/tutorials/basic-usage.md
+  s_566ca9e75f1e42::t_3625c1cb34dd52 1-108
+docs/tutorials/advanced-features.md
+  s_566ca9e75f1e42::t_0ab85906ab4602 1-117
+docs/reference/troubleshooting.md
+  s_566ca9e75f1e42::t_35f6e765f6008e 1-80
+docs/getting-started/installation.md
+  s_566ca9e75f1e42::t_94abd44ccf5d3e 1-165
+docs/reference/flight-data-schema.md
+  s_566ca9e75f1e42::t_ff8892dbc95d61 1-89
+docs/community/contributing.md
+  s_566ca9e75f1e42::t_0c4a21b35b3c37 1-57
+docs/_sidebar.md
+  s_566ca9e75f1e42::t_568a933d72a7b3 1-21
+docs/getting-started/quickstart.md
+  s_566ca9e75f1e42::t_1674d6a3325391 1-73
+docs/reference/api-spec.md
+  s_566ca9e75f1e42::t_21ad4f6e7c3e6d 143
+  s_566ca9e75f1e42::t_a59e3c2dd89c8f 95
+  s_566ca9e75f1e42::t_d51558d487f177 1-94,96-102,104-142,144-167
+  s_566ca9e75f1e42::t_5f89da83a982d0 103
+docs/assets/styles/custom.css
+  s_566ca9e75f1e42::t_4ab71a3d5a07f8 1-26
+docs/community/code-of-conduct.md
+  s_566ca9e75f1e42::t_21a14d46c2d0e0 1-50
+run/webapp/static/app.js
+  s_566ca9e75f1e42::t_e9ef4e442a959c 321
+  s_566ca9e75f1e42::t_1093cf42670051 2043,2052
+  s_566ca9e75f1e42::t_24c30da635e9e8 2059
+  s_566ca9e75f1e42::t_a5c3ff524682a8 2001-2006
+  s_566ca9e75f1e42::t_ca11882cc1d6ea 2140-2142
+  s_566ca9e75f1e42::t_a62de6ca8e6355 2186-2189,2191-2192,2196-2198
+  s_566ca9e75f1e42::t_535e41311a9e68 2080
+run/webapp/static/app.css
+  s_566ca9e75f1e42::t_efb55e6fe66790 278-285
+  s_566ca9e75f1e42::t_d3091cf156e833 360,363
+  s_566ca9e75f1e42::t_f679f6d793bc1b 373-376
+  s_566ca9e75f1e42::t_1b868a5c681832 301-308,313-320
+  s_566ca9e75f1e42::t_afed4124e64bca 191-197
+docs/reference/configuration.md
+  s_566ca9e75f1e42::t_28edf8ebdd0967 1-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3e34dbf0ec7ce7969c559ad59be56bfeaa706bf",
+  "prompts": {},
+  "humans": {
+    "h_2fb16336b691a1": {
+      "author": "chrhodge <chrhodge@cisco.com>"
+    }
+  },
+  "sessions": {
+    "s_566ca9e75f1e42": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "a5fb930f-0fe9-45fe-ae74-2a517d33f47f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

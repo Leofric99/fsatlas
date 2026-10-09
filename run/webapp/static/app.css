@@ -188,8 +188,13 @@ button:active { transform: translateY(1px); }
   box-shadow: var(--shadow-sm);
 }
 .btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
-.btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
-.btn-ghost:hover { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+/* Reset is a destructive action - shown permanently in the red shade it used to only
+   reveal on hover, rather than looking like a neutral secondary button at rest. */
+.btn-ghost {
+  background: color-mix(in srgb, var(--danger) 8%, transparent); color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+.btn-ghost:hover { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 16%, transparent); }
 .btn-icon {
   width: 34px; min-height: 34px; padding: 0; flex-shrink: 0;
   background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
@@ -270,6 +275,14 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
    inside a container now inherits that container's single operator; mixing requires
    nesting a sub-group (its own Scope Header), not alternating per-row pills. */
 .scope-header { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 2px 0 10px; }
+/* The "Filters" heading + collapse toggle sits above the Simple Filters row itself (not
+   inside the now-dead old advanced-tree Scope Header, which stays display:none below). */
+.filters-section-head { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 2px 0 8px; }
+.filters-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.filters-collapse-btn { margin-left: auto; }
+.filters-collapse-btn svg { transition: transform .2s ease; }
+#panel-explore.filters-collapsed .filters-collapse-btn svg { transform: rotate(180deg); }
+#panel-explore.filters-collapsed #simple-filters { display: none; }
 .simple-filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 6px; align-items: center; }
 .simple-filter-menu { position: relative; min-width: 0; }
 .simple-filter-trigger, .simple-filter-clear {
@@ -285,12 +298,26 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .simple-filter-count[hidden] { display: none; }
 .simple-filter-trigger::after { content: '\25BE'; flex: 0 0 auto; margin-left: auto; color: var(--text-dim); }
 .simple-filter-menu.open .simple-filter-trigger { border-color: var(--accent); }
-.simple-filter-clear { width: auto; min-width: 52px; background: transparent; color: var(--text-dim); }
-.simple-filter-clear:hover { color: var(--text); background: var(--surface-hover); }
+/* Clear/Reset are both destructive actions - permanently shown in the same red shade
+   they used to only reveal on hover, rather than looking like a neutral/default button
+   until the exact moment a user's cursor happens to land on it. */
+.simple-filter-clear {
+  width: auto; min-width: 52px; background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+.simple-filter-clear:hover { background: color-mix(in srgb, var(--danger) 16%, transparent); border-color: var(--danger); }
 .simple-filter-popover {
   display: none; position: absolute; top: calc(100% + 5px); left: 0; width: min(340px, 72vw); min-width: 0; padding: 8px;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 47;
 }
+/* Explicit dismiss button for an open popover - mobile-only (see the media query below);
+   desktop keeps relying on its existing "click outside closes it" affordance. */
+.simple-filter-popover-close {
+  display: none; position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0;
+  background: transparent; border: none; box-shadow: none; color: var(--text-dim); align-items: center; justify-content: center;
+}
+.simple-filter-popover-close svg { width: 14px; height: 14px; }
+.simple-filter-popover-close:hover { color: var(--text); background: var(--surface-hover); }
 .simple-filter-menu:nth-child(3) .simple-filter-popover { left: 50%; right: auto; transform: translateX(-50%); }
 .simple-filter-menu:nth-child(n + 4) .simple-filter-popover { left: auto; right: 0; }
 .simple-filter-menu.open .simple-filter-popover { display: grid; gap: 7px; }
@@ -330,8 +357,10 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
   .simple-filter-popover {
     position: fixed; top: auto; left: 12px; right: 12px; bottom: calc(var(--rail-h) + env(safe-area-inset-bottom, 0px) + 12px);
     width: auto; max-width: none; max-height: 56vh; overflow-y: auto; transform: none; z-index: 55;
+    padding-top: 36px;
   }
   .simple-filter-options { max-height: 42vh; }
+  .simple-filter-popover-close { display: flex; }
 }
 #filters-scope, #filters-collapsible { display: none; }
 .scope-toggle { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 2px; gap: 2px; }
@@ -341,15 +370,11 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 }
 .scope-opt.active { background: var(--accent); color: var(--accent-contrast); }
 .scope-header .kebab-wrap { margin-left: auto; }
-/* Root Scope Header only: the whole filter tree (Match ALL/ANY + rows + add-buttons)
-   collapses down to just this one toggle button, keeping it always visible/reachable. */
+/* Root Scope Header's own Match ALL/ANY toggle is part of the old advanced filter tree
+   (dead/hidden, see `#filters-scope, #filters-collapsible { display: none; }` above) -
+   left as `display: contents` purely so a `.filter-group`'s OWN (live) scope-header,
+   which reuses the same `.scope-toggle-wrap` markup/CSS, isn't affected by this rule. */
 .scope-toggle-wrap { display: contents; }
-.filters-collapse-btn { margin-left: auto; }
-.filters-collapse-btn svg { transition: transform .2s ease; }
-#panel-explore.filters-collapsed .scope-toggle-wrap { display: none; }
-#panel-explore.filters-collapsed .filters-collapse-btn { margin-left: 0; }
-#panel-explore.filters-collapsed .filters-collapse-btn svg { transform: rotate(180deg); }
-#panel-explore.filters-collapsed #filters-collapsible { display: none; }
 
 /* --- Route flights table: the selected pair's flights, embedded directly under the
    filter tree instead of a separate floating card panel. Hidden until a destination is

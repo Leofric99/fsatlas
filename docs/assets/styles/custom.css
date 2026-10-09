@@ -1,0 +1,26 @@
+/* Light branding touch so the wiki echoes FSAtlas's own teal accent, without fighting
+   Docsify's default Vue theme layout. */
+:root {
+  --theme-color: #0d9488;
+}
+.sidebar-nav li.active > a {
+  color: var(--theme-color);
+  font-weight: 700;
+}
+.app-name-link img {
+  border-radius: 4px;
+}
+.markdown-section h1 {
+  border-bottom: 2px solid var(--theme-color);
+  padding-bottom: 8px;
+}
+.markdown-section code {
+  border-radius: 4px;
+}
+.markdown-section table {
+  display: block;
+  overflow-x: auto;
+}
+.cover-main img {
+  border-radius: 12px;
+}

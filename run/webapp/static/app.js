@@ -318,7 +318,7 @@
   // Fixed radius for every airport, regardless of destination-count rank - bigger on
   // mobile since a small circle is nearly impossible to tap accurately with a finger.
   function markerRadius() {
-    return isMobile ? 9 : 4;
+    return isMobile ? 7.5 : 4;
   }
 
   function createAirportsForOffset(offset) {
@@ -1998,6 +1998,12 @@
   function closeSimpleMenus(except) {
     simpleFiltersEl.querySelectorAll('.simple-filter-menu.open').forEach(menu => { if (menu !== except) menu.classList.remove('open'); });
   }
+  // Mobile-only affordance: the popover close (X) button just dismisses that one dropdown
+  // without touching filter state or calling applyFilters - distinct from Apply/Reset.
+  const POPOVER_CLOSE_BTN = '<button type="button" class="simple-filter-popover-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>';
+  function wirePopoverClose(menu) {
+    menu.querySelector('.simple-filter-popover-close').addEventListener('click', e => { e.stopPropagation(); menu.classList.remove('open'); });
+  }
   function renderSimpleCategory(spec, menu) {
     const state = simpleFilterState[spec.key];
     const field = simpleColumn(state.column);
@@ -2034,7 +2040,7 @@
     const menu = document.createElement('div');
     menu.className = 'simple-filter-menu';
     menu.dataset.filter = spec.key;
-    menu.innerHTML = '<button type="button" class="simple-filter-trigger"><span class="simple-filter-label"></span><span class="simple-filter-count" hidden></span></button><div class="simple-filter-popover"><select class="simple-filter-field"></select><input class="simple-filter-search" type="search" placeholder="Search..."><div class="simple-filter-options"></div></div>';
+    menu.innerHTML = '<button type="button" class="simple-filter-trigger"><span class="simple-filter-label"></span><span class="simple-filter-count" hidden></span></button><div class="simple-filter-popover">' + POPOVER_CLOSE_BTN + '<select class="simple-filter-field"></select><input class="simple-filter-search" type="search" placeholder="Search..."><div class="simple-filter-options"></div></div>';
     const fieldSelect = menu.querySelector('.simple-filter-field');
     availableFields.forEach(field => fieldSelect.add(new Option(field.label, field.id)));
     menu.querySelector('.simple-filter-trigger').addEventListener('click', () => {
@@ -2043,13 +2049,14 @@
     });
     fieldSelect.addEventListener('change', () => { state.column = fieldSelect.value; state.values = []; renderSimpleCategory(spec, menu); schedulePreview(); });
     menu.querySelector('.simple-filter-search').addEventListener('input', () => renderSimpleCategory(spec, menu));
+    wirePopoverClose(menu);
     renderSimpleCategory(spec, menu);
     return menu;
   }
   function buildLengthFilter() {
     const menu = document.createElement('div');
     menu.className = 'simple-filter-menu simple-length-menu';
-    menu.innerHTML = '<button type="button" class="simple-filter-trigger"><span class="simple-filter-label">Length</span></button><div class="simple-filter-popover"><select class="simple-filter-field"><option value="distance">Distance</option><option value="rough_flight_time">Flight time</option></select><label class="simple-range-label"><span>Minimum</span><output></output><input class="simple-length-min" type="range"></label><label class="simple-range-label"><span>Maximum</span><output></output><input class="simple-length-max" type="range"></label></div>';
+    menu.innerHTML = '<button type="button" class="simple-filter-trigger"><span class="simple-filter-label">Length</span></button><div class="simple-filter-popover">' + POPOVER_CLOSE_BTN + '<select class="simple-filter-field"><option value="distance">Distance</option><option value="rough_flight_time">Flight time</option></select><label class="simple-range-label"><span>Minimum</span><output></output><input class="simple-length-min" type="range"></label><label class="simple-range-label"><span>Maximum</span><output></output><input class="simple-length-max" type="range"></label></div>';
     const state = simpleFilterState.length = { column: 'distance', min: null, max: null, active: false };
     const trigger = menu.querySelector('.simple-filter-trigger');
     const fieldSelect = menu.querySelector('.simple-filter-field');
@@ -2070,6 +2077,7 @@
     fieldSelect.addEventListener('change', () => { state.column = fieldSelect.value; update(true); schedulePreview(); });
     minInput.addEventListener('input', () => { state.min = Number(minInput.value); if (state.min > state.max) state.max = state.min; state.active = true; update(false); schedulePreview(); });
     maxInput.addEventListener('input', () => { state.max = Number(maxInput.value); if (state.max < state.min) state.min = state.max; state.active = true; update(false); schedulePreview(); });
+    wirePopoverClose(menu);
     update(true);
     return menu;
   }
@@ -2129,7 +2137,9 @@
     } catch (err) {
       flightsCountEl.textContent = '';
     }
-    if (isMobile) closeAllPanels();
+    // Collapse (not close) the filters section on mobile so the panel stays open with
+    // room to see the result, instead of losing the whole panel after every Apply.
+    if (isMobile) setFiltersCollapsed(true);
   }
 
   function resetFilters() {
@@ -2173,14 +2183,19 @@
   document.getElementById('filters-add-condition').addEventListener('click', () => { addRow(); schedulePreview(); });
   document.getElementById('filters-add-group').addEventListener('click', () => { filters.append(createGroup()); schedulePreview(); });
 
-  // --- Collapse the whole filter tree (Scope Header + rows + add-buttons) down to just
-  // the toggle button itself, next to the Match ALL/ANY control. ---
+  // --- Collapse the Filters section (the Simple Filters category row) down to just the
+  // "Filters" heading + toggle button - manual toggle, and also auto-collapsed on mobile
+  // right after Apply (see applyFilters()) to give the results room instead of fully
+  // closing the panel. ---
   const filtersCollapseToggle = document.getElementById('filters-collapse-toggle');
-  filtersCollapseToggle.addEventListener('click', () => {
-    const collapsed = panelEls.explore.classList.toggle('filters-collapsed');
+  function setFiltersCollapsed(collapsed) {
+    panelEls.explore.classList.toggle('filters-collapsed', collapsed);
     filtersCollapseToggle.title = collapsed ? 'Expand filters' : 'Collapse filters';
     filtersCollapseToggle.setAttribute('aria-label', filtersCollapseToggle.title);
     filtersCollapseToggle.setAttribute('aria-expanded', String(!collapsed));
+  }
+  filtersCollapseToggle.addEventListener('click', () => {
+    setFiltersCollapsed(!panelEls.explore.classList.contains('filters-collapsed'));
   });
 
   // --- Live density preview: a debounced "what would Apply do right now" estimate shown

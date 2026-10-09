@@ -68,6 +68,12 @@
           <option value="" selected>Apply a saved search…</option>
         </select>
       </div>
+      <div class="filters-section-head">
+        <span class="filters-section-label">Filters</span>
+        <button type="button" id="filters-collapse-toggle" class="btn-icon filters-collapse-btn" title="Collapse filters" aria-label="Collapse filters" aria-expanded="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </button>
+      </div>
       <div id="simple-filters" class="simple-filters" aria-label="Flight filters"></div>
       <div id="filters-scope" class="scope-header root">
         <div id="filters-scope-toggle-wrap" class="scope-toggle-wrap">
@@ -76,9 +82,6 @@
             <button type="button" class="scope-opt" data-logic="OR">Match ANY</button>
           </div>
         </div>
-        <button type="button" id="filters-collapse-toggle" class="btn-icon filters-collapse-btn" title="Collapse filters" aria-label="Collapse filters" aria-expanded="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
-        </button>
       </div>
       <div id="filters-collapsible">
         <div id="filters"></div>

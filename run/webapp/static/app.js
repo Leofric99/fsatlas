@@ -825,7 +825,7 @@
     pairRoutes.forEach((r, idx) => {
       const bookmarkBtn = document.getElementById('row-bookmark-' + idx);
       setSaveButtonState(bookmarkBtn, savedFlightKeys.has(flightKey(r)));
-      bookmarkBtn.addEventListener('click', () => toggleSaveFlight(r, bookmarkBtn));
+      bookmarkBtn.addEventListener('click', () => toggleSaveFlight(r, bookmarkBtn).then(loadSavedFlights));
       const simbriefBtn = document.getElementById('row-simbrief-' + idx);
       simbriefBtn.addEventListener('click', () => exportToSimbrief(r, simbriefBtn));
     });
@@ -863,6 +863,7 @@
   const savedPanel = document.getElementById('panel-saved');
   const savedList = document.getElementById('saved-list');
   const savedSort = document.getElementById('saved-sort');
+  const exploreSavedRoutesSelect = document.getElementById('explore-saved-routes');
   let savedFlightsRaw = [];
 
   function sortedSavedFlights() {
@@ -876,64 +877,56 @@
       return dir * (da - db);
     };
     const savedAt = f => f.saved_at || '';
-    const firstTag = f => (f.tags && f.tags.length ? f.tags[0].toLowerCase() : '\uffff');
     switch (savedSort.value) {
       case 'distance-asc': flights.sort((a, b) => distCompare(a, b, 1)); break;
       case 'distance-desc': flights.sort((a, b) => distCompare(a, b, -1)); break;
       case 'saved-asc': flights.sort((a, b) => savedAt(a).localeCompare(savedAt(b))); break;
-      case 'tag': flights.sort((a, b) => firstTag(a).localeCompare(firstTag(b))); break;
       case 'saved-desc':
       default: flights.sort((a, b) => savedAt(b).localeCompare(savedAt(a))); break;
     }
     return flights;
   }
 
-  async function saveFlightTags(flight, tags) {
-    const uniqueTags = [...new Set(tags.map(t => t.trim()).filter(Boolean))];
-    try {
-      await fsatlasFetch('/api/saved-flights', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...flight, tags: uniqueTags })
-      });
-    } catch (err) { /* best effort */ }
-    loadSavedFlights();
+  // Lets the Explore panel jump straight to a saved route without opening the Saved
+  // panel - always reflects the same list/order as the Saved panel's own table.
+  function renderExploreSavedRoutesDropdown(flights) {
+    exploreSavedRoutesSelect._flights = flights;
+    exploreSavedRoutesSelect.innerHTML = '<option value="" selected>Jump to a saved route\u2026</option>' +
+      flights.map((f, i) => {
+        const label = (f.dep_icao || f.dep || '?') + ' \u2192 ' + (f.arr_icao || f.arr || '?') + ' \u2013 ' + (f.flight || 'Unknown');
+        return `<option value="${i}">${escapeHtml(label)}</option>`;
+      }).join('');
   }
+  exploreSavedRoutesSelect.addEventListener('change', () => {
+    const idx = exploreSavedRoutesSelect.value;
+    exploreSavedRoutesSelect.value = '';
+    if (idx === '') return;
+    const flight = (exploreSavedRoutesSelect._flights || [])[Number(idx)];
+    if (flight) showSavedFlight(flight);
+  });
 
   function renderSavedFlights() {
     const flights = sortedSavedFlights();
     document.getElementById('saved-routes-count').textContent = flights.length ? String(flights.length) : '';
+    renderExploreSavedRoutesDropdown(flights);
     if (!flights.length) {
       savedList.innerHTML = '<div class="saved-empty">No saved flights yet. Use the bookmark button in a flight\'s More Info panel to save one.</div>';
       return;
     }
-    const allTags = [...new Set(savedFlightsRaw.flatMap(f => f.tags || []))].sort((a, b) => a.localeCompare(b));
 
-    savedList.innerHTML = flights.map((f, i) => {
-      const tags = f.tags || [];
-      return `
-        <div class="saved-flight-entry" data-idx="${i}">
-          <div class="flight-row saved-flight-row">
-            <button class="row-bookmark saved-bookmark" type="button"></button>
-            <div class="row-flight"><span class="row-primary">${escapeHtml(f.flight || '-')}</span><span class="row-secondary">${escapeHtml(f.airline || 'Unknown')}</span></div>
-            <div class="row-from"><span class="row-primary">${escapeHtml(f.dep_icao || f.dep || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(f, 'dep'))}</span></div>
-            <div class="row-to"><span class="row-primary">${escapeHtml(f.arr_icao || f.arr || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(f, 'arr'))}</span></div>
-            <div class="row-aircraft"><span class="row-primary">${escapeHtml(f.type_icao || f.type || '-')}</span><span class="row-secondary">${escapeHtml(f.type || 'Unknown')}</span></div>
-            <div class="row-time"><span class="row-primary">${escapeHtml(formatFlightTime(f.flight_time_hours))}</span><span class="row-secondary">${escapeHtml(formatDistance(f.distance))}</span></div>
-            <button class="row-simbrief" type="button" title="Export to SimBrief" aria-label="Export to SimBrief">${SIMBRIEF_ICON}</button>
-          </div>
-          <div class="saved-flight-tags">
-            <div class="saved-tags">
-              ${tags.map(t => `<span class="tag-chip">${escapeHtml(t)}<button type="button" class="tag-remove" data-tag="${escapeHtml(t)}" title="Remove tag" aria-label="Remove tag ${escapeHtml(t)}">&times;</button></span>`).join('')}
-              <button type="button" class="tag-add-btn">+ Tag</button>
-            </div>
-            <div class="tag-editor">
-              <input type="text" class="tag-input" placeholder="Search or create a tag...">
-              <div class="tag-suggestions"></div>
-            </div>
-          </div>
+    savedList.innerHTML = flights.map((f, i) => `
+      <div class="saved-flight-entry" data-idx="${i}">
+        <div class="flight-row saved-flight-row">
+          <button class="row-bookmark saved-bookmark" type="button"></button>
+          <div class="row-flight"><span class="row-primary">${escapeHtml(f.flight || '-')}</span><span class="row-secondary">${escapeHtml(f.airline || 'Unknown')}</span></div>
+          <div class="row-from"><span class="row-primary">${escapeHtml(f.dep_icao || f.dep || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(f, 'dep'))}</span></div>
+          <div class="row-to"><span class="row-primary">${escapeHtml(f.arr_icao || f.arr || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(f, 'arr'))}</span></div>
+          <div class="row-aircraft"><span class="row-primary">${escapeHtml(f.type_icao || f.type || '-')}</span><span class="row-secondary">${escapeHtml(f.type || 'Unknown')}</span></div>
+          <div class="row-time"><span class="row-primary">${escapeHtml(formatFlightTime(f.flight_time_hours))}</span><span class="row-secondary">${escapeHtml(formatDistance(f.distance))}</span></div>
+          <button class="row-simbrief" type="button" title="Export to SimBrief" aria-label="Export to SimBrief">${SIMBRIEF_ICON}</button>
         </div>
-      `;
-    }).join('');
+      </div>
+    `).join('');
     fitFlightTableColumns(savedList.closest('.flights-table'), flights);
 
     [...savedList.querySelectorAll('.saved-flight-entry')].forEach((row, i) => {
@@ -948,48 +941,6 @@
       });
       const simbriefBtn = row.querySelector('.row-simbrief');
       simbriefBtn.addEventListener('click', e => { e.stopPropagation(); exportToSimbrief(flight, simbriefBtn); });
-
-      [...row.querySelectorAll('.tag-remove')].forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          saveFlightTags(flight, (flight.tags || []).filter(t => t !== btn.dataset.tag));
-        });
-      });
-
-      const addBtn = row.querySelector('.tag-add-btn');
-      const editor = row.querySelector('.tag-editor');
-      const input = editor.querySelector('.tag-input');
-      const suggestionsEl = editor.querySelector('.tag-suggestions');
-
-      function renderSuggestions() {
-        const query = input.value.trim().toLowerCase();
-        const existing = new Set((flight.tags || []).map(t => t.toLowerCase()));
-        const matches = allTags.filter(t => !existing.has(t.toLowerCase()) && (!query || t.toLowerCase().includes(query)));
-        let html = matches.map(t => `<button type="button" class="tag-suggestion" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('');
-        if (query && !allTags.some(t => t.toLowerCase() === query)) {
-          html += `<button type="button" class="tag-suggestion create" data-tag="${escapeHtml(input.value.trim())}">+ Create "${escapeHtml(input.value.trim())}"</button>`;
-        }
-        suggestionsEl.innerHTML = html || '<span class="tag-suggestion-empty">No matches</span>';
-        [...suggestionsEl.querySelectorAll('.tag-suggestion')].forEach(sBtn => {
-          sBtn.addEventListener('click', e => { e.stopPropagation(); saveFlightTags(flight, [...(flight.tags || []), sBtn.dataset.tag]); });
-        });
-      }
-
-      addBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        const wasOpen = editor.classList.contains('open');
-        savedList.querySelectorAll('.tag-editor').forEach(el => el.classList.remove('open'));
-        if (!wasOpen) { editor.classList.add('open'); renderSuggestions(); input.focus(); }
-      });
-      input.addEventListener('click', e => e.stopPropagation());
-      input.addEventListener('input', renderSuggestions);
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          const value = input.value.trim();
-          if (value) saveFlightTags(flight, [...(flight.tags || []), value]);
-        } else if (e.key === 'Escape') { editor.classList.remove('open'); input.value = ''; }
-      });
     });
   }
 
@@ -1149,15 +1100,6 @@
   document.getElementById('save-search-confirm').addEventListener('click', confirmSaveSearch);
   saveSearchModal.addEventListener('click', e => { if (e.target === saveSearchModal) closeSaveSearchModal(); });
   saveSearchDescInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); confirmSaveSearch(); } });
-
-  [...document.querySelectorAll('.saved-section-toggle')].forEach(btn => {
-    btn.addEventListener('click', () => {
-      const wrap = btn.nextElementSibling;
-      const collapsed = wrap.classList.toggle('collapsed');
-      btn.classList.toggle('collapsed', collapsed);
-      btn.setAttribute('aria-expanded', String(!collapsed));
-    });
-  });
 
   // --- Settings panel (SimBrief Pilot ID) ---
   const pilotIdInput = document.getElementById('simbrief-pilot-id');
@@ -2266,10 +2208,10 @@
     initSimpleFilters();
     await applyFilters();
 
-    fsatlasFetch('/api/saved-flights')
-      .then(response => response.ok ? response.json() : [])
-      .then(flights => (flights || []).forEach(f => savedFlightKeys.add(flightKey(f))))
-      .catch(() => {});
+    // Also populates the Explore panel's "jump to a saved route" dropdown, not just the
+    // Saved panel's own list - no need to open the Saved panel first.
+    await loadSavedFlights();
+    savedFlightsRaw.forEach(f => savedFlightKeys.add(flightKey(f)));
 
     loadSceneryData();
   }

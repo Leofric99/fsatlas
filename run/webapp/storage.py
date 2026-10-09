@@ -22,17 +22,10 @@ DEFAULT_SCENERY = {"sceneries": [], "imported_at": None, "unmatched_count": 0, "
 
 
 def normalize_saved_flight(flight):
-    """Sanitize a saved-flight dict's `tags` (deduped, trimmed, sorted case-insensitively)
-    and ensure `saved_at` exists.
+    """Ensure `saved_at` exists. Tags are not a supported feature - any legacy `tags`
+    field from an older saved_items.json is dropped rather than carried forward.
     """
-    tags = flight.get("tags", [])
-    if not isinstance(tags, list):
-        tags = []
-    seen = {}
-    for tag in tags:
-        if isinstance(tag, str) and tag.strip():
-            seen.setdefault(tag.strip().lower(), tag.strip())
-    flight["tags"] = sorted(seen.values(), key=str.lower)
+    flight.pop("tags", None)
     if not isinstance(flight.get("saved_at"), str) or not flight["saved_at"]:
         flight["saved_at"] = datetime.now(timezone.utc).isoformat()
     return flight

@@ -588,8 +588,6 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
 .saved-flight-entry { width: 100%; border-radius: 0; }
 .saved-flight-entry:hover { background: var(--surface-hover); }
 .saved-flight-entry .saved-flight-row:hover { background: transparent; }
-.saved-flight-tags { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 6px 42px 8px; }
-.saved-flight-entry:not(:has(.tag-chip)) .saved-flight-tags { padding-top: 4px; }
 
 /* Scenery-overlay star markers, rendered in a Leaflet pane below the airport dots pane -
    selectable exactly like the dot they stand in for (app.js only attaches a click handler
@@ -598,22 +596,16 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
    through to the map underneath instead of silently swallowing them. */
 .scenery-star-icon:not(.leaflet-interactive) { pointer-events: none; }
 .scenery-star-icon.leaflet-interactive { cursor: pointer; }
-.saved-section { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
-.saved-section + .saved-section { margin-top: 10px; }
-.saved-section-toggle {
-  width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px;
-  background: var(--surface-2); border: none; border-radius: 0; box-shadow: none;
-  color: var(--text); font-weight: 600; font-size: 13px; justify-content: flex-start;
-}
-.saved-section-toggle:hover { background: var(--surface-hover); }
-.saved-section-chevron { width: 14px; height: 14px; flex-shrink: 0; transition: transform .2s ease; }
-.saved-section-toggle.collapsed .saved-section-chevron { transform: rotate(-90deg); }
+.saved-section + .saved-section { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+.saved-section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.saved-section-heading { font-size: 13px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: .03em; }
 .saved-section-count { margin-left: auto; font-size: 11px; color: var(--text-dim); font-weight: 500; }
-.saved-section-wrap.collapsed { display: none; }
-.saved-section-inner { padding: 12px; }
 .saved-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
 .saved-sort-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
 .saved-sort-label select { font-size: 12px; padding: 6px 8px; margin-bottom: 0; }
+.saved-routes-jump { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.saved-routes-jump-label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.saved-routes-jump select { flex: 1 1 auto; min-width: 0; font-size: 12px; padding: 7px 9px; margin-bottom: 0; }
 .saved-row {
   display: flex; flex-direction: column; gap: 8px;
   padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-md);
@@ -628,31 +620,6 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
   box-shadow: none; border: none; font-size: 16px; line-height: 1; flex-shrink: 0;
 }
 .saved-remove:hover { background: color-mix(in srgb, var(--danger) 18%, transparent); }
-.saved-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.tag-chip {
-  display: inline-flex; align-items: center; gap: 2px;
-  background: var(--accent-soft); color: var(--accent);
-  border-radius: var(--radius-pill); padding: 3px 4px 3px 10px; font-size: 11px; font-weight: 500;
-}
-.tag-chip button { background: none; border: none; color: inherit; cursor: pointer; box-shadow: none; padding: 0 6px; font-size: 12px; line-height: 1; }
-.tag-chip button:hover { opacity: 0.7; }
-.tag-add-btn {
-  display: inline-flex; align-items: center; gap: 3px; background: transparent;
-  border: 1px dashed var(--border); color: var(--text-dim); border-radius: var(--radius-pill);
-  padding: 3px 10px; font-size: 11px; box-shadow: none; cursor: pointer;
-}
-.tag-add-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
-.tag-editor { display: none; flex-direction: column; gap: 6px; }
-.tag-editor.open { display: flex; }
-.tag-editor input { font-size: 12px; padding: 7px 9px; margin-bottom: 0; }
-.tag-suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
-.tag-suggestion {
-  font-size: 11px; padding: 4px 10px; border-radius: var(--radius-pill); border: 1px solid var(--border);
-  background: var(--surface); color: var(--text); cursor: pointer; box-shadow: none;
-}
-.tag-suggestion:hover { background: var(--surface-hover); }
-.tag-suggestion.create { border-style: dashed; color: var(--accent); border-color: var(--accent); }
-.tag-suggestion-empty { font-size: 11px; color: var(--text-dim); padding: 4px 0; }
 
 /* Tooltip to match the airport node styling */
 .atlas-tooltip.leaflet-tooltip {

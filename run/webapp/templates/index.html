@@ -62,6 +62,12 @@
       </button>
     </div>
     <div id="filters-wrap" class="panel-body">
+      <div class="saved-routes-jump">
+        <label class="saved-routes-jump-label" for="explore-saved-routes">Saved Routes</label>
+        <select id="explore-saved-routes">
+          <option value="" selected>Jump to a saved route…</option>
+        </select>
+      </div>
       <div id="simple-filters" class="simple-filters" aria-label="Flight filters"></div>
       <div id="filters-scope" class="scope-header root">
         <div id="filters-scope-toggle-wrap" class="scope-toggle-wrap">
@@ -139,50 +145,39 @@
     </div>
       <div class="panel-body">
         <div class="saved-section">
-          <button class="saved-section-toggle collapsed" type="button" aria-expanded="false">
-            <svg class="saved-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            <span>Saved Routes</span>
+          <div class="saved-section-head">
+            <span class="saved-section-heading">Routes</span>
             <span id="saved-routes-count" class="saved-section-count"></span>
-          </button>
-          <div class="saved-section-wrap collapsed">
-            <div class="saved-section-inner">
-              <div class="saved-toolbar">
-                <label class="saved-sort-label">Sort by
-                  <select id="saved-sort">
-                    <option value="saved-desc">Saved (Newest First)</option>
-                    <option value="saved-asc">Saved (Oldest First)</option>
-                    <option value="distance-asc">Distance (Shortest First)</option>
-                    <option value="distance-desc">Distance (Longest First)</option>
-                    <option value="tag">Tag (A-Z)</option>
-                  </select>
-                </label>
-              </div>
-              <div class="flights-table saved-flights-table">
-                <div class="flights-table-head">
-                  <span></span>
-                  <span>Flight</span>
-                  <span>From</span>
-                  <span>To</span>
-                  <span title="Aircraft type">A/C</span>
-                  <span>Length</span>
-                  <span></span>
-                </div>
-                <div id="saved-list" class="saved-list saved-flights-table-body"></div>
-              </div>
+          </div>
+          <div class="saved-toolbar">
+            <label class="saved-sort-label">Sort by
+              <select id="saved-sort">
+                <option value="saved-desc">Saved (Newest First)</option>
+                <option value="saved-asc">Saved (Oldest First)</option>
+                <option value="distance-asc">Distance (Shortest First)</option>
+                <option value="distance-desc">Distance (Longest First)</option>
+              </select>
+            </label>
+          </div>
+          <div class="flights-table saved-flights-table">
+            <div class="flights-table-head">
+              <span></span>
+              <span>Flight</span>
+              <span>From</span>
+              <span>To</span>
+              <span title="Aircraft type">A/C</span>
+              <span>Length</span>
+              <span></span>
             </div>
+            <div id="saved-list" class="saved-list saved-flights-table-body"></div>
           </div>
         </div>
         <div class="saved-section">
-          <button class="saved-section-toggle collapsed" type="button" aria-expanded="false">
-            <svg class="saved-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            <span>Saved Searches</span>
+          <div class="saved-section-head">
+            <span class="saved-section-heading">Searches</span>
             <span id="saved-searches-count" class="saved-section-count"></span>
-          </button>
-          <div class="saved-section-wrap collapsed">
-            <div class="saved-section-inner">
-              <div id="saved-searches-list" class="saved-list"></div>
-            </div>
           </div>
+          <div id="saved-searches-list" class="saved-list"></div>
         </div>
       </div>
   </aside>

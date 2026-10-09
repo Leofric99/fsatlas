@@ -1,0 +1,32 @@
+run/webapp/templates/index.html
+  s_566ca9e75f1e42::t_dbb4368a645489 65-70,148-149,151-170,172,176-177,180
+run/webapp/static/app.css
+  s_566ca9e75f1e42::t_7a3112c334f0c7 599-601,606-608
+run/webapp/static/app.js
+  s_566ca9e75f1e42::t_4daffdcb036901 2211-2214
+  s_566ca9e75f1e42::t_b0e35181a597dc 828
+  s_566ca9e75f1e42::t_2b5262cfba35f8 866,890-906,911,917-926,928-929
+run/webapp/storage.py
+  s_566ca9e75f1e42::t_337fa5426ec70e 25-26,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6faa094a201d64a840e5e57e32d3397a489294d",
+  "prompts": {},
+  "humans": {
+    "h_2fb16336b691a1": {
+      "author": "chrhodge <chrhodge@cisco.com>"
+    }
+  },
+  "sessions": {
+    "s_566ca9e75f1e42": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "a5fb930f-0fe9-45fe-ae74-2a517d33f47f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

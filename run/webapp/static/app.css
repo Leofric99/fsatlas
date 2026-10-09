@@ -314,9 +314,24 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .simple-range-label input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border: 2px solid var(--surface); border-radius: 50%; background: var(--accent); }
 .simple-range-label output { color: var(--text); font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) {
-  .simple-filters { display: flex; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
-  .simple-filter-menu { flex: 0 0 132px; }
-  .simple-filter-clear { flex: 0 0 52px; }
+  /* The horizontally-scrolling strip of 132px-wide category buttons was fiddly to
+     operate on mobile (had to scroll sideways in the narrow bottom-sheet panel just to
+     find a category) - stack them as full-width rows instead, like a settings list. */
+  .simple-filters { display: flex; flex-direction: column; gap: 6px; overflow: visible; padding-bottom: 0; }
+  .simple-filter-menu { flex: none; width: 100%; }
+  .simple-filter-trigger { min-height: 42px; padding: 10px 12px; font-size: 13px; }
+  .simple-filter-clear { flex: none; width: 100%; min-height: 42px; }
+  /* The popover itself used to anchor via `position:absolute` to its own 132px-wide
+     trigger, which made the checkbox list cramped and could clip off-screen inside the
+     narrow bottom sheet - float it as a fixed, centered card instead, sized off the
+     viewport rather than the trigger, with much more room for the search box/list. */
+  .simple-filter-menu:nth-child(3) .simple-filter-popover,
+  .simple-filter-menu:nth-child(n + 4) .simple-filter-popover,
+  .simple-filter-popover {
+    position: fixed; top: auto; left: 12px; right: 12px; bottom: calc(var(--rail-h) + env(safe-area-inset-bottom, 0px) + 12px);
+    width: auto; max-width: none; max-height: 56vh; overflow-y: auto; transform: none; z-index: 55;
+  }
+  .simple-filter-options { max-height: 42vh; }
 }
 #filters-scope, #filters-collapsible { display: none; }
 .scope-toggle { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 2px; gap: 2px; }
@@ -394,6 +409,7 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .row-bookmark, .row-simbrief {
   width: 22px; height: 22px; padding: 0; min-height: 0; background: transparent; border: none; box-shadow: none;
   color: var(--text-dim); display: flex; align-items: center; justify-content: center;
+  align-self: center;
 }
 .row-bookmark svg, .row-simbrief svg { width: 14px; height: 14px; }
 .row-bookmark:hover, .row-simbrief:hover { color: var(--accent); }

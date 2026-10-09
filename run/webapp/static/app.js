@@ -555,6 +555,7 @@
     + "speed vs. covering it at full cruise speed). Cruise speed comes from aircraft_crz_speeds.json; "
     + "shown as Unknown when the aircraft's ICAO type isn't in that file.";
   document.getElementById('flights-table-time-header').title = FLIGHT_TIME_INFO;
+  document.getElementById('saved-flights-time-header').title = FLIGHT_TIME_INFO;
 
   function setSaveButtonState(btn, saved) {
     btn.classList.toggle('saved', saved);
@@ -694,6 +695,23 @@
   // pick two neighbouring points far enough apart in screen space to misjudge the angle.
   // Working in screen pixels guarantees the plane always sits exactly on the rendered
   // line, at its actual halfway point as drawn, regardless of projection distortion.
+  // Returns the point at the given cumulative on-screen pixel distance along `screenPts`
+  // (consecutive screen points, with `segLengths`/`totalLength` precomputed by the
+  // caller), clamped to the curve's start/end.
+  function pointAtCumulativeDistance(screenPts, segLengths, totalLength, distance) {
+    const target = Math.min(Math.max(distance, 0), totalLength);
+    let covered = 0;
+    let idx = 0;
+    while (idx < segLengths.length - 1 && covered + segLengths[idx] < target) {
+      covered += segLengths[idx];
+      idx++;
+    }
+    const segStart = screenPts[idx];
+    const segEnd = screenPts[idx + 1];
+    const t = segLengths[idx] ? Math.min(1, Math.max(0, (target - covered) / segLengths[idx])) : 0;
+    return L.point(segStart.x + (segEnd.x - segStart.x) * t, segStart.y + (segEnd.y - segStart.y) * t);
+  }
+
   function drawRouteMidpointPlane(src, dest, offset, layer) {
     const pts = computeGeodesicPoints(src.lat, src.lon, dest.lat, dest.lon).map(p => [p[0], p[1] + offset]);
     const screenPts = pts.map(p => map.latLngToLayerPoint(p));
@@ -707,18 +725,21 @@
     }
     if (totalLength === 0) return; // degenerate curve (identical points) - nothing to orient along
 
-    const target = totalLength / 2;
-    let covered = 0;
-    let idx = 0;
-    while (idx < segLengths.length - 1 && covered + segLengths[idx] < target) {
-      covered += segLengths[idx];
-      idx++;
-    }
-    const segStart = screenPts[idx];
-    const segEnd = screenPts[idx + 1];
-    const t = segLengths[idx] ? Math.min(1, Math.max(0, (target - covered) / segLengths[idx])) : 0;
-    const midScreenPoint = L.point(segStart.x + (segEnd.x - segStart.x) * t, segStart.y + (segEnd.y - segStart.y) * t);
-    const angle = Math.atan2(segEnd.y - segStart.y, segEnd.x - segStart.x) * 180 / Math.PI + 90;
+    const midScreenPoint = pointAtCumulativeDistance(screenPts, segLengths, totalLength, totalLength / 2);
+
+    // Direction is taken between two points straddling the midpoint by a fixed minimum
+    // on-screen distance, not the immediate bracketing sample segment - when zoomed far
+    // out, a long route's ~50 equal-angle samples can compress to well under a pixel
+    // apart on screen, and subtracting two nearly-identical pixel coordinates amplifies
+    // floating-point rounding into visible noise (the plane appearing to point off at an
+    // unrelated/jittery angle instead of along the route). A wider window still follows
+    // real curvature when the route is large on screen, but degrades gracefully to the
+    // overall start->end direction (both ends clamp to the curve's endpoints) once the
+    // whole route is too small on screen for a local window to be numerically meaningful.
+    const halfWindow = Math.min(totalLength / 2, 24);
+    const before = pointAtCumulativeDistance(screenPts, segLengths, totalLength, totalLength / 2 - halfWindow);
+    const after = pointAtCumulativeDistance(screenPts, segLengths, totalLength, totalLength / 2 + halfWindow);
+    const angle = Math.atan2(after.y - before.y, after.x - before.x) * 180 / Math.PI + 90;
 
     L.marker(map.layerPointToLatLng(midScreenPoint), {
       icon: L.divIcon({
@@ -863,10 +884,19 @@
   const savedPanel = document.getElementById('panel-saved');
   const savedList = document.getElementById('saved-list');
   const savedSort = document.getElementById('saved-sort');
+  const savedTableHead = savedList.closest('.flights-table').querySelector('.flights-table-head');
   let savedFlightsRaw = [];
+  let savedSortColumn = null; // set by clicking a column header - takes priority over the "Sort by" dropdown
+  let savedSortDir = 'asc';
 
   function sortedSavedFlights() {
     const flights = [...savedFlightsRaw];
+    if (savedSortColumn) {
+      const keyFn = FLIGHT_SORT_KEYS[savedSortColumn];
+      const dir = savedSortDir === 'asc' ? 1 : -1;
+      flights.sort((a, b) => (keyFn(a) < keyFn(b) ? -1 : keyFn(a) > keyFn(b) ? 1 : 0) * dir);
+      return flights;
+    }
     const dist = f => (typeof f.distance === 'number' ? f.distance : null);
     const distCompare = (a, b, dir) => {
       const da = dist(a), db = dist(b);
@@ -886,9 +916,22 @@
     return flights;
   }
 
+  [...savedTableHead.querySelectorAll('.sortable-col')].forEach(btn => {
+    btn.addEventListener('click', () => {
+      const col = btn.dataset.sort;
+      savedSortDir = (savedSortColumn === col && savedSortDir === 'asc') ? 'desc' : 'asc';
+      savedSortColumn = col;
+      renderSavedFlights();
+    });
+  });
+
   function renderSavedFlights() {
     const flights = sortedSavedFlights();
     document.getElementById('saved-routes-count').textContent = flights.length ? String(flights.length) : '';
+    [...savedTableHead.querySelectorAll('.sortable-col')].forEach(btn => {
+      btn.classList.toggle('sort-asc', btn.dataset.sort === savedSortColumn && savedSortDir === 'asc');
+      btn.classList.toggle('sort-desc', btn.dataset.sort === savedSortColumn && savedSortDir === 'desc');
+    });
     if (!flights.length) {
       savedList.innerHTML = '<div class="saved-empty">No saved flights yet. Use the bookmark button in a flight\'s More Info panel to save one.</div>';
       return;
@@ -933,7 +976,7 @@
       savedList.innerHTML = '<div class="saved-empty">Could not load saved flights.</div>';
     }
   }
-  savedSort.addEventListener('change', renderSavedFlights);
+  savedSort.addEventListener('change', () => { savedSortColumn = null; renderSavedFlights(); });
 
   // --- Saved Searches ---
   const savedSearchesList = document.getElementById('saved-searches-list');

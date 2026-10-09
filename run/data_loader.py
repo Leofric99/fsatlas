@@ -101,7 +101,11 @@ def load_data():
         return pd.DataFrame()
 
     try:
-        df = pd.read_csv(DATA_FILE)
+        # Keep empty text fields as empty strings; all-null text columns (such as
+        # calsign) would otherwise be inferred as numeric and later serialize as NaN.
+        df = pd.read_csv(DATA_FILE, keep_default_na=False, low_memory=False)
+        if 'calsign' not in df.columns and 'callsign' in df.columns:
+            df.rename(columns={'callsign': 'calsign'}, inplace=True)
         
         # Ensure numerical columns are actually numeric
         numeric_cols = [

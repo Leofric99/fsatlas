@@ -4,7 +4,8 @@ $Root = Split-Path -Parent $PSScriptRoot
 $BuildEnv = Join-Path $Root '.build-venv'
 $BuildDir = Join-Path $Root '.build-pyinstaller'
 $DistDir = Join-Path $Root '.dist-pyinstaller'
-$IconPath = Join-Path $PSScriptRoot 'FSAtlas.ico'
+
+$IconPath = Join-Path $Root 'run\images\FSAtlas.ico'
 $OutputPath = Join-Path $Root 'FSAtlas.exe'
 $Python = Get-Command py -ErrorAction SilentlyContinue
 
@@ -22,8 +23,6 @@ try {
     & $VenvPython -m pip install --upgrade pip
     & $VenvPython -m pip install -r (Join-Path $Root 'requirements.txt') pyinstaller pillow
 
-    & $VenvPython -c "from PIL import Image; Image.open(r'images\FSAtlas Logo.png').convert('RGBA').save(r'.dev\FSAtlas.ico', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])"
-
     $PyInstallerArgs = @(
         '--noconfirm',
         '--clean',
@@ -35,10 +34,12 @@ try {
         '--distpath', $DistDir,
         '--specpath', $PSScriptRoot,
         '--add-data', ((Join-Path $Root 'run\database\flights.csv') + ';run\database'),
-        '--add-data', ((Join-Path $Root 'run\html\map.html') + ';run\html'),
         '--add-data', ((Join-Path $Root 'run\settings.json') + ';run'),
-        '--add-data', ((Join-Path $Root 'run\images\FSAtlas Logo.png') + ';run\images'),
+        '--add-data', ($IconPath + ';run\images'),
+        '--add-data', ((Join-Path $Root 'run\webapp\templates') + ';run\webapp\templates'),
+        '--add-data', ((Join-Path $Root 'run\webapp\static') + ';run\webapp\static'),
         '--collect-all', 'country_converter',
+        '--collect-all', 'pystray',
         'run\__main__.py'
     )
 
@@ -58,5 +59,4 @@ finally {
     Remove-Item -Path $BuildDir -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -Path $DistDir -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -Path (Join-Path $PSScriptRoot 'FSAtlas.spec') -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path $IconPath -Force -ErrorAction SilentlyContinue
 }

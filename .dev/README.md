@@ -10,9 +10,9 @@ From the project root, run:
 powershell -ExecutionPolicy Bypass -File .dev\build-exe.ps1
 ```
 
-The script creates a temporary Python environment, installs the project dependencies plus PyInstaller and Pillow, embeds the flight data, map template, settings, and logo, and uses the logo as the executable icon.
+The script creates a temporary Python environment, installs the project dependencies plus PyInstaller and Pillow, and embeds the flight data, Flask templates/static assets, settings, and tray icon.
 
-The finished executable is written to `FSAtlas.exe` in the project root. Temporary environments, build directories, generated icon files, and PyInstaller metadata are removed automatically.
+The finished executable is written to `FSAtlas.exe` in the project root. It opens the Flask UI in your browser and adds an FSAtlas icon to the system tray. Closing the browser leaves the server available in the tray; right-click the tray icon and choose **Exit** to stop it cleanly. Temporary environments, build directories, generated icon files, and PyInstaller metadata are removed automatically.
 
 Python 3 and the Windows Python launcher (`py`) must be installed. Internet access is required to download packages during the build if they are not already cached.
 

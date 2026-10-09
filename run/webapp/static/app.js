@@ -2085,10 +2085,6 @@
     simpleFiltersEl.replaceChildren();
     SIMPLE_FILTER_SPECS.forEach(spec => { const menu = buildSimpleCategory(spec); if (menu) simpleFiltersEl.append(menu); });
     simpleFiltersEl.append(buildLengthFilter());
-    const clear = document.createElement('button');
-    clear.type = 'button'; clear.className = 'simple-filter-clear'; clear.textContent = 'Clear';
-    clear.addEventListener('click', resetFilters);
-    simpleFiltersEl.append(clear);
     document.addEventListener('click', event => { if (!simpleFiltersEl.contains(event.target)) closeSimpleMenus(); });
   }
   function simpleFilterChildren() {

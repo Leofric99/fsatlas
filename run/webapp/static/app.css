@@ -283,9 +283,9 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .filters-collapse-btn svg { transition: transform .2s ease; }
 #panel-explore.filters-collapsed .filters-collapse-btn svg { transform: rotate(180deg); }
 #panel-explore.filters-collapsed #simple-filters { display: none; }
-.simple-filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 6px; align-items: center; }
+.simple-filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; align-items: center; }
 .simple-filter-menu { position: relative; min-width: 0; }
-.simple-filter-trigger, .simple-filter-clear {
+.simple-filter-trigger {
   width: 100%; min-height: 28px; padding: 4px 5px; background: var(--surface-2); border: 1px solid var(--border);
   overflow: hidden; color: var(--text); font: 600 9px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; text-align: left; text-overflow: ellipsis;
 }
@@ -298,14 +298,6 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .simple-filter-count[hidden] { display: none; }
 .simple-filter-trigger::after { content: '\25BE'; flex: 0 0 auto; margin-left: auto; color: var(--text-dim); }
 .simple-filter-menu.open .simple-filter-trigger { border-color: var(--accent); }
-/* Clear/Reset are both destructive actions - permanently shown in the same red shade
-   they used to only reveal on hover, rather than looking like a neutral/default button
-   until the exact moment a user's cursor happens to land on it. */
-.simple-filter-clear {
-  width: auto; min-width: 52px; background: color-mix(in srgb, var(--danger) 8%, transparent);
-  color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
-}
-.simple-filter-clear:hover { background: color-mix(in srgb, var(--danger) 16%, transparent); border-color: var(--danger); }
 .simple-filter-popover {
   display: none; position: absolute; top: calc(100% + 5px); left: 0; width: min(340px, 72vw); min-width: 0; padding: 8px;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 47;
@@ -347,7 +339,6 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
   .simple-filters { display: flex; flex-direction: column; gap: 6px; overflow: visible; padding-bottom: 0; }
   .simple-filter-menu { flex: none; width: 100%; }
   .simple-filter-trigger { min-height: 42px; padding: 10px 12px; font-size: 13px; }
-  .simple-filter-clear { flex: none; width: 100%; min-height: 42px; }
   /* The popover itself used to anchor via `position:absolute` to its own 132px-wide
      trigger, which made the checkbox list cramped and could clip off-screen inside the
      narrow bottom sheet - float it as a fixed, centered card instead, sized off the

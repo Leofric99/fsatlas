@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import webbrowser
+from pathlib import Path
 
 from run.webapp import create_app
 
@@ -40,6 +41,23 @@ def main():
     app = create_app()
     url = f"http://{args.host}:{args.port}"
     print(f"Flightsim Atlas web UI: {url}")
+
+    frozen_windows = getattr(sys, "frozen", False) and os.name == "nt"
+    if frozen_windows:
+        from werkzeug.serving import make_server
+
+        server = make_server(args.host, args.port, app, threaded=True)
+        if not args.no_browser:
+            try:
+                webbrowser.open(url)
+            except webbrowser.Error:
+                pass
+
+        from run.windows_tray import run_with_tray
+
+        icon_path = Path(__file__).resolve().parent.parent / "images" / "FSAtlas.ico"
+        run_with_tray(server, icon_path)
+        return
 
     if not args.no_browser and not args.debug:
         try:

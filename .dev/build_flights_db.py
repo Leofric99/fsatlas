@@ -58,7 +58,10 @@ def build(source, out):
                    SELECT DISTINCT type_icao, type FROM src.flights ORDER BY type_icao, type""")
     con.commit()
 
-    # Flights: collapse to one row per (airline, flight number, route, type, season).
+    # Flights: collapse to one row per (airline, flight number, route, type, season). A flight
+    # usually has several source legs (one per weekly departure) whose durations can differ a
+    # little, so the row kept is the one with the median duration (the lower median, so it is a
+    # real source value) rather than an arbitrary one.
     con.execute("""
         INSERT INTO flights (airline_id, flight_number, callsign, type_id, dep_icao, arr_icao,
                              distance_nm, duration_h, year, season)
@@ -67,9 +70,18 @@ def build(source, out):
                CAST(substr(s.timestamp_read, 8) AS INTEGER), substr(s.timestamp_read, 1, 6)
         FROM (
             SELECT owner, type, type_icao, flight_number, callsign, dep_airport_icao, arr_airport_icao,
-                   distance, rough_flight_time, timestamp_read, MIN(rowid) AS first_row
-            FROM src.flights
-            GROUP BY owner, type, type_icao, flight_number, dep_airport_icao, arr_airport_icao, timestamp_read
+                   distance, rough_flight_time, timestamp_read
+            FROM (
+                SELECT *,
+                       ROW_NUMBER() OVER w AS rn,
+                       COUNT(rough_flight_time) OVER (PARTITION BY owner, type, type_icao, flight_number,
+                           dep_airport_icao, arr_airport_icao, timestamp_read) AS known
+                FROM src.flights
+                WINDOW w AS (PARTITION BY owner, type, type_icao, flight_number, dep_airport_icao,
+                                          arr_airport_icao, timestamp_read
+                             ORDER BY rough_flight_time IS NULL, rough_flight_time, rowid)
+            )
+            WHERE rn = CASE WHEN known = 0 THEN 1 ELSE (known + 1) / 2 END
         ) s
         JOIN airlines al ON al.name = s.owner
         JOIN aircraft_types ty ON ty.type_icao = s.type_icao AND ty.name = s.type

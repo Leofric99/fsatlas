@@ -57,7 +57,7 @@ Once the page loads, every airport in your dataset is already plotted:
 
 ## 4. Narrow things down with a filter
 
-Open the **Explore** panel (rail icon on the left) if it isn't already open, and try the
+Open the **Explore** panel (rail icon on the left; panels start collapsed) and try the
 **Airline** category: pick an airline, hit **Apply**, and watch the map redraw to just
 that carrier's network.
 

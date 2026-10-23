@@ -40,7 +40,7 @@ Route results show the individual flights connecting the selected airports. Each
 
 ### Filter the flights
 
-The **Explore** panel narrows the whole map with five filter menus: **Airline**, **Airports** (ICAO, IATA or name), **Aircraft** (ICAO code or full type), **Location** (city, country or region) and **Length**. Tick several values in a menu to match any of them; filters in different menus are combined, so only flights matching all of them remain. Length takes a minimum and maximum and works on flight time by default, or on distance if you pick it from the drop-down. A badge shows how many filters are active, and a live count shows how many flights match before you press **Apply**. Use **Reset** to clear everything, or the bookmark button to save the current filters as a named search.
+The **Explore** panel narrows the whole map with six filter menus: **Airline**, **Airports** (ICAO, IATA or name), **Aircraft** (ICAO code or full type), **Location** (city, country or region), **Length** and **Year**. Tick several values in a menu to match any of them; filters in different menus are combined, so only flights matching all of them remain. Length and Year each take a minimum and maximum with two sliders: Length works on flight time by default, or on distance if you pick it from the drop-down, and Year uses the year each flight was recorded. A badge shows how many filters are active, and a live count shows how many flights match before you press **Apply**. Use **Reset** to clear everything, or the bookmark button to save the current filters as a named search.
 
 <p align="center">
   <img src="images/complex_filters.png" alt="Flight filtering view" width="100%">

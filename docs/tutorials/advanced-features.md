@@ -85,13 +85,13 @@ imported but isn't drawn.
 Airline/Airports/Aircraft/Location use the same **chip** input: type to narrow a long
 list of distinct values (airlines, airport codes/names, countries...), click to add a
 chip, and the category is satisfied if a flight matches *any* chip you've added (switch
-to **is not** to instead exclude every chip you've added). **Length** is the one
-exception — it's a plain min/max range over either Distance (nm) or Flight Time (hours),
-not a value list.
+to **is not** to instead exclude every chip you've added). **Length** and **Year** are the
+exceptions — they're plain min/max sliders (Length over either Distance in nm or Flight Time
+in hours; Year over the years in your database), not value lists.
 
 ### How categories combine
 
-All five categories (and any active Length range) combine with **AND** — a flight has to
+All the categories (and any active Length or Year range) combine with **AND** — a flight has to
 match every category you've configured, not just one. Within a single category, multiple
 chips are combined with **OR** ("is any of these").
 

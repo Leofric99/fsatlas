@@ -11,7 +11,7 @@ Load your own dataset of real-world flights (built from live tracking data, a pe
 logbook export, or anything else you can shape into the expected CSV columns) and FSAtlas
 plots every departure/arrival airport as a dot on the map. Click an airport to see its
 routes, click a route to see the individual flights on it, and filter by airline, airport, aircraft,
-location and length to narrow the whole dataset down to exactly what you're looking for.
+location, length and year to narrow the whole dataset down to exactly what you're looking for.
 
 > FSAtlas is designed for finding **inspiration** for your next flight — it shows routes as
 > a simple A → B. It is not a flight-planning tool and does not display waypoints, SIDs,
@@ -35,7 +35,7 @@ location and length to narrow the whole dataset down to exactly what you're look
 - **Drill into routes and flights** — click an airport to fan out its routes, click a
   route to list the individual flights (airline, aircraft, callsign, year).
 - **Flexible filters** — combine airline, airport, aircraft, location (city, country, region)
-  and length (flight time or distance) filters, each with multi-select pickers.
+  length (flight time or distance) and year filters, each with multi-select pickers.
 - **Save routes & searches** — bookmark individual flights and whole filter combinations,
   then jump straight back to them later from the Saved panel.
 - **SimBrief integration** — export a selected flight straight into a pre-filled SimBrief

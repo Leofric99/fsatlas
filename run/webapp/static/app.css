@@ -283,7 +283,7 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .filters-collapse-btn svg { transition: transform .2s ease; }
 #panel-explore.filters-collapsed .filters-collapse-btn svg { transform: rotate(180deg); }
 #panel-explore.filters-collapsed #simple-filters { display: none; }
-.simple-filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; align-items: center; }
+.simple-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; align-items: center; }
 .simple-filter-menu { position: relative; min-width: 0; }
 .simple-filter-trigger {
   width: 100%; min-height: 28px; padding: 4px 5px; background: var(--surface-2); border: 1px solid var(--border);

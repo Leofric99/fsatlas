@@ -142,3 +142,7 @@ are held back until it finishes. The endpoint is `GET /api/export`.
 ```bash
 .venv/bin/python .dev/build_flights_db.py /path/to/flat_flights.db
 ```
+
+Rows that differ only in fields the database does not store (registration, weekday, departure time)
+collapse into one flight. When the source has several departures of the same flight with different
+durations, the database keeps the median duration rather than an arbitrary one.

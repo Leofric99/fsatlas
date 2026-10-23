@@ -1114,8 +1114,7 @@
   function applySavedSearch(search) {
     openPanel('explore'); // show the restored tree immediately, not an empty map with nothing open
     SIMPLE_FILTER_SPECS.forEach(spec => { if (simpleFilterState[spec.key]) simpleFilterState[spec.key].values = []; });
-    const length = simpleFilterState.length;
-    if (length) length.active = false;
+    const ranges = {};
     const leaves = [];
     const collectLeaves = node => {
       if (!node) return;
@@ -1128,28 +1127,31 @@
       if (spec && Array.isArray(leaf.value) && simpleFilterState[spec.key]) {
         simpleFilterState[spec.key].column = leaf.column;
         simpleFilterState[spec.key].values = leaf.value.slice();
-      } else if (length && (leaf.column === 'distance' || leaf.column === 'rough_flight_time')) {
-        length.column = leaf.column;
-        if (leaf.operator === '>=') { length.min = Number(leaf.value); length.active = true; }
-        if (leaf.operator === '<=') { length.max = Number(leaf.value); length.active = true; }
+      } else {
+        const rangeSpec = RANGE_FILTER_SPECS.find(candidate => candidate.fields.some(field => field.id === leaf.column));
+        if (!rangeSpec) return;
+        const found = ranges[rangeSpec.key] = ranges[rangeSpec.key] || { column: leaf.column, min: null, max: null };
+        if (leaf.operator === '>=') found.min = Number(leaf.value);
+        if (leaf.operator === '<=') found.max = Number(leaf.value);
       }
     });
     SIMPLE_FILTER_SPECS.forEach(spec => {
       const menu = simpleFiltersEl.querySelector(`.simple-filter-menu[data-filter="${spec.key}"]`);
       if (menu) renderSimpleCategory(spec, menu);
     });
-    const lengthMenu = simpleFiltersEl.querySelector('.simple-length-menu');
-    if (lengthMenu && length) {
-      const fieldSelect = lengthMenu.querySelector('.simple-filter-field');
-      const minInput = lengthMenu.querySelector('.simple-length-min');
-      const maxInput = lengthMenu.querySelector('.simple-length-max');
-      const outputs = lengthMenu.querySelectorAll('.simple-range-label output');
-      fieldSelect.value = length.column;
-      minInput.value = length.min; maxInput.value = length.max;
-      outputs[0].textContent = length.min + (length.column === 'distance' ? ' nm' : ' hr');
-      outputs[1].textContent = length.max + (length.column === 'distance' ? ' nm' : ' hr');
-      lengthMenu.querySelector('.simple-filter-trigger').textContent = length.active ? `Length (${length.column === 'distance' ? 'distance' : 'time'})` : 'Length';
-    }
+    RANGE_FILTER_SPECS.forEach(spec => {
+      const menu = rangeMenu(spec);
+      const state = simpleFilterState[spec.key];
+      if (!menu || !state) return;
+      const found = ranges[spec.key];
+      if (!found) { menu.resetRange(); return; }
+      const { minimum, maximum } = rangeBounds(found.column);
+      state.column = found.column;
+      state.min = found.min != null ? found.min : minimum;
+      state.max = found.max != null ? found.max : maximum;
+      state.active = true;
+      menu.syncRange();
+    });
     updateFilterCountBadge();
     applyFilters();
   }
@@ -1644,8 +1646,8 @@
   }
   filters.addEventListener('change', e => { if (e.target.matches('.column')) updateFilterCountBadge(); });
 
-  // Default panel state follows the breakpoint: Explore open on desktop, everything
-  // closed on mobile - re-applied live if the window is resized across it.
+  // Every panel starts collapsed (open one from the rail); panels are also closed when the
+  // window is resized across the mobile breakpoint.
   let resizeRaf;
   function scheduleResizeCheck() {
     cancelAnimationFrame(resizeRaf);
@@ -1654,7 +1656,7 @@
       if (nowMobile !== isMobile) {
         isMobile = nowMobile;
         document.body.classList.toggle('is-mobile', isMobile);
-        isMobile ? closeAllPanels() : openPanel('explore');
+        closeAllPanels();
         rebuildAirportMarkers(); // marker radius depends on isMobile
         if (sceneryOverlayEnabled) rebuildSceneryMarkers(); // star size depends on isMobile too
       }
@@ -2242,38 +2244,65 @@
     renderSimpleCategory(spec, menu);
     return menu;
   }
-  function buildLengthFilter() {
+  // Range filters (min/max sliders): Length (flight time or distance) and Year. Each becomes a
+  // pair of >= / <= number conditions once the user moves a slider.
+  const RANGE_FILTER_SPECS = [
+    { key: 'length', label: 'Length', fields: [
+      { id: 'rough_flight_time', label: 'Flight time', unit: ' hr', step: 0.25, tag: 'time' }, // default
+      { id: 'distance', label: 'Distance', unit: ' nm', step: 10, tag: 'distance' },
+    ] },
+    { key: 'year', label: 'Year', fields: [{ id: 'year', label: 'Year', unit: '', step: 1, tag: '' }] },
+  ];
+  function rangeBounds(columnId) {
+    const column = simpleColumn(columnId);
+    return { minimum: Math.floor((column && column.minimum) || 0), maximum: Math.ceil((column && column.maximum) || 1) };
+  }
+  function rangeMenu(spec) { return simpleFiltersEl.querySelector(`.simple-range-menu[data-range="${spec.key}"]`); }
+  function buildRangeFilter(spec) {
     const menu = document.createElement('div');
-    menu.className = 'simple-filter-menu simple-length-menu';
-    menu.innerHTML = '<button type="button" class="simple-filter-trigger"><span class="simple-filter-label">Length</span></button><div class="simple-filter-popover">' + POPOVER_CLOSE_BTN + '<select class="simple-filter-field"><option value="rough_flight_time">Flight time</option><option value="distance">Distance</option></select><label class="simple-range-label"><span>Minimum</span><output></output><input class="simple-length-min" type="range"></label><label class="simple-range-label"><span>Maximum</span><output></output><input class="simple-length-max" type="range"></label></div>';
-    const state = simpleFilterState.length = { column: 'rough_flight_time', min: null, max: null, active: false }; // flight time by default; Distance is the other choice
+    menu.className = 'simple-filter-menu simple-range-menu';
+    menu.dataset.range = spec.key;
+    const chooser = spec.fields.length > 1
+      ? '<select class="simple-filter-field">' + spec.fields.map(f => `<option value="${f.id}">${f.label}</option>`).join('') + '</select>'
+      : '';
+    const slider = (name, cls) => `<label class="simple-range-label"><span>${name}</span><output></output><input class="${cls}" type="range"></label>`;
+    menu.innerHTML = `<button type="button" class="simple-filter-trigger"><span class="simple-filter-label">${spec.label}</span></button><div class="simple-filter-popover">${POPOVER_CLOSE_BTN}${chooser}${slider('Minimum', 'simple-range-min')}${slider('Maximum', 'simple-range-max')}</div>`;
+    const state = simpleFilterState[spec.key] = { column: spec.fields[0].id, min: null, max: null, active: false };
     const trigger = menu.querySelector('.simple-filter-trigger');
     const fieldSelect = menu.querySelector('.simple-filter-field');
-    const minInput = menu.querySelector('.simple-length-min');
-    const maxInput = menu.querySelector('.simple-length-max');
-    const update = (reset) => {
-      const column = simpleColumn(state.column);
-      const minimum = Math.floor((column && column.minimum) || 0);
-      const maximum = Math.ceil((column && column.maximum) || 1);
-      if (reset) { state.min = minimum; state.max = maximum; state.active = false; }
-      [minInput, maxInput].forEach(input => { input.min = minimum; input.max = maximum; input.step = state.column === 'rough_flight_time' ? '0.25' : '10'; });
+    const minInput = menu.querySelector('.simple-range-min');
+    const maxInput = menu.querySelector('.simple-range-max');
+    const outputs = menu.querySelectorAll('.simple-range-label output');
+    // Paints the state into the controls; resetRange first returns the state to the full span.
+    const sync = () => {
+      const field = spec.fields.find(f => f.id === state.column) || spec.fields[0];
+      const { minimum, maximum } = rangeBounds(field.id);
+      [minInput, maxInput].forEach(input => { input.min = minimum; input.max = maximum; input.step = field.step; });
       minInput.value = state.min; maxInput.value = state.max;
-      menu.querySelector('.simple-range-label output').textContent = state.min + (state.column === 'distance' ? ' nm' : ' hr');
-      menu.querySelectorAll('.simple-range-label output')[1].textContent = state.max + (state.column === 'distance' ? ' nm' : ' hr');
-      trigger.querySelector('.simple-filter-label').textContent = state.active ? `Length (${state.column === 'distance' ? 'distance' : 'time'})` : 'Length';
+      if (fieldSelect) fieldSelect.value = field.id;
+      outputs[0].textContent = state.min + field.unit;
+      outputs[1].textContent = state.max + field.unit;
+      trigger.querySelector('.simple-filter-label').textContent = state.active && field.tag ? `${spec.label} (${field.tag})` : spec.label;
     };
-    menu.querySelector('.simple-filter-trigger').addEventListener('click', () => { const opening = !menu.classList.contains('open'); closeSimpleMenus(menu); menu.classList.toggle('open', opening); });
-    fieldSelect.addEventListener('change', () => { state.column = fieldSelect.value; update(true); schedulePreview(); });
-    minInput.addEventListener('input', () => { state.min = Number(minInput.value); if (state.min > state.max) state.max = state.min; state.active = true; update(false); schedulePreview(); });
-    maxInput.addEventListener('input', () => { state.max = Number(maxInput.value); if (state.max < state.min) state.min = state.max; state.active = true; update(false); schedulePreview(); });
+    const reset = () => {
+      const { minimum, maximum } = rangeBounds(state.column);
+      state.min = minimum; state.max = maximum; state.active = false;
+      sync();
+    };
+    menu.syncRange = sync;
+    menu.resetRange = reset;
+    trigger.addEventListener('click', () => { const opening = !menu.classList.contains('open'); closeSimpleMenus(menu); menu.classList.toggle('open', opening); });
+    if (fieldSelect) fieldSelect.addEventListener('change', () => { state.column = fieldSelect.value; reset(); schedulePreview(); });
+    minInput.addEventListener('input', () => { state.min = Number(minInput.value); if (state.min > state.max) state.max = state.min; state.active = true; sync(); schedulePreview(); });
+    maxInput.addEventListener('input', () => { state.max = Number(maxInput.value); if (state.max < state.min) state.min = state.max; state.active = true; sync(); schedulePreview(); });
     wirePopoverClose(menu);
-    update(true);
+    reset();
     return menu;
   }
   function initSimpleFilters() {
     simpleFiltersEl.replaceChildren();
     SIMPLE_FILTER_SPECS.forEach(spec => { const menu = buildSimpleCategory(spec); if (menu) simpleFiltersEl.append(menu); });
-    simpleFiltersEl.append(buildLengthFilter());
+    RANGE_FILTER_SPECS.forEach(spec => simpleFiltersEl.append(buildRangeFilter(spec)));
     document.addEventListener('click', event => { if (!simpleFiltersEl.contains(event.target)) closeSimpleMenus(); });
   }
   function simpleFilterChildren() {
@@ -2282,11 +2311,12 @@
       const state = simpleFilterState[spec.key];
       if (state && state.values.length) children.push({ column: state.column, operator: 'equals', value: state.values, type: 'select', logic: 'AND' });
     });
-    const length = simpleFilterState.length;
-    if (length && length.active) {
-      children.push({ column: length.column, operator: '>=', value: length.min, type: 'number', logic: 'AND' });
-      children.push({ column: length.column, operator: '<=', value: length.max, type: 'number', logic: 'AND' });
-    }
+    RANGE_FILTER_SPECS.forEach(spec => {
+      const range = simpleFilterState[spec.key];
+      if (!range || !range.active) return;
+      children.push({ column: range.column, operator: '>=', value: range.min, type: 'number', logic: 'AND' });
+      children.push({ column: range.column, operator: '<=', value: range.max, type: 'number', logic: 'AND' });
+    });
     return children;
   }
   function currentFilterTree() { return { kind: 'group', logic: 'AND', children: simpleFilterChildren() }; }
@@ -2332,27 +2362,11 @@
       const state = simpleFilterState[spec.key];
       if (state) state.values = [];
     });
-    const length = simpleFilterState.length;
-    if (length) {
-      const column = simpleColumn(length.column);
-      length.min = Math.floor((column && column.minimum) || 0);
-      length.max = Math.ceil((column && column.maximum) || 1);
-      length.active = false;
-    }
     SIMPLE_FILTER_SPECS.forEach(spec => {
       const menu = simpleFiltersEl.querySelector(`.simple-filter-menu[data-filter="${spec.key}"]`);
       if (menu) renderSimpleCategory(spec, menu);
     });
-    const lengthMenu = simpleFiltersEl.querySelector('.simple-length-menu');
-    if (lengthMenu) {
-      const minInput = lengthMenu.querySelector('.simple-length-min');
-      const maxInput = lengthMenu.querySelector('.simple-length-max');
-      const outputs = lengthMenu.querySelectorAll('.simple-range-label output');
-      minInput.value = length.min; maxInput.value = length.max;
-      outputs[0].textContent = length.min + (length.column === 'distance' ? ' nm' : ' hr');
-      outputs[1].textContent = length.max + (length.column === 'distance' ? ' nm' : ' hr');
-      lengthMenu.querySelector('.simple-filter-trigger').textContent = 'Length';
-    }
+    RANGE_FILTER_SPECS.forEach(spec => { const menu = rangeMenu(spec); if (menu) menu.resetRange(); });
     closeSimpleMenus();
     updateFilterCountBadge();
     applyFilters();
@@ -2432,7 +2446,7 @@
     applyTheme(meta.theme === 'light' ? 'light' : 'dark', false);
     setTileLayer(effectiveMapType());
 
-    isMobile ? closeAllPanels() : openPanel('explore');
+    closeAllPanels(); // every panel starts collapsed; open one from the rail
 
     // The map fills the whole viewport behind the fixed top bar, the rail, and (on
     // desktop) the open panel, so pan once at load to keep the initial view centered in

@@ -39,8 +39,8 @@ disappearing off the edge.
 
 ## Filtering the map
 
-Open the **Explore** panel (it's open by default on desktop). Underneath the **Saved
-Searches** dropdown (more on that below) is the **Filters** section, with five
+Open the **Explore** panel (the compass icon at the top of the left rail; panels start collapsed). Underneath the **Saved
+Searches** dropdown (more on that below) is the **Filters** section, with six
 categories:
 
 | Category    | What it matches                                                             |
@@ -50,6 +50,7 @@ categories:
 | Aircraft    | Aircraft type, by ICAO code or full type name.                                |
 | Location    | Departure or arrival city, country, or region.                                |
 | Length      | A flight-time (hours) range by default, or distance (nautical miles) chosen from the drop-down, via two sliders. |
+| Year        | The year the flight was recorded, via two sliders (earliest to latest year in your database). |
 
 Airline/Airports/Aircraft/Location are **chip multi-select** fields: click the category,
 type to search, and click as many matching values as you like — they're combined with

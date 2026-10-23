@@ -1,0 +1,35 @@
+.dev/build_flights_db.py
+  s_9756343d88476f::t_e7e829fb4777d0 61-64,73-84
+README.md
+  s_9756343d88476f::t_702bc7c4da5cf6 43
+docs/getting-started/quickstart.md
+  s_9756343d88476f::t_f7c5ffaa1a23ec 60
+docs/index.md
+  s_9756343d88476f::t_55536c9dd834d3 14,38
+docs/reference/flight-data-schema.md
+  s_9756343d88476f::t_d95cbf73b5a0ee 145-148
+docs/tutorials/advanced-features.md
+  s_9756343d88476f::t_e441c82c4b8834 88-90,94
+docs/tutorials/basic-usage.md
+  s_9756343d88476f::t_658055fcbffaac 42-43,53
+run/webapp/static/app.css
+  s_9756343d88476f::t_6b19b32af86efa 286
+run/webapp/static/app.js
+  s_9756343d88476f::t_3a48c72667e145 1117,1130-1135,1142-1154,1649-1650,1659,2247-2261,2263-2270,2273-2280,2282-2290,2292-2297,2299,2305,2314-2319,2369,2449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4ed534783bc4b533649f99d9969727975e917a0",
+  "prompts": {},
+  "sessions": {
+    "s_9756343d88476f": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "612e38f7-d387-4d7f-ab65-7e72290b3af6",
+        "model": "unknown"
+      },
+      "human_author": "chrhodge <chrhodge@cisco.com>"
+    }
+  }
+}

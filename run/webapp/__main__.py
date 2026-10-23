@@ -29,8 +29,8 @@ def main():
         help="Don't try to open a browser window (implied when there's no display to open one on).",
     )
     parser.add_argument(
-        "-i", "--import", dest="import_file", metavar="JSONFILE",
-        help="Import flight records from JSONFILE into flights.csv, then exit without starting the server.",
+        "-i", "--import", dest="import_file", metavar="FILE",
+        help="Import flight records from a .json, old-style .csv or exported .db FILE into the flight database, then exit without starting the server.",
     )
     args = parser.parse_args()
 

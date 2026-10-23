@@ -6,7 +6,8 @@ services:
       - "8777:8000"
     restart: unless-stopped
     volumes:
-      # Persists the app's two small JSON files (settings.json + saved_items.json) outside
+      # Persists the flight database (flights.db), the import/ folder and the app's two small
+      # JSON files (settings.json + saved_items.json) outside
       # the container so they survive image updates/recreation. Mounted as a directory
       # (matching FSATLAS_DATA_DIR=/data set in the Dockerfile) rather than bind-mounting the
       # files individually - Docker would otherwise create a phantom directory in place of a

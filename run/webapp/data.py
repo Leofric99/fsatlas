@@ -1,20 +1,22 @@
 """Owns loading/parsing/caching the flight dataset (module-level cache, loaded once)
 and exposes plain functions for column metadata, filtering and aggregation. No new
-data pipeline - this wraps the existing run.data_loader/run.filtering/run.config.
+data pipeline - this wraps run.db_loader/run.filtering/run.config.
 """
+import threading
 from math import asin, cos, isfinite, radians, sin, sqrt
 
+import numpy as np
 import pandas as pd
 
-from run import config, data_loader, filtering
+from run import config, db_loader, filtering, flightdb
 
 # Columns hidden entirely from the filter dropdown.
-HIDDEN_COLUMNS = {"reg", "timestamp_read"}
+HIDDEN_COLUMNS = {"timestamp_read"}
 
 # Non-directional columns get bucketed into a couple of small logical groups.
 COMPANY_COLUMNS = {"owner", "calsign", "flight_number"}
-EQUIPMENT_COLUMNS = {"reg", "type", "type_icao"}
-OTHER_COLUMNS = {"distance", "rough_flight_time"}
+EQUIPMENT_COLUMNS = {"type", "type_icao"}
+OTHER_COLUMNS = {"distance", "rough_flight_time", "year", "season"}
 
 # Closed/categorical columns that get the chip multi-select input (type-ahead -> inline
 # token chips, "is any of") instead of a free-text field - unlike _column_options' default
@@ -71,6 +73,7 @@ _DEFAULT_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 _DEFAULT_TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 
 _state = {}
+_lock = threading.RLock()
 
 
 def load():
@@ -78,17 +81,35 @@ def load():
     call more than once (e.g. from tests) - only loads on first call.
     """
     if not _state:
-        df = data_loader.load_data()
-        for prefix in ('dep', 'arr'):
-            region_column = f'{prefix}_airport_region'
-            if region_column not in df.columns:
-                df[region_column] = [
-                    _airport_region(latitude, longitude)
-                    for latitude, longitude in zip(df[f'{prefix}_airport_lat'], df[f'{prefix}_airport_lon'])
-                ]
-        _state['df'] = df
-        _state['airport_counts'] = data_loader.get_airport_destination_counts(df)
-        _state['columns'] = _build_columns(df)
+        with _lock:
+            if not _state:
+                _state.update(_build_state())
+    return _state
+
+
+def _build_state():
+    df = db_loader.load_data()
+    airports = pd.DataFrame()
+    if not df.empty:
+        con = flightdb.connect(readonly=True)
+        try:
+            airports = db_loader.load_airports(con)
+        finally:
+            con.close()
+        airport_counts = db_loader.get_airport_destination_counts(df)
+    else:
+        airport_counts = pd.Series(dtype=int)
+    return {'df': df, 'airports': airports, 'airport_counts': airport_counts, 'columns': _build_columns(df)}
+
+
+def reload():
+    """Re-read the database (used after an import). The new dataset is built before the
+    cache is swapped, so requests keep being served from the old one in the meantime.
+    """
+    with _lock:
+        new_state = _build_state()
+        _state.clear()
+        _state.update(new_state)
     return _state
 
 
@@ -237,29 +258,31 @@ def _filtered_df(filters):
 
 
 def _unique_airports_df(df):
-    """Dedup dep_/arr_ airport columns down to one row per IATA code (iata/icao/name/
-    city/country/lat/lon) - the shared basis for both get_airports (ranked, filtered) and
+    """One row per IATA code (iata/icao/name/city/country/lat/lon) for the airports appearing
+    in `df` - the shared basis for both get_airports (ranked, filtered) and
     get_airport_directory (unfiltered, used for scenery cross-referencing).
-    """
-    frames = []
-    for prefix in ('dep', 'arr'):
-        rename = {f'{prefix}_{suffix}': target for suffix, target in _AIRPORT_FIELDS.items()}
-        if not set(rename).issubset(df.columns):
-            continue
-        frames.append(df[list(rename)].rename(columns=rename))
 
-    if not frames:
+    Airports come from the airports table rather than the (large) flight rows. When several
+    airports share an IATA code (e.g. a defunct airport and its replacement) the one with the
+    most recent flights is used.
+    """
+    airports = load()['airports']
+    if df.empty or airports.empty:
         return pd.DataFrame(columns=list(_AIRPORT_FIELDS.values()))
 
-    combined = pd.concat(frames, ignore_index=True)
+    present = pd.unique(np.concatenate([
+        df['dep_airport_icao'].unique().astype(str), df['arr_airport_icao'].unique().astype(str)]))
+    combined = airports.loc[airports.index.intersection(present),
+                            ['iata', 'icao', 'name', 'city', 'country', 'lat', 'lon', 'last_year']].copy()
     combined['iata'] = combined['iata'].astype(str).str.strip()
     combined = combined[(combined['iata'] != '') & (combined['iata'] != 'nan')]
     combined['icao'] = combined['icao'].astype(str).str.strip().str.upper()
     combined['lat'] = pd.to_numeric(combined['lat'], errors='coerce')
     combined['lon'] = pd.to_numeric(combined['lon'], errors='coerce')
-    combined.dropna(subset=['lat', 'lon'], inplace=True)
+    combined = combined.dropna(subset=['lat', 'lon'])
     combined = combined[~((combined['lat'] == 0) & (combined['lon'] == 0))]  # Null island check
-    return combined.drop_duplicates(subset='iata', keep='first')
+    combined = combined.sort_values('last_year', ascending=False, kind='stable')
+    return combined.drop_duplicates(subset='iata', keep='first').drop(columns='last_year').reset_index(drop=True)
 
 
 def get_airports(filters):
@@ -416,7 +439,6 @@ def get_flights(iata, filters):
         "type": matches["type"].astype(str),
         "callsign": matches["calsign"].astype(str),
         "type_icao": matches["type_icao"].astype(str),
-        "reg": matches["reg"].astype(str),
         "dep_icao": matches["dep_airport_icao"].astype(str),
         "arr_icao": matches["arr_airport_icao"].astype(str),
         "dep_name": matches["dep_airport"].astype(str),
@@ -424,7 +446,7 @@ def get_flights(iata, filters):
         "dep_city": matches["dep_airport_city"].astype(str),
         "arr_city": matches["arr_airport_city"].astype(str),
         "airline": matches["owner"].astype(str),
-        "date": matches["timestamp_read"].astype(str).str.slice(0, 10),
+        "date": matches["timestamp_read"].astype(str),
         # NaN (unrecognised type_icao / no cruise speed on import) -> JSON null.
         "flight_time_hours": matches["rough_flight_time"].astype(object).where(matches["rough_flight_time"].notna(), None),
         "distance": matches["distance"].astype(object).where(matches["distance"].notna(), None),

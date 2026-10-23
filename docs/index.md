@@ -10,8 +10,8 @@ entirely on your own machine or server.
 Load your own dataset of real-world flights (built from live tracking data, a personal
 logbook export, or anything else you can shape into the expected CSV columns) and FSAtlas
 plots every departure/arrival airport as a dot on the map. Click an airport to see its
-routes, click a route to see the individual flights on it, and build nested AND/OR filters
-to narrow the whole dataset down to exactly what you're looking for.
+routes, click a route to see the individual flights on it, and filter by airline, airport, aircraft,
+location and length to narrow the whole dataset down to exactly what you're looking for.
 
 > FSAtlas is designed for finding **inspiration** for your next flight — it shows routes as
 > a simple A → B. It is not a flight-planning tool and does not display waypoints, SIDs,
@@ -33,9 +33,9 @@ to narrow the whole dataset down to exactly what you're looking for.
 - **Explore the whole network** — every airport in your dataset is plotted the moment the
   app opens, with marker colour reflecting destination count so busy hubs stand out.
 - **Drill into routes and flights** — click an airport to fan out its routes, click a
-  route to list the individual flights (airline, aircraft, registration, callsign, date).
-- **Flexible nested filters** — combine airline, aircraft type, country, region, distance,
-  and flight-time conditions with AND/OR logic and chip multi-select pickers.
+  route to list the individual flights (airline, aircraft, callsign, year).
+- **Flexible filters** — combine airline, airport, aircraft, location (city, country, region)
+  and length (flight time or distance) filters, each with multi-select pickers.
 - **Save routes & searches** — bookmark individual flights and whole filter combinations,
   then jump straight back to them later from the Saved panel.
 - **SimBrief integration** — export a selected flight straight into a pre-filled SimBrief
@@ -55,8 +55,9 @@ the [GitHub README](https://github.com/Leofric99/fsatlas)). It ships two ways to
   focus on.
 - **`uv run fsatlas`** — the original desktop-style launcher (a system-tray icon on
   Windows, a classic toolbar-over-map layout), still what the packaged `fsatlas` command
-  runs today while the two front-ends are mid-migration. It reads/writes the exact same
-  `flights.csv` and settings files.
+  runs today while the two front-ends are mid-migration. It shares the same settings
+  files, but still reads flights from `run/database/flights.csv` rather than the
+  `flights.db` database the web app uses.
 
 Both are covered in [Installation](getting-started/installation.md) so you can pick
 whichever fits how you want to run it.

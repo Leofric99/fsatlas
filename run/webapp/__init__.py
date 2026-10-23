@@ -9,6 +9,8 @@ from run.webapp import data, storage
 
 def create_app():
     app = Flask(__name__)
+    # Flight CSVs and exported databases can be hundreds of MB; allow generous uploads to the import drop zone.
+    app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024 * 1024
 
     # Load/cache the flight dataset once at startup, not per-request.
     data.load()

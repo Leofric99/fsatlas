@@ -33,7 +33,7 @@ try {
         '--workpath', $BuildDir,
         '--distpath', $DistDir,
         '--specpath', $PSScriptRoot,
-        '--add-data', ((Join-Path $Root 'run\database\flights.csv') + ';run\database'),
+        '--add-data', ((Join-Path $Root 'run\database\aircraft_crz_speeds.json') + ';run\database'),
         '--add-data', ((Join-Path $Root 'run\settings.json') + ';run'),
         '--add-data', ($IconPath + ';run\images'),
         '--add-data', ((Join-Path $Root 'run\webapp\templates') + ';run\webapp\templates'),

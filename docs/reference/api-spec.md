@@ -79,14 +79,15 @@ filters — a list of flight records:
 [
   {
     "dep": "LHR", "arr": "JFK", "flight": "BA117", "type": "Boeing 777-236", "callsign": "BAW117",
-    "type_icao": "B772", "reg": "G-VIIO", "dep_icao": "EGLL", "arr_icao": "KJFK",
+    "type_icao": "B772", "dep_icao": "EGLL", "arr_icao": "KJFK",
     "dep_name": "London Heathrow Airport", "arr_name": "John F Kennedy International Airport",
     "dep_city": "London", "arr_city": "New York", "airline": "British Airways",
-    "date": "2024-11-08", "flight_time_hours": 7.8, "distance": 2979
+    "date": "Summer 2024", "flight_time_hours": 7.8, "distance": 2979
   }
 ]
 ```
 
+`date` is the schedule period (`Summer 2024` / `Winter 2024`), not an exact date.
 `flight_time_hours`/`distance` are `null` when the source data didn't have them.
 
 ### `GET` / `POST` `/api/settings`
@@ -105,10 +106,27 @@ Accepted keys: `theme` (`"dark"`/`"light"`), `simbrief_pilot_id` (string),
 ### `GET` / `POST` / `DELETE` `/api/saved-flights`
 
 - `GET` — list every saved flight.
-- `POST` — body is a flight record dict (upserted by `reg`+`flight`+`dep`+`arr`+`date`).
+- `POST` — body is a flight record dict (upserted by `flight`+`dep`+`arr`+`date`).
   Returns `{"ok": true, "saved_flights": [...]}`.
-- `DELETE` — body is `{reg, flight, dep, arr, date}` identifying which saved flight to
+- `DELETE` — body is `{flight, dep, arr, date}` identifying which saved flight to
   remove. Returns `{"ok": true, "saved_flights": [...]}`.
+
+### `POST /api/import`
+
+Imports flight files into the database. Multipart form with one or more files in the
+`files` field (`.csv`, `.json` or an FSAtlas database `.db`; see
+[Flight Data Schema](flight-data-schema.md#importing-flights)).
+Returns `{"results": [...], "added": <total>, "reloaded": <bool>}`, where each result is
+either `{"file", "ok": true, "read", "added", "duplicates", "skipped_invalid",
+"skipped_no_callsign", "skipped_overlong", "new_airports", "new_airlines", "new_types"}` or
+`{"file", "ok": false, "error"}`. If any flights were added the server reloads its dataset
+before responding, so the next request already sees them. `400` if no file was uploaded.
+
+### `GET /api/export`
+
+Downloads a snapshot of the whole flight database as `fsatlas-flights-YYYYMMDD.db`
+(`Content-Disposition: attachment`, `application/vnd.sqlite3`). The file can be imported again with
+`POST /api/import`. `404` with `{"error": ...}` if there is no database yet.
 
 ### `GET` / `POST` / `DELETE` `/api/saved-searches`
 
@@ -131,7 +149,7 @@ via SimBrief's public, key-free lookup.
 
 Body is a flight record dict (same shape as a saved flight). Returns a pre-filled
 SimBrief dispatch URL built from the stored Pilot ID + the flight's origin/destination/
-type/registration/callsign:
+type/callsign (and the registration, when the record has one):
 
 ```json
 { "url": "https://www.simbrief.com/system/dispatch.php?..." }

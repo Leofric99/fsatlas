@@ -293,7 +293,7 @@
   let highlightedFlightKey = null;
   let lastRenderedRoutes = [];
   let lastPairRoutesUnsorted = [];
-  let flightSortColumn = null; // 'flight' | 'from' | 'to' | 'aircraft' | 'time'
+  let flightSortColumn = null; // 'flight' | 'from' | 'to' | 'aircraft' | 'time' | 'when'
   let flightSortDir = 'asc'; // 'asc' | 'desc'
 
   function nearestOffset(canonicalLon) {
@@ -366,7 +366,11 @@
     from: r => (r.dep_icao || r.dep || '').toLowerCase(),
     to: r => (r.arr_icao || r.arr || '').toLowerCase(),
     aircraft: r => (r.type_icao || r.type || '').toLowerCase(),
-    time: r => (r.flight_time_hours === null || r.flight_time_hours === undefined) ? -Infinity : r.flight_time_hours
+    time: r => (r.flight_time_hours === null || r.flight_time_hours === undefined) ? -Infinity : r.flight_time_hours,
+    when: r => {
+      const year = recordedYear(r);
+      return year ? Number(year) : -Infinity;
+    }
   };
   document.querySelectorAll('.sortable-col').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -519,8 +523,46 @@
   const SIMBRIEF_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
   const savedFlightKeys = new Set();
 
+  // "When" column: the year a flight was recorded in. The record's `date` is a schedule
+  // period such as "Summer 1983" (or, for flights saved by older versions, an exact date such
+  // as "08/11/2024") - only the four-digit year is shown. Empty if there is none.
+  function recordedYear(r) {
+    const match = String(r.date || '').match(/\b(\d{4})\b/);
+    return match ? match[1] : '';
+  }
+  function whenCellHtml(r) {
+    const year = recordedYear(r);
+    if (!year) return '<div class="row-when"></div>';
+    return `<div class="row-when" title="Recorded: ${year}"><span class="row-primary">${year}</span></div>`;
+  }
+  // Sizes the Flight, Length and When columns to the widest of their heading (plus the
+  // sort arrow, which only shows while sorted), year/duration text and flight numbers, measured in the browser's own font - so headings and values are never cut off
+  // whatever font the OS provides. Never narrower than the CSS defaults.
+  function fitFixedColumns(table, routes) {
+    if (!table) return;
+    const context = document.createElement('canvas').getContext('2d');
+    const fontFamily = getComputedStyle(table).fontFamily;
+    const measure = (text, font) => { context.font = `${font} ${fontFamily}`; return context.measureText(String(text)).width; };
+    const arrow = measure('\u25B2', '700 8px') + 3; // sort arrow + its gap, as in .sortable-col::after
+    const heading = column => {
+      const button = table.querySelector(`.flights-table-head .sortable-col[data-sort="${column}"]`);
+      const label = button ? button.textContent.trim().toUpperCase() : '';
+      return measure(label, '700 10px') + label.length * 0.4 + arrow; // 0.4px = .04em letter-spacing at 10px
+    };
+    let flight = heading('flight'), time = heading('time'), when = heading('when');
+    routes.forEach(route => {
+      flight = Math.max(flight, measure(route.flight || '', '700 12px'));
+      time = Math.max(time, measure(formatFlightTime(route.flight_time_hours), '600 12px'), measure(formatDistance(route.distance), 'italic 9px'));
+      when = Math.max(when, measure(recordedYear(route), '600 12px'));
+    });
+    const set = (name, width, minimum) => table.style.setProperty(name, Math.max(minimum, Math.ceil(width) + 2) + 'px');
+    set('--flight-w', flight, 52);
+    set('--time-w', time, 50);
+    set('--when-w', when, 32);
+  }
+
   // Shared identity for a route record - must match `flight_key` in run/webapp/storage.py.
-  function flightKey(r) { return [r.reg, r.flight, r.dep, r.arr, r.date].join('|'); }
+  function flightKey(r) { return [r.flight, r.dep, r.arr, r.date].join('|'); }
 
   function formatFlightTime(hours) {
     if (hours === null || hours === undefined) return 'Unknown';
@@ -818,6 +860,7 @@
       });
     }
     lastRenderedRoutes = pairRoutes;
+    fitFixedColumns(document.getElementById('flights-table-body').closest('.flights-table'), pairRoutes);
 
     document.querySelectorAll('.sortable-col').forEach(btn => {
       btn.classList.toggle('sort-asc', btn.dataset.sort === flightSortColumn && flightSortDir === 'asc');
@@ -838,6 +881,7 @@
             <div class="row-to"><span class="row-primary">${escapeHtml(r.arr_icao || r.arr || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(r, 'arr'))}</span></div>
             <div class="row-aircraft"><span class="row-primary">${escapeHtml(type_icao)}</span><span class="row-secondary">${escapeHtml(r.type || 'Unknown')}</span></div>
             <div class="row-time"><span class="row-primary">${escapeHtml(flightTime)}</span><span class="row-secondary">${escapeHtml(formatDistance(r.distance))}</span></div>
+            ${whenCellHtml(r)}
             <button class="row-simbrief" id="row-simbrief-${idx}" type="button" title="Export to SimBrief" aria-label="Export to SimBrief">${SIMBRIEF_ICON}</button>
           </div>
         </div>`;
@@ -946,11 +990,13 @@
           <div class="row-to"><span class="row-primary">${escapeHtml(f.arr_icao || f.arr || '-')}</span><span class="row-secondary">${escapeHtml(airportLabel(f, 'arr'))}</span></div>
           <div class="row-aircraft"><span class="row-primary">${escapeHtml(f.type_icao || f.type || '-')}</span><span class="row-secondary">${escapeHtml(f.type || 'Unknown')}</span></div>
           <div class="row-time"><span class="row-primary">${escapeHtml(formatFlightTime(f.flight_time_hours))}</span><span class="row-secondary">${escapeHtml(formatDistance(f.distance))}</span></div>
+          ${whenCellHtml(f)}
           <button class="row-simbrief" type="button" title="Export to SimBrief" aria-label="Export to SimBrief">${SIMBRIEF_ICON}</button>
         </div>
       </div>
     `).join('');
     fitFlightTableColumns(savedList.closest('.flights-table'), flights);
+    fitFixedColumns(savedList.closest('.flights-table'), flights);
 
     [...savedList.querySelectorAll('.saved-flight-entry')].forEach((row, i) => {
       const flight = flights[i];
@@ -1559,11 +1605,11 @@
   });
   document.addEventListener('click', e => { if (!mapTypeFabWrap.contains(e.target)) closeMapTypeMenu(); });
 
-  // --- Icon rail + flyout panels: Explore/Saved/Hangar/Settings each slide over the map
+  // --- Icon rail + flyout panels: Explore/Saved/Hangar/Import/Settings each slide over the map
   // from the same spot (right of the rail on desktop, up from the bottom rail on mobile -
   // see app.css); only one is open at a time, and clicking the active rail icon again
   // closes it. Desktop defaults to Explore open; mobile defaults to all closed. ---
-  const PANEL_NAMES = ['explore', 'saved', 'hangar', 'settings'];
+  const PANEL_NAMES = ['explore', 'saved', 'hangar', 'import', 'settings'];
   const panelEls = {};
   const railBtns = {};
   PANEL_NAMES.forEach(name => { panelEls[name] = document.getElementById('panel-' + name); });
@@ -1615,6 +1661,149 @@
     });
   }
   window.addEventListener('resize', scheduleResizeCheck);
+
+  // --- Import Flights panel: drop .csv/.json files (or click to browse) -> POST /api/import ---
+  const importDrop = document.getElementById('import-drop');
+  const importFileInput = document.getElementById('import-file-input');
+  const importProgress = document.getElementById('import-progress');
+  const importProgressText = document.getElementById('import-progress-text');
+  const importResults = document.getElementById('import-results');
+  const importReloadRow = document.getElementById('import-reload-row');
+
+  function setImportBusy(busy, message = '') {
+    importProgress.classList.toggle('active', busy);
+    importProgress.setAttribute('aria-hidden', busy ? 'false' : 'true');
+    importProgressText.textContent = message;
+    importDrop.classList.toggle('busy', busy);
+  }
+
+  function importResultHtml(r) {
+    const name = '<div class="import-result-file">' + escapeHtml(r.file) + '</div>';
+    if (!r.ok) {
+      return '<div class="import-result error">' + name +
+        '<div class="import-result-headline">Not imported: ' + escapeHtml(r.error) + '</div></div>';
+    }
+    const rows = [
+      ['Flights in file', r.read],
+      ['Added', r.added],
+      ['Already in database (ignored)', r.duplicates],
+      ['Skipped: no callsign', r.skipped_no_callsign],
+      ['Skipped: over 25 hours', r.skipped_overlong],
+      ['Skipped: unusable rows', r.skipped_invalid],
+      ['New airports / airlines / aircraft types', [r.new_airports, r.new_airlines, r.new_types].join(' / ')],
+    ];
+    const stats = rows.map(([label, value]) => '<span>' + label + '</span><span>' + escapeHtml(value) + '</span>').join('');
+    const headline = r.added + ' new flight' + (r.added === 1 ? '' : 's') + ' added';
+    return '<div class="import-result">' + name + '<div class="import-result-headline">' + headline +
+      '</div><div class="import-result-stats">' + stats + '</div></div>';
+  }
+
+  async function uploadImportFiles(fileList) {
+    const files = [...fileList];
+    if (!files.length) return;
+    const body = new FormData();
+    files.forEach(f => body.append('files', f, f.name));
+    importResults.innerHTML = '';
+    importReloadRow.classList.remove('visible');
+    setImportBusy(true, 'Importing ' + files.length + ' file' + (files.length === 1 ? '' : 's') + '\u2026');
+    try {
+      const response = await fsatlasFetch('/api/import', { method: 'POST', body });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        importResults.innerHTML = importResultHtml({ file: files.map(f => f.name).join(', '), ok: false,
+          error: payload.error || ('Server returned ' + response.status) });
+        return;
+      }
+      importResults.innerHTML = payload.results.map(importResultHtml).join('');
+      if (payload.added) importReloadRow.classList.add('visible');
+    } catch (err) {
+      importResults.innerHTML = importResultHtml({ file: 'Upload', ok: false, error: 'Could not reach the server.' });
+    } finally {
+      setImportBusy(false);
+      importFileInput.value = '';
+    }
+  }
+
+  importDrop.addEventListener('click', () => importFileInput.click());
+  importDrop.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); importFileInput.click(); }
+  });
+  importFileInput.addEventListener('change', () => uploadImportFiles(importFileInput.files));
+  ['dragenter', 'dragover'].forEach(type => importDrop.addEventListener(type, e => {
+    e.preventDefault();
+    importDrop.classList.add('dragover');
+  }));
+  ['dragleave', 'dragend'].forEach(type => importDrop.addEventListener(type, () => importDrop.classList.remove('dragover')));
+  importDrop.addEventListener('drop', e => {
+    e.preventDefault();
+    importDrop.classList.remove('dragover');
+    uploadImportFiles(e.dataTransfer.files);
+  });
+  // A file dropped outside the zone would make the browser navigate away from the app.
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => e.preventDefault());
+  document.getElementById('import-reload').addEventListener('click', () => window.location.reload());
+
+  // --- Export: save a snapshot of the whole database (GET /api/export). Where the browser
+  // has the File System Access API (Chrome/Edge on localhost or https) the user picks the
+  // folder and file name and the file is streamed straight to disk; otherwise it falls back
+  // to a normal download into the browser's downloads folder. ---
+  const exportBtn = document.getElementById('export-btn');
+  const exportStatus = document.getElementById('export-status');
+  function setExportStatus(text, isError = false) {
+    exportStatus.textContent = text;
+    exportStatus.classList.toggle('error', isError);
+  }
+
+  async function saveExportTo(handle) {
+    exportBtn.disabled = true;
+    setExportStatus('Preparing export\u2026');
+    let writable = null;
+    try {
+      const response = await fsatlasFetch('/api/export');
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || ('Server returned ' + response.status));
+      }
+      const size = Number(response.headers.get('Content-Length')) || 0;
+      writable = await handle.createWritable();
+      setExportStatus('Saving\u2026');
+      await response.body.pipeTo(writable); // streams to disk, then closes the file
+      writable = null;
+      setExportStatus('Saved ' + handle.name + (size ? ' (' + (size / 1048576).toFixed(0) + ' MB)' : '') + '.');
+    } catch (err) {
+      if (writable) { try { await writable.abort(); } catch (e) { /* already closed */ } }
+      setExportStatus('Export failed: ' + (err.message || err), true);
+    } finally {
+      exportBtn.disabled = false;
+    }
+  }
+
+  async function exportDatabase() {
+    const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const suggestedName = 'fsatlas-flights-' + stamp + '.db';
+    setExportStatus('');
+    if (window.showSaveFilePicker) {
+      let handle = null;
+      try {
+        handle = await window.showSaveFilePicker({
+          suggestedName,
+          types: [{ description: 'FSAtlas flight database', accept: { 'application/vnd.sqlite3': ['.db'] } }]
+        });
+      } catch (err) {
+        if (err && err.name === 'AbortError') return; // closed the dialog - nothing to do
+      }
+      if (handle) { await saveExportTo(handle); return; }
+    }
+    const link = document.createElement('a');
+    link.href = '/api/export';
+    link.download = suggestedName;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setExportStatus("Download started - look in your browser's downloads folder.");
+  }
+  exportBtn.addEventListener('click', exportDatabase);
 
   // --- Filter tree (nested AND/OR groups) ---
   // Scope Header pattern: a container (the root #filters list, or a .filter-group) owns
@@ -2056,8 +2245,8 @@
   function buildLengthFilter() {
     const menu = document.createElement('div');
     menu.className = 'simple-filter-menu simple-length-menu';
-    menu.innerHTML = '<button type="button" class="simple-filter-trigger"><span class="simple-filter-label">Length</span></button><div class="simple-filter-popover">' + POPOVER_CLOSE_BTN + '<select class="simple-filter-field"><option value="distance">Distance</option><option value="rough_flight_time">Flight time</option></select><label class="simple-range-label"><span>Minimum</span><output></output><input class="simple-length-min" type="range"></label><label class="simple-range-label"><span>Maximum</span><output></output><input class="simple-length-max" type="range"></label></div>';
-    const state = simpleFilterState.length = { column: 'distance', min: null, max: null, active: false };
+    menu.innerHTML = '<button type="button" class="simple-filter-trigger"><span class="simple-filter-label">Length</span></button><div class="simple-filter-popover">' + POPOVER_CLOSE_BTN + '<select class="simple-filter-field"><option value="rough_flight_time">Flight time</option><option value="distance">Distance</option></select><label class="simple-range-label"><span>Minimum</span><output></output><input class="simple-length-min" type="range"></label><label class="simple-range-label"><span>Maximum</span><output></output><input class="simple-length-max" type="range"></label></div>';
+    const state = simpleFilterState.length = { column: 'rough_flight_time', min: null, max: null, active: false }; // flight time by default; Distance is the other choice
     const trigger = menu.querySelector('.simple-filter-trigger');
     const fieldSelect = menu.querySelector('.simple-filter-field');
     const minInput = menu.querySelector('.simple-length-min');

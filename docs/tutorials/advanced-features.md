@@ -6,7 +6,7 @@ Deeper dives into the parts of FSAtlas that go beyond browsing the map and filte
 
 FSAtlas can hand a selected flight straight to [SimBrief](https://www.simbrief.com) as a
 pre-filled dispatch, without needing an API key — it opens SimBrief's own "New Flight"
-page with the origin, destination, aircraft type, registration, and callsign already
+page with the origin, destination, aircraft type and callsign already
 filled in from the flight record, using your browser's existing logged-in SimBrief
 session to do the rest.
 

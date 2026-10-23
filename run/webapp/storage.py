@@ -140,4 +140,4 @@ def flight_key(flight):
     """Stable identity for a route record - shared with the client-side `flightKey` in
     app.js so save/unsave requests and the "already saved" check agree on duplicates.
     """
-    return "|".join(str(flight.get(field, "")) for field in ("reg", "flight", "dep", "arr", "date"))
+    return "|".join(str(flight.get(field, "")) for field in ("flight", "dep", "arr", "date"))

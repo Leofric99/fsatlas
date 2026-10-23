@@ -2,9 +2,10 @@
 
 ## The map is empty / shows no airports
 
-- Make sure `run/database/flights.csv` exists and has at least one data row (not just
-  the header) — see [Flight Data Schema](flight-data-schema.md). FSAtlas starts
-  successfully either way; it just has nothing to plot.
+- Make sure `run/database/flights.db` (or the file named by `FSATLAS_DB`) exists and contains
+  flights — see [Flight Data Schema](flight-data-schema.md). You can also import
+  flights from the **Import** panel. FSAtlas starts successfully either way; it just has
+  nothing to plot.
 - If you're sure the file is populated, check your filters — an overly narrow filter
   combination that matches zero flights will also show an empty map. Click **Reset**.
 - If a *huge* fraction of your dataset is missing, check the "Discarded N flight(s)
@@ -69,8 +70,8 @@ affected by the server's own network access.
 
 This means the `/api/airports` request hasn't come back yet — normal for a moment on a
 very large dataset or a slow disk, but if it never resolves, check your server's console/
-logs for a Python traceback (most likely cause: a malformed or unreadable
-`flights.csv`).
+logs for a Python traceback (most likely cause: a corrupt or unreadable
+`flights.db`).
 
 ## Still stuck?
 

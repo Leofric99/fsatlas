@@ -16,13 +16,9 @@
 
 <h3 align="center">FSAtlas allows you to find inspiration for your next flight. Inspired by FlightConnections.</h3>
 
-<p align="center">
-  <img src="run/images/fsatlas_demo.gif" alt="FSAtlas Demo" width="100%">
-</p>
-
 ## What Is FSAtlas?
 
-FSAtlas reads flight records built from live tracking data and renders every departure and arrival airport as a colour-coded dot on an interactive map just like [FlightConnections](https://www.flightconnections.com), but free, and self-hosted.
+FSAtlas reads flight records from a local SQLite database and renders every departure and arrival airport as a colour-coded dot on an interactive map just like [FlightConnections](https://www.flightconnections.com), but free, and self-hosted.
 
 Click an airport to explore its connections, select a destination to inspect the details of a route, and open an individual flight to view its specific details.
 
@@ -32,50 +28,76 @@ Click an airport to explore its connections, select a destination to inspect the
 
 ### Explore the network
 
-The full dataset is plotted as soon as the app opens. Airports are rendered as colour-coded points, with the colour and scale of each point reflecting how many non-stop destinations it serves. This makes busy hubs easy to spot while keeping the map readable.
+The full dataset is plotted as soon as the app opens. Airports are rendered as colour-coded points, with the colour and scale of each point reflecting how many non-stop destinations it serves. This makes busy hubs easy to spot while keeping the map readable. Click an airport to draw its route fan, then click a destination to list the flights between the two.
 
 ### Inspect flight details
 
-Route results show the individual flights connecting the selected airports. Each flight includes the airline, aircraft type, registration, callsign, airport codes, and date when that information is available.
+Route results show the individual flights connecting the selected airports. Each row shows the airline, flight number and callsign, the aircraft type, the departure and arrival airports, the flight length and the year it was recorded (**When**). Click any column heading to sort by it, and use the SimBrief button on a row to send the flight to SimBrief.
 
 <p align="center">
   <img src="images/detailed_flight_info.png" alt="Detailed flight information view" width="100%">
 </p>
 
-### Build flexible filters
+### Filter the flights
 
-Build filter chains across the entire dataset, including airlines, aircraft types, countries, regions, distances, flight times, and more. Filters can be combined with AND/OR logic, and grouped together for granular control over the filtering logic.
+The **Explore** panel narrows the whole map with five filter menus: **Airline**, **Airports** (ICAO, IATA or name), **Aircraft** (ICAO code or full type), **Location** (city, country or region) and **Length**. Tick several values in a menu to match any of them; filters in different menus are combined, so only flights matching all of them remain. Length takes a minimum and maximum and works on flight time by default, or on distance if you pick it from the drop-down. A badge shows how many filters are active, and a live count shows how many flights match before you press **Apply**. Use **Reset** to clear everything, or the bookmark button to save the current filters as a named search.
 
 <p align="center">
   <img src="images/complex_filters.png" alt="Flight filtering view" width="100%">
 </p>
 
+### Save routes and searches
+
+The **Saved** panel keeps the flights and filter searches you have bookmarked, so you can jump straight back to them later. Saved items are stored in `saved_items.json`.
+
 ### Choose how to view the map
 
-Choose between Dark Mode, Light Mode, Standard OpenStreetMap, Satellite, and Hybrid map styles. The light and dark themes alter the map, controls, legend, and surrounding UI, and your preference is remembered for the next visit.
+Use the layers button in the top bar to choose between Dark Mode, Light Mode, Standard, Satellite, and Hybrid map styles, and to toggle the **Airports** and **Scenery** overlays. The theme button switches the light and dark UI, which alters the map, controls and surrounding panels, and your preference is remembered for the next visit.
 
 <p align="center">
   <img src="images/light_mode.png" alt="Different Map types and Dark and Light Modes" width="100%">
 </p>
 
+### Mark your installed scenery
 
+The **Hangar** panel lets you pick your MSFS Community or X-Plane Custom Scenery folder. Package names and small manifests are checked locally (nothing is uploaded) and matching airports are starred on the map, with counts of matched and unresolved packages.
 
-### Keep the interface focused
+### Add and back up your data
 
-Hide the filter list or airport legend when you need more room for the map. Both panels collapse into compact pull-tabs and can be restored without losing the current view or filters.
+The **Import** panel imports flights from CSV, JSON or database files by drag and drop, and exports the whole database to a location of your choice. See [Flight Data](#flight-data) below.
+
+### Dispatch settings
+
+The **Settings** panel stores your SimBrief pilot ID or username, which pre-fills dispatch links and powers the SimBrief export. It can be verified from the same panel.
 
 > Airports are rendered on canvas, routes are calculated only when requested, and filtered map views are cached server-side per session. This keeps the initial map responsive while avoiding unnecessary repeated work.
 
 ## Flight Data
 
-For the time being, you will need to source your own flight data from APIs or other freely available downloads. Place your data in `run/database/flights.csv` using the format below:
+FSAtlas reads its flights from a SQLite database at `run/database/flights.db` (override the location with `FSATLAS_DB`). It holds one row per flight leg per season (`year` + `Summer`/`Winter`), linked to airport, airline and aircraft-type tables. The database is not stored in git because of its size - place your own copy at that path, or start with an empty one and fill it with the importer below. The full schema is in [`docs/reference/flight-data-schema.md`](docs/reference/flight-data-schema.md).
 
-```csv
-owner,reg,type,type_icao,flight_number,calsign,dep_airport,dep_airport_iata,dep_airport_icao,dep_airport_city,dep_airport_country,dep_airport_lat,dep_airport_lon,dep_airport_elevation,arr_airport,arr_airport_iata,arr_airport_icao,arr_airport_city,arr_airport_country,arr_airport_lat,arr_airport_lon,arr_airport_elevation,distance,rough_flight_time,timestamp_read
-ACME Airlines,N88888,Acmebus A320,A320,AA88,AAL88,San Francisco International Airport,SFO,KSFO,San Francisco,United States,37.61881,-122.37542,13.1,Singapore Changi International Airport,SIN,WSSS,Singapore,Singapore,1.35019,103.994,22,7333,15.76,03th Nov 2024 at 11:24
-```
+### Importing flights
 
-The `timestamp_read` value records the date and time when the flight was discovered. I am planning to implement a script that collects this data automatically at some point, so stay tuned for updates.
+Open the **Import & Export** panel (the "Import" rail icon, below Hangar) and drop one or more `.csv`, `.json` or `.db` files onto it, or click to choose them. Three formats are accepted:
+
+- **Old-style `flights.csv`** - the original 25-column layout (`owner,reg,type,type_icao,flight_number,calsign,...,distance,rough_flight_time,timestamp_read`).
+- **JSON** - a list of flight objects, or a dict holding the list under `flights`, `data` or `results`, using the same field names as the CSV columns.
+- **Database (`.db`)** - another FSAtlas flight database, such as one saved with **Export database...** (below). It is merged in as it is, keeping every season.
+
+The import:
+
+- ignores flights that are already in the database (same flight number, departure, arrival and aircraft type);
+- adds any airports, airlines and aircraft types it does not know yet;
+- keeps only the year and season of each flight (`timestamp_read` is converted; `reg` is not stored);
+- skips rows with no callsign, an estimated duration over 25 hours, or missing airport/date data.
+
+Imported CSV and JSON files are kept in `run/import/processed/` (or `import/processed/` under `FSATLAS_DATA_DIR`); files that could not be imported go to `import/failed/`; database files are not kept. The same import is available from the command line: `python -m run.import_flights FILE [--dry-run]`.
+
+### Exporting the database
+
+Click **Export database...** in the same panel to save a copy of the whole database wherever you like, e.g. as a backup or to move it to another install, and drop that `.db` file on the Import box to bring it back. In Chrome and Edge you choose the folder and file name; other browsers download it to their downloads folder.
+
+> `uv run fsatlas` still starts the original `run/web_gui.py` frontend, which reads `run/database/flights.csv` and does not use the database. `python -m run` (and the Docker image) start the web app described here.
 
 
 ## Quick Start
@@ -103,7 +125,7 @@ git clone https://github.com/Leofric99/fsatlas.git
 cd fsatlas
 ```
 
-Before starting FSAtlas, place your flight data in `run/database/flights.csv` as described in [Flight Data](#flight-data). `uv` will create the environment and install the dependencies when you run the project:
+Before starting FSAtlas, place your flight database at `run/database/flights.db` (or import flights once it is running) as described in [Flight Data](#flight-data). `uv` will create the environment and install the dependencies when you run the project:
 
 ```bash
 uv run fsatlas
@@ -113,7 +135,7 @@ This starts a local web server and opens FSAtlas in your default browser. If the
 
 ## Docker
 
-Run FSAtlas in a container using [Docker](https://docs.docker.com/get-docker/). This is useful when you want to run it as a detached service or access it from another device on your network. Build the image from your local checkout so your flight data is included.
+Run FSAtlas in a container using [Docker](https://docs.docker.com/get-docker/). This is useful when you want to run it as a detached service or access it from another device on your network. The flight database lives in the mounted `/data` directory (see below), so put your `flights.db` there or import flights through the GUI after starting.
 
 #### Prerequisites
 
@@ -128,10 +150,12 @@ docker run -d --name fsatlas -p 8777:8000 fsatlas
 
 The container is now deployed and can be reached at `http://<server_ip>:8777` by default.
 
-By default, settings/saved items (`settings.json`/`saved_items.json`) live inside the
-container and are lost when it's recreated. To persist them on the host, bind-mount a
-directory to `/data` (see the `volumes:` entry and its comment in `docker-compose.yml` for
-details) - both files are created there automatically on first start if they don't exist.
+By default, the flight database (`/data/flights.db`), the `import/` folder and settings/saved
+items (`settings.json`/`saved_items.json`) live inside the container and are lost when it's
+recreated. To persist them on the host, bind-mount a directory to `/data` (see the `volumes:`
+entry and its comment in `docker-compose.yml` for details). Copy an existing `flights.db`
+into that directory, or start empty and import flights from the GUI; the settings files are
+created automatically on first start if they don't exist.
 
 To stop the service:
 

@@ -15,15 +15,17 @@ below.
 ## Before you start: Flight Data
 
 FSAtlas does not ship with a bundled flight dataset — you supply your own. Before running
-the app for the first time, place a CSV file at:
+the app for the first time, place a flight database at:
 
 ```
-run/database/flights.csv
+run/database/flights.db
 ```
 
-The full column list and an example row are documented in
-[Flight Data Schema](../reference/flight-data-schema.md). A missing or empty file won't
-crash the app, but the map will have nothing to show until it's in place.
+Alternatively start the app with no database and import old-style `flights.csv` or JSON
+files from the **Import** panel (an empty database is created automatically). The tables,
+columns and import rules are documented in
+[Flight Data Schema](../reference/flight-data-schema.md). A missing or empty database won't
+crash the app, but the map will have nothing to show until flights are in place.
 
 ## Linux & macOS (via `uv`)
 
@@ -109,20 +111,19 @@ docker compose up -d
 ```
 
 By default this exposes FSAtlas on **http://localhost:8777**. Your flight data needs to
-already be baked into whichever image you use (see Option B if you need to supply your
-own data file via a custom build), or supplied via the volume mount described below.
+already be in the `/data` volume mount described below (`/data/flights.db`), or imported through the GUI after the
+container starts.
 
 ### Option B — Build the image yourself
 
-Building locally bakes your own `run/database/flights.csv` into the image, which is the
-simplest way to self-host your own dataset:
+The image keeps its flight database at `/data/flights.db`, so mount a host directory at
+`/data` (see below) to supply your own database and keep any flights you import:
 
 ```bash
 git clone https://github.com/Leofric99/fsatlas.git
 cd fsatlas
-# add your flight data to run/database/flights.csv first, see above
 docker build -t fsatlas .
-docker run -d --name fsatlas -p 8777:8000 fsatlas
+docker run -d --name fsatlas -p 8777:8000 -v "$(pwd)/data:/data" fsatlas
 ```
 
 The container is now reachable at `http://<server_ip>:8777`.
@@ -157,7 +158,7 @@ sensible defaults on first start if they don't already exist.
 - **Docker (published image)**: `docker compose pull && docker compose up -d` (your
   `./data` bind mount keeps your settings/bookmarks).
 - **Docker (self-built image)**: re-run the `docker build`/`docker run` steps above after
-  pulling the latest source and (if needed) updating `run/database/flights.csv`.
+  pulling the latest source (your `flights.db` lives in the mounted `/data` directory).
 
 ## Next steps
 

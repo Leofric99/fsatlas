@@ -13,12 +13,14 @@ EXPOSE 8000
 
 # Bind to all interfaces on a fixed port and skip the desktop browser launch -
 # there's no display inside the container. FSATLAS_DATA_DIR points settings.json/
-# saved_items.json at a dedicated directory (instead of the default run/ next to the app
-# code) so it can be bind-mounted from the host without shadowing anything - see
-# docker-compose.yml.
+# saved_items.json (and the import/ folder) at a dedicated directory (instead of the default
+# run/ next to the app code) so it can be bind-mounted from the host without shadowing
+# anything - see docker-compose.yml. FSATLAS_DB keeps the flight database there too, so
+# flights imported through the GUI survive the container being recreated.
 ENV FSATLAS_HOST=0.0.0.0 \
     FSATLAS_PORT=8000 \
     FSATLAS_NO_BROWSER=1 \
-    FSATLAS_DATA_DIR=/data
+    FSATLAS_DATA_DIR=/data \
+    FSATLAS_DB=/data/flights.db
 
 CMD ["python", "-m", "run"]

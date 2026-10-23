@@ -25,7 +25,7 @@ build-backend = "hatchling.build"
 # of .gitignore (hatchling's default file selection follows VCS-ignore rules).
 include = [
     "run/**/*.py",
-    "run/database/*.csv",
+    "run/database/aircraft_crz_speeds.json",
     "run/html/*.html",
     "run/images/*.png",
     "run/webapp/templates/*.html",

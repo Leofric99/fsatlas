@@ -5,7 +5,7 @@ Guidance for AI coding agents working in this repository. Read this before makin
 ## Project overview
 
 FSAtlas is a self-hosted, browser-based tool for visualising real-world flight data (loaded
-from `run/database/flights.csv`) on an interactive world map, similar to FlightConnections.
+from the SQLite database `run/database/flights.db`) on an interactive world map, similar to FlightConnections.
 Airports render as canvas-based markers colour-coded by destination count; clicking one shows
 its routes, and clicking a route shows the individual flights on it. Users can build nested
 AND/OR filter trees (airline, aircraft type, country, distance, etc.) and save flights/searches.
@@ -34,9 +34,15 @@ run/
     static/app.css      # Full design-system stylesheet (CSS custom properties, dark/light)
   data_loader.py, filtering.py, config.py, mapping.py  # Shared data/filtering logic
   simbrief_api.py       # SimBrief prefill-link export + Pilot ID verification (no API key)
-  import_flights.py     # `-i/--import` CSV import helper
+  flightdb.py           # Flight database: path (FSATLAS_DB), schema, flights_flat view, season helper
+  db_loader.py          # Loads flights_flat into the DataFrame the web app uses (categorical columns)
+  flight_import.py      # Import engine for old-style .csv / .json flight files (shared by GUI + CLI)
+  import_flights.py     # `-i/--import` CLI wrapper around flight_import.py
+  webapp/imports.py     # Handles files dropped on the GUI Import panel (import/processed, import/failed;
+                        #   .db uploads are deleted) and builds GET /api/export snapshots
   single_instance.py, windows_tray.py  # Desktop-launcher niceties (old app only)
-  database/flights.csv  # User-supplied flight data (see README "Flight Data" for the schema)
+  database/flights.db   # User-supplied flight database, git-ignored (see docs/reference/flight-data-schema.md)
+  import/               # Files dropped on the Import panel (processed/ and failed/), git-ignored
   settings.json, saved_items.json      # Runtime data, git-tracked with `skip-worktree`
 .dev/
   docker-release.sh    # Build/push/cleanup script for the Docker Hub image
@@ -67,8 +73,8 @@ FSATLAS_PORT=5050 python3 -m run --debug --no-browser
 FSATLAS_PORT=5050 python3 -m run.web_gui --no-browser
 ```
 
-A `run/database/flights.csv` populated per the README's documented schema is required for
-the app to show data — an empty/missing file will still start the server but the map will
+A `run/database/flights.db` populated per `docs/reference/flight-data-schema.md` (or filled
+through the Import panel) is required for the app to show data — an empty/missing file will still start the server but the map will
 be empty.
 
 `--debug` on the Flask app enables the autoreloader for templates/static/Python. The old
@@ -114,16 +120,25 @@ running dev server:
   entire dialog, so the header and footer actions remain reachable on short viewports.
 - **Scenery import**: `run/webapp/` scans local folder metadata and persists matched airports
   plus per-package errors. Unmatched packages can be assigned via `/api/scenery/resolve`;
-  airport choices and ICAO coordinate fallback come from the unfiltered `flights.csv`
-  airport directory. Successful imports/assignments enable the scenery overlay.
+  airport choices and ICAO coordinate fallback come from the unfiltered airport
+  directory (built from the `airports` table). Successful imports/assignments enable the scenery overlay.
 - **Don't bound a Leaflet map view to just two route endpoints** (`fitBounds([[src],[dest]])`)
   — a geodesic curve between distant airports can bulge far outside that simple bounding box.
   Build bounds from the actual computed curve points instead.
 
 ## Data & schema notes
 
-- Flight CSV schema is documented in the README's "Flight Data" section — keep any loader
-  changes (`run/data_loader.py`) and the README's documented column list in sync.
+- The flight database schema is documented in `docs/reference/flight-data-schema.md` and the
+  README's "Flight Data" section — keep changes to `run/flightdb.py`, `run/db_loader.py` and
+  `run/flight_import.py` in sync with them. `run/webapp/` reads the database (`flights_flat`
+  view); `run/web_gui.py` still reads `run/database/flights.csv` via `run/data_loader.py`
+  and is intentionally untouched.
+- `db_loader.load_data()` returns repeated text columns as pandas **categoricals** (keeps
+  ~1.9M rows to a few hundred MB). Avoid `astype(str)`/`.str` on whole columns of the full
+  frame in hot paths; de-duplicate or filter first. After an import, `data.reload()` rebuilds
+  the cached dataset.
+- Airports are keyed by ICAO in the database, but the map/API still key pins by IATA (shared
+  IATA codes resolve to the airport with the most recent flights).
 - `run/filtering.py`'s `apply_filters` operates on a nested filter tree:
   `{'kind': 'group', 'logic': 'AND'|'OR', 'children': [...]}`, leaves being condition dicts
   (`column`/`operator`/`value`/`type`/`logic`). A node's `logic` means "how do I combine with

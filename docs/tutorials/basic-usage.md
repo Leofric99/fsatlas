@@ -49,7 +49,7 @@ categories:
 | Airports    | Departure or arrival airport, by ICAO, IATA, or full name.                     |
 | Aircraft    | Aircraft type, by ICAO code or full type name.                                |
 | Location    | Departure or arrival city, country, or region.                                |
-| Length      | A distance (nautical miles) or flight-time (hours) range, via two sliders.    |
+| Length      | A flight-time (hours) range by default, or distance (nautical miles) chosen from the drop-down, via two sliders. |
 
 Airline/Airports/Aircraft/Location are **chip multi-select** fields: click the category,
 type to search, and click as many matching values as you like — they're combined with

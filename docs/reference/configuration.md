@@ -12,7 +12,7 @@ below instead of passing flags directly.
 | `--port`                | `5050`                    | Port to bind to.                                                           |
 | `--debug`               | off                       | Enables Flask's debug mode and autoreloader (template/static/code changes apply without restarting). |
 | `--no-browser`          | off                       | Don't try to open a browser window automatically.                         |
-| `-i`, `--import FILE`   | —                         | Import flight records from a JSON file into `flights.csv`, then exit without starting the server — see [Flight Data Schema](flight-data-schema.md#adding-new-flights-with-the-import-tool). |
+| `-i`, `--import FILE`   | —                         | Import flight records from a `.json` or old-style `.csv` file into the flight database, then exit without starting the server — see [Flight Data Schema](flight-data-schema.md#importing-flights). |
 
 ```bash
 python -m run --host 0.0.0.0 --port 8080 --no-browser
@@ -30,9 +30,12 @@ Docker), plus one extra for where data files live:
 | `FSATLAS_DEBUG`      | unset (falsy)               | `--debug`           |
 | `FSATLAS_NO_BROWSER` | unset (falsy)               | `--no-browser`      |
 | `FSATLAS_DATA_DIR`   | `run/` (next to the app code) | *(no flag — see below)* |
+| `FSATLAS_DB`         | `run/database/flights.db`   | *(no flag)* — path of the flight database |
+| `FSATLAS_MIN_YEAR` / `FSATLAS_MAX_YEAR` | unset (all years) | *(no flag)* — only load flights in this inclusive year range |
 
 `FSATLAS_DATA_DIR` controls where `settings.json`, `saved_items.json`, and
-`installed_scenery.json` are read from/written to. The Docker image sets this to `/data`
+`installed_scenery.json` are read from/written to, and where the `import/` folder
+(`import/processed/` and `import/failed/`) for files dropped on the Import panel is kept. The Docker image sets this to `/data`
 so those files can be bind-mounted outside the container — see
 [Installation → Data persistence](../getting-started/installation.md#data-persistence).
 
@@ -67,8 +70,8 @@ to back them up, migrate them, or inspect them directly.
 {
   "saved_flights": [
     {
-      "reg": "G-XLEC", "flight": "BA106", "dep": "DXB", "arr": "LHR",
-      "date": "08/11/2024", "airline": "British Airways", "type": "Airbus A380-841",
+      "flight": "BA106", "dep": "DXB", "arr": "LHR",
+      "date": "Summer 2025", "airline": "British Airways", "type": "Airbus A380-841",
       "type_icao": "A388", "distance": 2969, "flight_time_hours": 6.65,
       "saved_at": "2026-10-09T11:20:01.706329+00:00"
     }
@@ -85,7 +88,7 @@ to back them up, migrate them, or inspect them directly.
 ```
 
 A saved flight's identity (used to detect "already saved"/de-duplicate) is the
-combination of `reg` + `flight` + `dep` + `arr` + `date`.
+combination of `flight` + `dep` + `arr` + `date` (the schedule season, e.g. `Summer 2025`). Flights saved by older versions may still carry a `reg` and an exact `date`; they keep working but won't match flights in the database.
 
 ### `installed_scenery.json`
 

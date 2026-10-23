@@ -28,7 +28,9 @@ COLUMN_DISPLAY_NAMES = {
     # The raw data is already in nautical miles, not km - see 2026-09-23 verification.
     'distance': 'Distance (Nautical Miles)',
     'rough_flight_time': 'Flight Time (hours)',
-    'timestamp_read': 'Timestamp'
+    'timestamp_read': 'Timestamp',
+    'year': 'Year',
+    'season': 'Season',
 }
 
 # Default columns to show in filter dropdowns (or all if empty)

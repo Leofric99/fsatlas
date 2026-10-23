@@ -4,10 +4,10 @@ Get FSAtlas running and explore your first route in under 5 minutes.
 
 ## 1. Get some flight data
 
-FSAtlas needs a CSV of flight records at `run/database/flights.csv` before it has
-anything to show. See [Flight Data Schema](../reference/flight-data-schema.md) for the
-exact columns, or just grab the one-row example there to confirm everything works before
-loading your real dataset.
+FSAtlas needs a flight database at `run/database/flights.db` before it has anything to
+show. If you only have an old-style `flights.csv` (or JSON files), start the app and drop
+them onto the **Import** panel - see [Flight Data Schema](../reference/flight-data-schema.md)
+for the formats and what the importer does.
 
 ## 2. Start the app
 
@@ -18,7 +18,7 @@ Pick one:
 ```bash
 git clone https://github.com/Leofric99/fsatlas.git
 cd fsatlas
-# add run/database/flights.csv first
+# add run/database/flights.db first (or import flights from the GUI later)
 docker build -t fsatlas .
 docker run -d --name fsatlas -p 8777:8000 fsatlas
 ```
@@ -31,7 +31,7 @@ Open **http://localhost:8777**.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/Leofric99/fsatlas.git
 cd fsatlas
-# add run/database/flights.csv first
+# add run/database/flights.db first (or import flights from the GUI later)
 uv run fsatlas
 ```
 

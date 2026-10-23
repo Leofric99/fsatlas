@@ -4,12 +4,13 @@ tuples rather than being caught with try/except.
 """
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request, send_file
 
 from run import simbrief_api
-from run.webapp import data, storage
+from run.webapp import data, imports, storage
 
 bp = Blueprint('main', __name__)
 
@@ -192,6 +193,31 @@ def simbrief_export():
         return {"error": "Invalid flight payload"}, 400
     pilot_id = storage.load_settings().get("simbrief_pilot_id", "")
     return jsonify({"url": simbrief_api.build_export_url(flight, pilot_id)})
+
+
+@bp.post('/api/import')
+def import_flights():
+    """Import dropped .csv/.json flight files (multipart field `files`, one or more)."""
+    uploads = [f for f in request.files.getlist('files') if f and f.filename]
+    if not uploads:
+        return {"error": "No files were uploaded."}, 400
+    results = [imports.process_upload(f) for f in uploads]
+    added = sum(r.get("added", 0) for r in results if r.get("ok"))
+    if added:
+        data.reload()
+    return jsonify({"results": results, "added": added, "reloaded": bool(added)})
+
+
+@bp.get('/api/export')
+def export_database():
+    """Download a snapshot of the whole flight database (importable through the Import panel)."""
+    try:
+        folder, path, name = imports.create_export()
+    except FileNotFoundError as exc:
+        return {"error": str(exc)}, 404
+    response = send_file(path, as_attachment=True, download_name=name, mimetype="application/vnd.sqlite3")
+    response.call_on_close(lambda: shutil.rmtree(folder, ignore_errors=True))
+    return response
 
 
 @bp.get('/api/scenery')

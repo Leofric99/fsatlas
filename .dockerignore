@@ -5,3 +5,15 @@ __pycache__/
 venv/
 .pytest_cache/
 screenshots/
+
+# User data must never be baked into (or pushed with) the image: the flight database lives in
+# the mounted /data volume (FSATLAS_DB=/data/flights.db) and is built from imports.
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
+**/*.sqlite
+**/*.sqlite3
+run/database/flights.csv
+run/database/flights.json
+run/import/

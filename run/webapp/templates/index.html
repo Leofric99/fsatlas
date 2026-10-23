@@ -40,6 +40,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></svg>
       <span class="rail-btn-label">Hangar</span>
     </button>
+    <button class="rail-btn" type="button" data-panel="import" title="Import &amp; Export Flights" aria-label="Import and Export Flights">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      <span class="rail-btn-label">Import</span>
+    </button>
     <div class="rail-spacer"></div>
     <button class="rail-btn" type="button" data-panel="settings" title="Settings" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -115,6 +119,7 @@
             <button type="button" class="sortable-col" data-sort="to">To</button>
             <button type="button" class="sortable-col" data-sort="aircraft" title="Aircraft type">A/C</button>
             <button type="button" class="sortable-col" id="flights-table-time-header" data-sort="time">Length</button>
+            <button type="button" class="sortable-col" data-sort="when" title="When the flight was recorded">When</button>
             <span></span>
           </div>
           <div id="flights-table-body"></div>
@@ -170,6 +175,7 @@
               <button type="button" class="sortable-col" data-sort="to">To</button>
               <button type="button" class="sortable-col" data-sort="aircraft" title="Aircraft type">A/C</button>
               <button type="button" class="sortable-col" id="saved-flights-time-header" data-sort="time">Length</button>
+            <button type="button" class="sortable-col" data-sort="when" title="When the flight was recorded">When</button>
               <span></span>
             </div>
             <div id="saved-list" class="saved-list saved-flights-table-body"></div>
@@ -225,6 +231,55 @@
         <pre class="scenery-error-block"><code id="scenery-errors-code"></code></pre>
       </details>
       <input id="scenery-folder-input" type="file" webkitdirectory directory multiple hidden>
+    </div>
+  </aside>
+
+  <aside id="panel-import" class="panel">
+    <div class="panel-head">
+      <div class="panel-head-text">
+        <span class="panel-eyebrow">Data</span>
+        <h2 class="panel-title">Import &amp; Export</h2>
+        <p class="panel-sub">Add flights from a CSV, JSON or database file, or save a copy of the database.</p>
+      </div>
+      <button class="panel-close topbar-icon-btn" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="panel-body">
+      <div id="import-drop" class="import-drop" tabindex="0" role="button" aria-label="Drop flight files here, or press Enter to choose files">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <strong>Drop CSV, JSON or database files here</strong>
+        <span>or click to choose files</span>
+      </div>
+      <input id="import-file-input" type="file" accept=".csv,.json,.db,.sqlite,.sqlite3" multiple hidden>
+      <p class="modal-hint">
+        Flights already in the database are ignored. Airports, airlines and aircraft types
+        that aren't in the database yet are added automatically. CSV and JSON flights keep only
+        their year and season. A database file (from Export, below) is merged in as it is.
+        Imported CSV and JSON files are kept in the <code>import/processed</code> folder; database files are not.
+      </p>
+      <div id="import-progress" class="scenery-progress" role="status" aria-live="polite" aria-hidden="true">
+        <span class="scenery-spinner" aria-hidden="true"></span>
+        <div class="scenery-progress-content">
+          <span id="import-progress-text"></span>
+          <div class="scenery-progress-track" role="progressbar" aria-label="Import progress"><span></span></div>
+        </div>
+      </div>
+      <div id="import-results" class="import-results" aria-live="polite"></div>
+      <div id="import-reload-row" class="import-reload-row">
+        <button id="import-reload" class="btn-primary" type="button">Reload map to see new flights</button>
+      </div>
+      <div class="settings-card export-card">
+        <h3 class="settings-card-title">Export</h3>
+        <p class="settings-card-hint">
+          Save a copy of the whole flight database wherever you like - to back it up or move it
+          to another install. Drop the saved <code>.db</code> file in the box above to import it again.
+        </p>
+        <div class="modal-actions">
+          <button id="export-btn" class="secondary" type="button">Export database&hellip;</button>
+          <span id="export-status" role="status" aria-live="polite"></span>
+        </div>
+      </div>
     </div>
   </aside>
 

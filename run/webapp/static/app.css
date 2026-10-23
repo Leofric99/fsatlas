@@ -30,7 +30,7 @@
   --topbar-h: 54px;
   --rail-w: 58px;
   --rail-h: 54px;
-  --sidebar-w: 520px;
+  --sidebar-w: 540px;
   --map-bg: #14161b;
   --panel-bg: var(--surface);
   --card-bg: var(--surface-2);
@@ -393,7 +393,7 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
   border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2);
 }
 .flights-table-head, .flight-row {
-  display: grid; grid-template-columns: 24px 52px minmax(var(--from-min, 0px), 1fr) minmax(var(--to-min, 0px), 1fr) minmax(var(--aircraft-min, 0px), 1fr) 50px 24px; gap: 8px; align-items: center; min-width: 0;
+  display: grid; grid-template-columns: 24px var(--flight-w, 56px) minmax(var(--from-min, 0px), 1fr) minmax(var(--to-min, 0px), 1fr) minmax(var(--aircraft-min, 0px), 1fr) var(--time-w, 58px) var(--when-w, 46px) 24px; gap: 8px; align-items: center; min-width: 0;
 }
 .flights-table-head {
   padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase;
@@ -431,9 +431,9 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .row-bookmark:hover, .row-simbrief:hover { color: var(--accent); }
 .row-bookmark.saved { color: var(--accent); }
 .row-simbrief.error { color: var(--danger); }
-.row-flight, .row-from, .row-to, .row-aircraft, .row-time { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.row-flight, .row-from, .row-to, .row-aircraft, .row-time, .row-when { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
 .row-flight { font-weight: 700; color: var(--accent); }
-.row-from, .row-to, .row-aircraft, .row-time { font-weight: 600; color: var(--text); }
+.row-from, .row-to, .row-aircraft, .row-time, .row-when { font-weight: 600; color: var(--text); }
 .row-primary, .row-secondary { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-secondary {
   display: -webkit-box; max-height: 2.4em; white-space: normal; color: var(--text-dim);
@@ -563,7 +563,9 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
 .modal-hint a { color: var(--accent); }
 .modal-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0 14px; }
 .modal-actions { display: flex; align-items: center; gap: 10px; }
-#simbrief-status, #scenery-status { font-size: 12px; color: var(--text-dim); }
+#simbrief-status, #scenery-status, #export-status { font-size: 12px; color: var(--text-dim); min-width: 0; overflow-wrap: anywhere; }
+#export-status.error { color: var(--danger); }
+.export-card { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); }
 .scenery-progress { display: none; align-items: center; gap: 10px; margin-top: 12px; color: var(--text-dim); font-size: 12px; }
 .scenery-progress.active { display: flex; }
 .scenery-spinner {
@@ -597,6 +599,32 @@ button.icon:hover { background: var(--surface-hover); color: var(--text); }
   color: var(--text); font: 11px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
+/* Import Flights panel: drag-and-drop zone + per-file result cards. */
+.import-drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 26px 16px; border: 1.5px dashed var(--border); border-radius: 10px; text-align: center;
+  color: var(--text-dim); font-size: 12px; cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+}
+.import-drop svg { width: 28px; height: 28px; margin-bottom: 4px; }
+.import-drop strong { color: var(--text); font-size: 13px; }
+.import-drop:hover, .import-drop:focus-visible, .import-drop.dragover {
+  border-color: var(--accent); background: var(--accent-soft); color: var(--accent); outline: none;
+}
+.import-drop.busy { opacity: .55; pointer-events: none; }
+.import-results { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.import-result {
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; color: var(--text-dim);
+}
+.import-result.error { border-color: color-mix(in srgb, var(--danger) 50%, var(--border)); }
+.import-result-file { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+.import-result-headline { margin-top: 2px; }
+.import-result.error .import-result-headline { color: var(--danger); }
+.import-result-stats { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; margin-top: 6px; }
+.import-result-stats span:nth-child(even) { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+.import-reload-row { display: none; margin-top: 12px; }
+.import-reload-row.visible { display: block; }
+.import-reload-row button { width: 100%; }
+
 @keyframes scenery-spin { to { transform: rotate(360deg); } }
 @keyframes scenery-progress {
   0% { transform: translateX(-110%); }
@@ -708,7 +736,13 @@ button.danger:hover { background: var(--danger-strong); border-color: var(--dang
   .ghost-add { min-height: 38px; padding: 8px 13px; }
   .row-bookmark, .row-simbrief { width: 30px; height: 30px; min-height: 0; }
   .row-bookmark svg, .row-simbrief svg { width: 16px; height: 16px; }
-  .flights-table-head, .flight-row { grid-template-columns: 30px 52px minmax(var(--from-min, 0px), 1fr) minmax(var(--to-min, 0px), 1fr) minmax(var(--aircraft-min, 0px), 1fr) 50px 30px; }
+  /* Tighter gaps/padding and a floor on From/To/A/C (From is wider: its heading plus sort arrow
+     needs 42px) so the extra When column never squeezes their text off the end - on very
+     narrow screens the table scrolls sideways instead. */
+  .flights-table-head, .flight-row {
+    grid-template-columns: 30px var(--flight-w, 56px) minmax(max(44px, var(--from-min, 0px)), 1fr) minmax(max(36px, var(--to-min, 0px)), 1fr) minmax(max(36px, var(--aircraft-min, 0px)), 1fr) var(--time-w, 58px) var(--when-w, 46px) 30px;
+    column-gap: 3px; padding-left: 4px; padding-right: 4px;
+  }
 
   /* Rail becomes a bottom tab bar (thumb-reachable) instead of a persistent left column -
      panels become bottom sheets that slide up above it, matching the existing info-panel

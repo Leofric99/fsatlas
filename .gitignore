@@ -1,8 +1,18 @@
 # Custom
 run/database/flights.csv
-run/database/flights.db
 run/database/flights.json
+run/import/
 run/settings.json
+
+# Flight databases are user data, never committed: the app starts without one and builds it
+# from imports. Covers run/database/flights.db, exports saved into the repo folder, and
+# SQLite's temporary journal/WAL files.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
